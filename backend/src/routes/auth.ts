@@ -1,5 +1,5 @@
 import { FastifyInstance } from "fastify";
-import db from "../db";
+import pool from "../db";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 
@@ -20,9 +20,10 @@ export default async function authRoutes(app: FastifyInstance) {
                 message: "Username and Password Required"
             };
         }
-    
-        // Check Duplicate
-        const existingUser = db.prepare("SELECT * FROM users WHERE username = ?").get(username);
+
+        // Check duplicate (PostgreSQL)
+        const result = await pool.query("SELECT * FROM users WHERE username = $1", [username]);
+        const existingUser = result.rows[0];
     
         if (existingUser) {
             return {
@@ -33,9 +34,9 @@ export default async function authRoutes(app: FastifyInstance) {
         
         // Create User and encrypt
         const hashedPassword = await bcrypt.hash(password, 10);
-    
-        // Push to db
-        db.prepare("INSERT INTO users (username, password) VALUES (?, ?)").run(username, hashedPassword);
+
+        // Push to db (PostgreSQL)
+        await pool.query("INSERT INTO users (username, password) VALUES ($1, $2)", [username, hashedPassword])
     
         return {
             success: true,
@@ -50,8 +51,9 @@ export default async function authRoutes(app: FastifyInstance) {
             password: string
         };
     
-        const user = db.prepare("SELECT * FROM users WHERE username = ?").get(username) as { id: number; username: string; password: string } | undefined;
-    
+        const result = await pool.query("SELECT * FROM users WHERE username = $1", [username]);
+        const user = result.rows[0] as { id: number; username: string; password: string } | undefined;
+
         if (!user) {
             return {
                 success: false,
