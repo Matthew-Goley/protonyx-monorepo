@@ -1,5 +1,5 @@
 import { FastifyInstance } from "fastify";
-import db from "../db";
+import pool from "../db";
 import { authenticate } from "../middleware/authenticate";
 
 export default async function noteRoutes(app: FastifyInstance) {
@@ -10,7 +10,7 @@ export default async function noteRoutes(app: FastifyInstance) {
             content: string;
         }
     
-        db.prepare("INSERT INTO notes (user_id, title, content) VALUES (?, ?, ?)").run(request.user.id, title, content);
+        await pool.query("INSERT INTO notes (user_id, title, content) VALUES ($1, $2, $3)", [request.user.id, title, content]);
     
         return {
             success: true,
@@ -20,7 +20,8 @@ export default async function noteRoutes(app: FastifyInstance) {
     
     // Get Notes (protected)
     app.get("/getnotes", { preHandler: authenticate }, async (request: any) => {
-        const userNotes = db.prepare("SELECT * FROM notes WHERE user_id = ?").all(request.user.id);
+        const result = await pool.query("SELECT * FROM notes WHERE user_id = $1", [request.user.id]);
+        const userNotes = result.rows;
     
         return {
             success: true,
@@ -31,8 +32,8 @@ export default async function noteRoutes(app: FastifyInstance) {
     // delete notes (protected)
     app.delete("/notes/:id", { preHandler: authenticate }, async (request: any) => {
         const { id } = request.params;
-    
-        db.prepare("DELETE FROM notes WHERE id = ? AND user_id = ?").run(id, request.user.id);
+
+        await pool.query("DELETE FROM notes WHERE id = $1 AND user_id = $2", [id, request.user.id]);
     
         return {
             success: true,
@@ -48,7 +49,7 @@ export default async function noteRoutes(app: FastifyInstance) {
         };
         const { id } = request.params;
 
-        db.prepare("UPDATE notes SET title = ?, content = ? WHERE id = ? and user_id = ?").run(title, content, id, request.user.id);
+        await pool.query("UPDATE notes SET title = $1, content = $2 WHERE id = $3 and user_id = $4", [title, content, id, request.user.id]);
 
         return {
             success: true,
