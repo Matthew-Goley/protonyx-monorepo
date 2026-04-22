@@ -1,5 +1,5 @@
 import { FastifyInstance } from "fastify";
-import db from "../db";
+import pool from "../db";
 import { authenticate } from "../middleware/authenticate";
 
 export default async function debugRoutes(app: FastifyInstance) {
