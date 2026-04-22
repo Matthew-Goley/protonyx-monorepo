@@ -15,10 +15,10 @@ export default async function authRoutes(app: FastifyInstance) {
     
         // Check Empty
         if (!username || !password) {
-            return {
+            return reply.status(400).send({
                 success: false,
                 message: "Username and Password Required"
-            };
+            });
         }
 
         // Check duplicate (PostgreSQL)
@@ -26,10 +26,10 @@ export default async function authRoutes(app: FastifyInstance) {
         const existingUser = result.rows[0];
     
         if (existingUser) {
-            return {
+            return reply.status(409).send({
                 success: false,
                 message: "Username Already in Use"
-            };
+            });
         }
         
         // Create User and encrypt
@@ -38,10 +38,10 @@ export default async function authRoutes(app: FastifyInstance) {
         // Push to db (PostgreSQL)
         await pool.query("INSERT INTO users (username, password) VALUES ($1, $2)", [username, hashedPassword])
     
-        return {
+        return reply.status(201).send({
             success: true,
             message: "User Created"
-        };
+        });
     });
     
     // Login POST
@@ -55,19 +55,19 @@ export default async function authRoutes(app: FastifyInstance) {
         const user = result.rows[0] as { id: number; username: string; password: string } | undefined;
 
         if (!user) {
-            return {
+            return reply.status(404).send({
                 success: false,
                 message: "User Not Found"
-            };
+            });
         }
         
         // Compare dehashed password
         const match = await bcrypt.compare(password, user.password);
         if (!match) {
-            return {
+            return reply.status(401).send({
                 success: false,
                 message: "Invalid Password"
-            };
+            });
         }
     
         // Token
