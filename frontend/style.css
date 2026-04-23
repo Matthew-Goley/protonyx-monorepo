@@ -167,6 +167,7 @@ p {
 .scroll-indicator p {
   font-size: 0.9rem;
   margin-top: 5px;
+  color: #ffffff;
 }
 
 .scroll-arrow {
@@ -425,6 +426,7 @@ p {
   display: flex;
   flex-direction: column;
   gap: 1rem;
+  align-self: stretch;
 }
 
 .menu-label {
@@ -1391,31 +1393,33 @@ p {
   text-align: left;
   font-family: inherit;
   cursor: pointer;
-  color: white;
+  color: rgba(255, 255, 255, 0.45);
   text-decoration: none;
-  font-size: clamp(1.6rem, 3vw, 3rem);
+  font-size: 0.8rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
   line-height: 1.05;
   opacity: 0;
-  clip-path: inset(0 100% 0 0);
   transform: translateY(8px);
-  transition:
-    clip-path 0.5s ease,
-    opacity 0.35s ease,
-    transform 0.5s ease;
+  transition: color 0.2s ease, opacity 0.35s ease, transform 0.5s ease;
 }
 
 .menu-column .menu-logout-button.visible {
   display: inline-block;
+  /* Pin to the bottom-left of the column. Pairs with .menu-column { align-self: stretch } */
+  margin-top: auto;
+  align-self: flex-start;
+  padding-bottom: 1.5rem;
 }
 
 .menu-overlay.open .menu-logout-button.visible {
   opacity: 1;
-  clip-path: inset(0 0 0 0);
   transform: translateY(0);
 }
 
 .menu-column .menu-logout-button:hover {
-  opacity: 0.72;
+  color: rgba(255, 255, 255, 0.9);
+  opacity: 1;
 }
 
 /* ──────────────────────────────────────────────
@@ -1576,39 +1580,6 @@ p {
 /* ──────────────────────────────────────────────
    Account page (account/index.html)
    ────────────────────────────────────────────── */
-.account-hero {
-  width: 100%;
-  min-height: 60vh;
-  background: #0c0f16;
-  padding: 8rem 6% 4rem;
-  display: flex;
-  align-items: flex-end;
-}
-
-.account-hero-inner {
-  max-width: 1100px;
-  width: 100%;
-  margin: 0 auto;
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
-.account-hero-eyebrow {
-  font-size: 0.8rem;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.45);
-}
-
-.account-hero-username {
-  font-size: clamp(2.2rem, 4.5vw, 4rem);
-  font-weight: 600;
-  color: white;
-  line-height: 1.1;
-  letter-spacing: -0.02em;
-}
-
 .account-section {
   width: 100%;
   padding: 4rem 6%;
@@ -1623,38 +1594,38 @@ p {
   gap: 2rem;
 }
 
-.account-info-grid {
+.account-info-list {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 1rem;
+  grid-template-columns: 220px 1fr;
+  margin: 0;
 }
 
-.account-info-card {
-  padding: 1.5rem;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  background: var(--bg-base);
+.account-info-list dt,
+.account-info-list dd {
+  margin: 0;
+  padding: 1rem 0;
+  border-top: 1px solid rgba(31, 34, 48, 0.15);
   display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
+  align-items: center;
 }
 
-.account-info-label {
-  font-size: 0.72rem;
-  letter-spacing: 0.1em;
+.account-info-list dt:first-of-type,
+.account-info-list dd:first-of-type {
+  border-top: none;
+}
+
+.account-info-list dt {
+  font-size: 0.75rem;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: rgba(31, 34, 48, 0.5);
+  color: rgba(31, 34, 48, 0.55);
+  padding-right: 1.5rem;
 }
 
-.account-info-value {
+.account-info-list dd {
   font-size: 1rem;
   color: var(--text-primary);
   word-break: break-word;
-}
-
-.account-info-value.placeholder {
-  color: rgba(31, 34, 48, 0.4);
-  font-style: italic;
 }
 
 .account-actions {
@@ -1686,8 +1657,12 @@ p {
   box-shadow: 0 8px 20px rgba(42, 107, 154, 0.35);
 }
 
-@media (max-width: 768px) {
-  .account-info-grid {
+@media (max-width: 640px) {
+  .account-info-list {
     grid-template-columns: 1fr;
+  }
+  .account-info-list dd {
+    border-top: none;
+    padding-top: 0;
   }
 }

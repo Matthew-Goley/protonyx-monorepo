@@ -4,7 +4,6 @@ import cors from "@fastify/cors";
 import "dotenv/config";
 
 import authRoutes from "./routes/auth";
-import noteRoutes from "./routes/notes";
 import debugRoutes from "./routes/debug";
 
 const app = Fastify();
@@ -25,7 +24,6 @@ app.register(cors, {
 });
 
 app.register(authRoutes);
-app.register(noteRoutes);
 app.register(debugRoutes);
 
 // Start server
