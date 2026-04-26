@@ -31,4 +31,14 @@ export default async function debugRoutes(app: FastifyInstance) {
             user: user
         });
     });
+
+    // Download Counter
+    app.post("/download", { preHandler: authenticate }, async (request: any) => {
+        await pool.query("UPDATE users SET download_count = download_count + 1 WHERE id = $1", [request.user.id]);
+
+        return {
+            success: true,
+            message: "Download recorded"
+        };
+    });
 }
