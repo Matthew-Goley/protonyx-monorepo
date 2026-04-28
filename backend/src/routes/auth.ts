@@ -2,6 +2,7 @@ import { FastifyInstance } from "fastify";
 import pool from "../db";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
+import { sendWelcomeEmail } from "../email";
 
 const JWT_SECRET = process.env.JWT_SECRET as string;
 
@@ -48,6 +49,9 @@ export default async function authRoutes(app: FastifyInstance) {
             "INSERT INTO users (username, email, password) VALUES ($1, $2, $3)",
             [username, email, hashedPassword]
         );
+
+        // Fire-and-forget welcome email (failures are logged inside, never thrown)
+        sendWelcomeEmail(email, username);
 
         return reply.status(201).send({
             success: true,
