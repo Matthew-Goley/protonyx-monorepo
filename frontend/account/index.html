@@ -49,7 +49,8 @@
 
   <section class="products-hero">
     <div class="products-hero-inner">
-      <p class="products-label">Account</p>
+      <p class="products-label" id="accountHeroTitle">Account</p>
+      <p id="accountHeroSubtitle" style="font-size: 13px; color: var(--text-muted); margin: 0;">Account</p>
     </div>
   </section>
 
@@ -133,6 +134,11 @@
       if (!localStorage.getItem("token")) {
         window.location.href = "/auth/index.html";
         return;
+      }
+
+      const heroTitleEl = document.getElementById("accountHeroTitle");
+      if (heroTitleEl) {
+        heroTitleEl.textContent = localStorage.getItem("username") || "Account";
       }
 
       function formatMemberSince(value) {
