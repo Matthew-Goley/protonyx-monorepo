@@ -1,7 +1,7 @@
+import "dotenv/config"
 import Fastify from "fastify";
 import rateLimit from "@fastify/rate-limit";
 import cors from "@fastify/cors";
-import "dotenv/config";
 
 import authRoutes from "./routes/auth";
 import debugRoutes from "./routes/debug";

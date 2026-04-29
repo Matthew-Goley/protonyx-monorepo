@@ -1,9 +1,9 @@
 import { Resend } from "resend";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
-
 export async function sendWelcomeEmail(to: string, username: string): Promise<void> {
-    // TODO: replace with production URL
+    const resend = new Resend(process.env.RESEND_API_KEY);
+    console.log('Resend key inside function:', !!process.env.RESEND_API_KEY);
+    
     const downloadUrl = "https://protonyx.dev/download";
 
     const html = `<!DOCTYPE html>
