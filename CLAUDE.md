@@ -1,18 +1,24 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository. It is intentionally detailed so that someone with no prior exposure to the project can act on it without reading every source file. Update it when the things it claims become wrong.
 
 ---
 
-## 1. Project Overview
+## 1. What This Repo Is
 
-**Protonyx** is a fintech company building institutional-grade portfolio analytics for retail investors. This is the monorepo for the entire platform.
+**Protonyx** is an early-stage fintech building institutional-grade portfolio analytics for retail investors. This is the monorepo for the entire platform — backend API, web frontend, and the desktop app — held together by a single Postgres user database.
 
-- **Vector** — the flagship product, a downloadable desktop app (PyQt6) that runs against a proprietary internal engine called **Lens**. Vector generates personalized portfolio insights. The `app/` directory is reserved for it but is currently empty — no Vector code exists yet.
-- **Frontend** — marketing site + auth + account dashboard (plain static HTML/CSS/JS, no framework).
-- **Backend** — a shared Fastify + TypeScript REST API consumed by both the web frontend and (eventually) the Vector desktop app.
+There are three deliverables:
 
-The three products share one backend and one user database. They do **not** share a build system — each subdirectory is developed independently.
+| Product | Stack | Purpose |
+|---|---|---|
+| **Vector** (`app/`) | Python 3.12 + PyQt6, packaged with Nuitka | Downloadable Windows desktop app. Tracks positions, fetches market data via `yfinance`, and renders an analytics dashboard powered by a proprietary engine called **Lens**. Currently version **0.4.2**. |
+| **Web frontend** (`frontend/`) | Plain static HTML/CSS/JS, served by VS Code Live Server | Marketing site, signup/login, account dashboard, gated download page. No framework, no bundler. |
+| **Backend API** (`backend/`) | Fastify + TypeScript on Node, PostgreSQL | Authentication, account profile, download counter, and (eventually) the API the desktop app talks to. |
+
+The three components share **one user database** but **no build system** — each subdirectory is developed independently. There is no root `package.json`, no monorepo tooling (Turbo/Nx/Lerna), no Docker, no CI pipeline. Treat each top-level folder as a self-contained project.
+
+The codebase is one developer's project on Windows 11 with Git Bash. Conventions reflect that: forward slashes in paths, LF line endings, no formal linter, no test suite anywhere.
 
 ---
 
@@ -20,46 +26,57 @@ The three products share one backend and one user database. They do **not** shar
 
 ```
 _monorepo/
-├── backend/         # Fastify + TypeScript REST API (PostgreSQL)
+├── backend/                       # Fastify + TypeScript REST API (PostgreSQL)
 │   ├── src/
-│   │   ├── server.ts              # Fastify bootstrap + plugin registration
-│   │   ├── db.ts                  # pg Pool + auto CREATE TABLE IF NOT EXISTS
+│   │   ├── server.ts              # Fastify bootstrap + plugin/route registration
+│   │   ├── db.ts                  # pg Pool + dev-only DROP/CREATE/seed
+│   │   ├── email.ts               # Resend transactional email (welcome)
 │   │   ├── middleware/
 │   │   │   └── authenticate.ts    # JWT bearer preHandler
 │   │   └── routes/
 │   │       ├── auth.ts            # /signup, /login
-│   │       ├── notes.ts           # /notes (CRUD, protected)
-│   │       └── debug.ts           # /protected (smoke test)
+│   │       └── debug.ts           # /protected, /me, /download
 │   ├── package.json
 │   ├── tsconfig.json
-│   └── .env                       # JWT_SECRET, DATABASE_URL — gitignored
+│   └── .env                       # JWT_SECRET, DATABASE_URL, RESEND_API_KEY — gitignored
 │
-├── frontend/        # Static site, one index.html per route
-│   ├── index.html                 # Landing / hero
+├── frontend/                      # Static site, one index.html per route
+│   ├── index.html                 # Landing / hero (rotating background videos)
 │   ├── style.css                  # ~1700 lines, single shared stylesheet
-│   ├── script.js                  # Hero video rotation, logo swap, menu overlay
+│   ├── script.js                  # Hero video rotation, logo color swap, menu overlay
 │   ├── auth/
-│   │   ├── index.html             # Tabbed login/signup
-│   │   └── auth.js                # All auth + session logic
-│   ├── account/index.html         # Profile dashboard (reads localStorage username)
+│   │   ├── index.html             # Tabbed login/signup form
+│   │   └── auth.js                # All auth + session logic + GET /me helper
+│   ├── account/index.html         # Profile dashboard (renders GET /me)
+│   ├── download/
+│   │   ├── index.html             # Gated download landing page
+│   │   └── download.js            # Calls POST /download, then triggers file download
 │   ├── about/ careers/ contact/ privacy/ tos/   # Static pages
 │   ├── products/
 │   │   ├── index.html
 │   │   └── vector/index.html
 │   ├── assets/
-│   │   ├── company/               # Logos (protonyx_full_white.png, _black.png)
-│   │   ├── product/vector/        # Vector product artwork
-│   │   └── video/                 # Hero background videos (1–5)
-│   └── .vscode/settings.json      # Live Server on port 5501
+│   │   ├── company/               # protonyx_full_white.png, _black.png
+│   │   ├── product/vector/        # Vector product artwork (logo, dashboard, lens preview)
+│   │   └── video/                 # 1vector_demo.mp4, 2city.mp4, 3codingdemo.mp4, 4stockmarket.mp4, 5codingdemo.mp4
+│   └── .vscode/settings.json      # Live Server pinned to port 5501
 │
-├── app/             # Vector desktop app (PyQt6) — EMPTY, not yet started
-├── scripts/         # Admin / DB utility scripts — EMPTY
-├── database/        # Legacy SQLite file (users.db) — gitignored, no longer used
-├── README.md
-└── .gitignore
+├── app/                           # Vector desktop app (PyQt6) — see app/CLAUDE.md
+│   ├── main.py                    # Entry point — calls vector.app.main()
+│   ├── requirements.txt
+│   ├── build.bat / build-debug.bat # Nuitka standalone builds
+│   ├── debug_test.json            # Synthetic positions for offline Lens testing
+│   ├── assets/                    # vector_full.png, vector.ico, splashboard.png
+│   └── vector/                    # All app code, see §6
+│
+├── scripts/                       # Admin / DB utility scripts — currently empty
+├── database/                      # Legacy SQLite dir — gitignored, empty, no longer used
+├── README.md                      # Public-facing repo blurb
+├── CLAUDE.md                      # This file
+└── .gitignore                     # node_modules/, .env, database/, dist/, .DS_Store, Thumbs.db
 ```
 
-There is **no root `package.json`**, no workspaces, no Turbo/Nx/Lerna, no Docker, no CI config. Treat each top-level directory as its own project.
+There is **no notes/journaling feature** anywhere. If you see references to a `notes` table, `notes` route, or a `noteRoutes` import, those are stale — delete them. The feature was scaffolded early as a smoke test and removed.
 
 ---
 
@@ -73,29 +90,45 @@ Run from `backend/`:
 |---|---|---|
 | Install deps | `npm install` | |
 | Dev server | `npm run dev` | `ts-node-dev src/server.ts`, hot-reloads, serves on `http://localhost:3000` |
-| Typecheck | `npx tsc --noEmit` | No npm script — invoke tsc directly |
-| Build | *(none)* | No build script exists. `ts-node-dev` runs TS directly in dev. |
-| Test | *(none)* | No test framework installed anywhere in the repo. Do not invent one unless asked. |
-| Lint / format | *(none)* | No ESLint/Prettier config. Match existing style by reading neighboring files. |
+| Typecheck | `npx tsc --noEmit` | No npm script — invoke `tsc` directly |
+| Build | *(none)* | No build script. `ts-node-dev` runs TS directly in dev. There's no production build path yet. |
+| Test | *(none)* | No test framework installed. Do not invent one. |
+| Lint / format | *(none)* | No ESLint/Prettier. Match existing style. |
 
 ### Frontend
 
-The frontend is served by **VS Code Live Server** — there is no npm/Vite/Webpack step.
+Served by **VS Code Live Server** — there is no npm/Vite/Webpack step.
 
-- Default Live Server port is **5501** (set in `frontend/.vscode/settings.json`).
-- Open any `index.html` via the Live Server extension. Navigation uses root-absolute paths like `/auth/index.html`, so Live Server **must** be rooted at `frontend/` (not at the monorepo root) for links to resolve.
-- Ports **5500** and **5501** (both `127.0.0.1` and `localhost`) are allowlisted by the backend CORS config — if Live Server picks a different port, requests to the API will fail.
+- Default port is **5501** (locked in `frontend/.vscode/settings.json`).
+- Open any `index.html` via the Live Server extension. Navigation uses **root-absolute paths** like `/auth/index.html`, so Live Server **must be rooted at `frontend/`** (not at the repo root) for links to resolve. If links 404, that is almost always the cause.
+- Ports **5500** and **5501** (both `127.0.0.1` and `localhost`) are allowlisted by the backend CORS config. If Live Server picks a different port, every request to the API will fail CORS.
+
+### Vector desktop app
+
+Run from `app/`:
+
+```bash
+python -m venv .venv
+.venv\Scripts\activate
+pip install -r requirements.txt
+python main.py
+```
+
+For Nuitka standalone builds, use `build.bat` (release, console disabled) or `build-debug.bat` (console enabled for tracebacks). Both wipe `app/.dist/` first. See `app/CLAUDE.md` for the full Nuitka invocation and the data/package includes that are required to ship.
 
 ### PostgreSQL (local dev)
 
-The backend expects a running Postgres. Schema is created automatically at startup by `db.ts` (`CREATE TABLE IF NOT EXISTS users` and `notes`). There is **no migrations system** — to change schema, edit `db.ts` and apply changes manually to your local DB (e.g. `psql` `ALTER TABLE`).
+The backend expects a running Postgres reachable via `DATABASE_URL`. Schema is created on each server boot by `db.ts`. There is **no migrations system** — the database evolves by editing `db.ts`.
 
-`backend/.env` must contain:
+`backend/.env` must contain (gitignored — do **not** commit, do not paste real values into chat or code):
 
 ```
 JWT_SECRET=<any-string>
 DATABASE_URL=postgresql://<user>:<pass>@<host>:<port>/<db>
+RESEND_API_KEY=<resend-api-key>     # required only for welcome emails
 ```
+
+If `RESEND_API_KEY` is missing, signup still succeeds — `sendWelcomeEmail` is fire-and-forget and swallows errors so that email outages never break account creation.
 
 ---
 
@@ -103,68 +136,126 @@ DATABASE_URL=postgresql://<user>:<pass>@<host>:<port>/<db>
 
 ### Request lifecycle
 
-1. `src/server.ts` creates a Fastify instance and registers, in order:
-   - `@fastify/rate-limit` — **global, 20 requests / 60 seconds per IP**. This is low; authenticated bulk operations from the frontend will hit it easily during testing.
-   - `@fastify/cors` — allowlists exactly `http://127.0.0.1:5500`, `http://localhost:5500`, `http://127.0.0.1:5501`, `http://localhost:5501`. Methods: `GET, POST, DELETE, PATCH`. No `PUT`, no `OPTIONS` explicitly (Fastify handles preflight). **If you add a new frontend origin (e.g. a staging URL), it must be added here.**
-   - Route modules: `authRoutes`, `noteRoutes`, `debugRoutes` — all mounted at the **root path** with no prefix.
-2. `db.ts` is imported transitively; its top-level `setup()` call fires the `CREATE TABLE IF NOT EXISTS` queries on module load. This means the server will not start reliably without a reachable Postgres.
-3. Protected routes use `{ preHandler: authenticate }`, which reads `Authorization: Bearer <token>`, verifies with `JWT_SECRET`, and attaches `{ id, username }` to `request.user`.
+`src/server.ts` builds a Fastify instance and registers, in order:
+
+1. **`@fastify/rate-limit`** — global, **20 requests / 60 seconds per IP**. This is low; you will hit it during frontend testing if you mash buttons. Don't bump it without a reason.
+2. **`@fastify/cors`** — allowlists exactly four origins:
+   - `http://127.0.0.1:5500`
+   - `http://localhost:5500`
+   - `http://127.0.0.1:5501`
+   - `http://localhost:5501`
+   Methods: `GET, POST, DELETE, PATCH`. (Fastify handles preflight automatically; no explicit `OPTIONS`.) Adding any new origin (staging URL, deployed frontend) requires editing this list.
+3. **Route modules**: `authRoutes`, `debugRoutes`. Both are mounted at the **root path** with no prefix — the `/protected` and `/me` endpoints live under `debug.ts` for historical reasons even though they are not strictly debug.
+
+`db.ts` is imported transitively from the route modules. Its top-level `setup()` call fires on module load, which means **the server will not start cleanly without a reachable Postgres**.
+
+Protected routes use `{ preHandler: authenticate }`. The middleware reads `Authorization: Bearer <token>`, verifies it with `JWT_SECRET`, and attaches `{ id, username }` to `request.user`.
+
+### Database: schema and dev-only behavior
+
+`db.ts` creates a single shared `pg.Pool` keyed off `DATABASE_URL`. On startup:
+
+```sql
+-- DEV ONLY (process.env.NODE_ENV === "development"): wipe users every boot
+DROP TABLE IF EXISTS users CASCADE;
+
+CREATE TABLE IF NOT EXISTS users (
+    id                  SERIAL PRIMARY KEY,
+    username            TEXT UNIQUE NOT NULL,
+    email               TEXT UNIQUE NOT NULL,
+    password            TEXT NOT NULL,                       -- bcrypt cost 10
+    plan                TEXT NOT NULL DEFAULT 'free',
+    plan_expires_at     TIMESTAMP DEFAULT NULL,
+    stripe_customer_id  TEXT DEFAULT NULL,
+    email_verified      BOOLEAN NOT NULL DEFAULT FALSE,
+    last_login          TIMESTAMP DEFAULT NULL,
+    is_active           BOOLEAN NOT NULL DEFAULT TRUE,
+    beta_access         BOOLEAN NOT NULL DEFAULT FALSE,
+    download_count      INTEGER NOT NULL DEFAULT 0,
+    member_since        TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- DEV ONLY: seed a known test account
+INSERT INTO users (username, email, password, plan, beta_access)
+VALUES ('testuser', 'test@protonyx.dev', <bcrypt('password123')>, 'free', true)
+ON CONFLICT DO NOTHING;
+```
+
+**Critical dev behavior:** when `NODE_ENV=development`, the users table is **dropped and recreated on every boot**. Every restart of `npm run dev` wipes all accounts and re-seeds `testuser` (password `password123`). This is intentional during early schema churn — there is no migration tooling, so dropping is the simplest way to apply schema changes. Do **not** run dev mode against a database that holds data you care about. In any other environment (`NODE_ENV !== "development"`), the `DROP` and seed are skipped and `CREATE TABLE IF NOT EXISTS` runs as normal.
+
+All queries use parameterized `$1, $2, ...` placeholders. Never interpolate user input into SQL.
+
+### Schema-evolution workflow
+
+1. Edit the `CREATE TABLE` block (and seed block, if needed) in `db.ts`.
+2. Restart `npm run dev` — the table is dropped and recreated.
+3. To apply the same change to a non-dev environment, write SQL by hand and run it via `psql` (or whatever migration tool gets adopted later). The `IF NOT EXISTS` guard does **not** alter existing tables.
 
 ### Route module convention
 
-Every route file exports a **default async function** that takes a `FastifyInstance` and registers routes on it:
+Every route file exports a **default async function** that takes a `FastifyInstance`:
 
 ```ts
-export default async function noteRoutes(app: FastifyInstance) {
-  app.post("/notes", { preHandler: authenticate }, async (request, reply) => { ... });
+export default async function debugRoutes(app: FastifyInstance) {
+  app.get("/me", { preHandler: authenticate }, async (request: any, reply: any) => { ... });
 }
 ```
 
-New route modules must be imported and `app.register(...)`'d in `server.ts`. There is no auto-discovery.
+New route modules must be imported and `app.register(...)`'d in `server.ts`. There is **no auto-discovery**.
+
+Protected handlers use `request: any, reply: any` to avoid the boilerplate of a `FastifyRequest` augmentation for `request.user`. This is a deliberate trade-off; preserve it when editing nearby code unless you are explicitly tightening types.
 
 ### Response shape
 
-Every handler returns `{ success: boolean, message?: string, ...payload }`. Status codes are set explicitly with `reply.status(N).send(...)`. Current status-code conventions observed in the code:
+Every handler returns `{ success: boolean, message?: string, ...payload }`. Status codes are set explicitly with `reply.status(N).send(...)`. Conventions in use:
 
 | Situation | Code |
 |---|---|
-| Resource created (signup, note insert) | 201 |
+| Resource created (signup) | 201 |
 | Success with body | 200 (or implicit via returning an object) |
 | Missing required fields | 400 |
-| Bad credentials / invalid token | 401 |
-| User not found | 404 |
-| Duplicate username | 409 |
+| Bad credentials / no token / invalid token | 401 |
+| User not found at login | 404 |
+| Duplicate username or email at signup | 409 |
 
-**Frontend/backend mismatch to be aware of:** the backend always names the error field `message`, but `frontend/auth/auth.js` reads `data.error` on failure. Error messages currently never surface to users because of this — fixing it means either renaming the field on one side or supporting both. Don't silently "fix" one side without checking the other.
+The error field is always named `message`. The frontend (`auth.js`) reads `data.message || data.error`, so either name works on the wire — but new endpoints should stick to `message` for consistency.
 
 ### Current endpoints
 
-| Method | Path | Auth | Body | Notes |
+| Method | Path | Auth | Body | Behavior |
 |---|---|---|---|---|
-| POST | `/signup` | — | `{ username, password }` | bcrypt hashes (cost 10), inserts into `users` |
-| POST | `/login` | — | `{ username, password }` | Returns `{ token }`, JWT signed with 7-day expiry |
-| POST | `/notes` | ✅ | `{ title, content }` | Owner is taken from JWT, not body |
-| GET | `/getnotes` | ✅ | — | Returns all notes for `request.user.id`. Note: not `/notes` (GET) — the route is `/getnotes` |
-| DELETE | `/notes/:id` | ✅ | — | Scoped to `user_id` so users can only delete their own |
-| PATCH | `/notes/:id` | ✅ | `{ title, content }` | Also `user_id`-scoped |
-| GET | `/protected` | ✅ | — | Debug smoke test: returns `Hello <username>` |
+| `POST` | `/signup` | — | `{ username, email, password }` | Validates all three are present; rejects duplicate `username` or `email` (409); bcrypt-hashes (cost 10); inserts row; **fires `sendWelcomeEmail` fire-and-forget** (failures logged, never thrown); returns 201. |
+| `POST` | `/login` | — | `{ username, password }` | The `username` field accepts **either a username or an email** (`WHERE username = $1 OR email = $1`). On success, stamps `last_login = CURRENT_TIMESTAMP` and returns a JWT (`{ id, username }`, signed with `JWT_SECRET`, **7-day expiry**). |
+| `GET` | `/protected` | ✅ | — | Smoke test. Returns `{ message: "Hello <username>" }`. |
+| `GET` | `/me` | ✅ | — | Returns the full user profile **excluding `password` and `stripe_customer_id`**. Shape: `{ success, user: { id, username, email, plan, plan_expires_at, member_since, last_login, beta_access, download_count, email_verified, is_active } }`. The frontend calls this on login and on every account-page load. |
+| `POST` | `/download` | ✅ | — (empty body) | Increments `download_count` for the authenticated user. Called from `/download` page when the user clicks "Download Vector". Returns `{ success, message: "Download recorded" }`. The actual binary URL is **not** returned by this endpoint — the frontend triggers the download separately. |
 
-### Database
+There is **no** `/notes`, `/getnotes`, `/notes/:id` endpoint. Earlier docs referenced them; they have been removed.
 
-`db.ts` manages a single shared `pg.Pool` keyed off `DATABASE_URL`. Tables created at startup:
+### Email (`src/email.ts`)
 
-```sql
-users (id SERIAL PK, username TEXT UNIQUE, password TEXT)         -- password = bcrypt hash
-notes (id SERIAL PK, user_id INT FK→users.id, title TEXT, content TEXT, created_at TIMESTAMP DEFAULT now())
-```
+`sendWelcomeEmail(to, username)` uses the **Resend** SDK to send a single transactional welcome email. Implementation notes:
 
-All queries use parameterized `$1, $2, ...` placeholders — keep it that way. Never interpolate user input into SQL.
+- Sender is `onboarding@resend.dev` (Resend's default sandbox sender). When a real domain is verified, change this string here.
+- The HTML body is inline-styled (table-based layout for email-client compatibility), uses the brand palette (`#0b1020` background, `#e7ebf3` text, `#2dd4bf` CTA), and links to `https://protonyx.dev/download`. That URL is currently hardcoded — update it if the public download page moves.
+- Errors are caught and `console.error`'d — they never propagate. Signup succeeds even if Resend is down or the API key is missing.
+- The function logs `Resend key inside function: <bool>` before sending. That log line is debugging instrumentation; remove it before any meaningful production deployment.
 
-### Dead / transitional code
+### Dependencies — quick map
 
-- `better-sqlite3` is still a declared dependency (and `@types/better-sqlite3` a devDep), but **no runtime code imports it**. The project recently migrated SQLite → Postgres (commits `f7c65af`, `02d3915`, `3885130`, `c6855b6`). Don't re-add SQLite code paths. If you're tidying deps, removing `better-sqlite3` and `@types/better-sqlite3` is safe.
-- `database/users.db` is a leftover SQLite file. It's gitignored and unused.
-- Route handlers currently use `any` for `request`/`reply` in protected routes to keep `request.user` typing loose. Adding a proper `FastifyRequest` augmentation for `user` is a reasonable refactor but not required.
+| Dep | Used for |
+|---|---|
+| `fastify` | HTTP server |
+| `@fastify/cors` | CORS middleware (origin allowlist) |
+| `@fastify/rate-limit` | Global rate limit (20/60s) |
+| `pg` | PostgreSQL pool |
+| `bcrypt` | Password hashing (cost 10) |
+| `jsonwebtoken` | JWT signing/verification |
+| `dotenv` | Loads `.env` (imported via `import "dotenv/config"` in `server.ts`) |
+| `resend` | Transactional email (welcome only, for now) |
+| `better-sqlite3` + `@types/better-sqlite3` | **Dead.** Leftover from the SQLite era before the Postgres migration. Nothing in `src/` imports it. Safe to remove from `package.json`. |
+
+`ts-node-dev` and the `@types/*` packages are devDeps. `typescript` is a devDep but there is no compile step in the npm scripts.
 
 ---
 
@@ -172,75 +263,228 @@ All queries use parameterized `$1, $2, ...` placeholders — keep it that way. N
 
 ### Stack
 
-Plain static HTML + CSS + vanilla JS. **No framework, no bundler, no build step.** IBM Plex Mono from Google Fonts is the only external font. All CSS lives in one file (`frontend/style.css`, ~1700 lines) shared by every page.
+Plain static HTML + CSS + vanilla JS. **No framework, no bundler, no build step.** The only external font is IBM Plex Mono from Google Fonts, loaded via `<link>` on every page. All CSS lives in one ~1700-line file (`frontend/style.css`) shared by every page.
 
 ### Page structure
 
 Each route is a folder with an `index.html`. To add a page:
+
 1. Create `frontend/<slug>/index.html`.
-2. Link `../style.css`, `../script.js`, and `../auth/auth.js` with appropriate relative paths (depth depends on nesting, e.g. `products/vector/` uses `../../`).
-3. Copy the `<nav class="navbar">` and the `.menu-overlay` block from an existing page — they're duplicated per-page, not componentized.
+2. Link `../style.css`, `../script.js`, and `../auth/auth.js` with the right relative depth (e.g. `products/vector/` uses `../../`).
+3. Copy the `<nav class="navbar">` block and the `.menu-overlay` block from an existing page — they are **duplicated per-page**, not componentized. Updating them means editing every page that uses them.
 4. Use root-absolute links (`href="/about"`, `href="/auth/index.html"`) — Live Server must be rooted at `frontend/`.
+5. End the `<body>` with the standard footer, then load `script.js` and `auth/auth.js`, then a small `<script>checkAuth();</script>` if the page hasn't already wired it up.
+
+### Navigation bar (every page)
+
+The nav has three states managed via CSS classes that `auth.js` toggles:
+
+- `.navbar-signup-link.guest-only` — "Create Account" link, shown only when logged out.
+- `.navbar-profile-icon.auth-only` — circular profile SVG linking to `/account/index.html`, shown only when logged in.
+- `.navbar-menu-button` — hamburger, always visible, opens the full-screen menu overlay.
+
+Dark hero sections (`.hero`, `.vector-hero`, `.products-hero`) use the white logo; the rest use black. `script.js` listens to `scroll` and swaps `#navbarLogo`'s `src` between `protonyx_full_white.png` and `_black.png` as the hero scrolls out of view (with a 200ms opacity fade). Both images are preloaded.
+
+### Menu overlay (every page)
+
+`#menuOverlay` is a full-viewport panel with two columns: **Navigation** and **Account**. Account links use the same `.guest-only` / `.auth-only` toggle pattern. The hamburger button opens it (locks `body` overflow, fades the navbar to opacity 0); a close button or backdrop click dismisses it. Same caveat as the navbar — the markup is duplicated per page.
 
 ### CSS system
 
-CSS custom properties are defined in `:root` at the top of `style.css`:
+CSS custom properties are defined in `:root` at the top of `style.css`. The most-used tokens:
 
 ```css
---bg-base: #f2f1ee       /* off-white page background */
---bg-surface: #d7d4d4    /* card/panel background */
+--bg-base: #f2f1ee        /* off-white page background */
+--bg-surface: #d7d4d4     /* card/panel background */
 --border: rgb(142,142,142)
 --text-primary: #1f2230
---grad: linear-gradient(135deg, #3a8c6e, #2a6b9a)   /* brand gradient, used by .btn-grad etc. */
+--grad: linear-gradient(135deg, #3a8c6e, #2a6b9a)   /* brand gradient, used by .btn-grad and .plan-pro */
 ```
 
-Use these tokens instead of hardcoding colors. The navbar floats at the top with a blurred glass effect (`backdrop-filter: blur(10px)`), and dark hero sections (`.hero`, `.vector-hero`, `.products-hero`) swap the logo to white — handled by `script.js`, see below.
+Use these tokens; do not hardcode colors. The navbar floats at the top with a blurred glass effect (`backdrop-filter: blur(10px)`).
 
-### `script.js` (shared, landing + general pages)
+### `script.js` (shared across pages)
 
-Four independent blocks, each gated by `if (element)` so pages without the element are no-ops:
-1. **Hero video rotation** — cycles `heroVideoSources` every 4s on `#heroVideo`.
-2. **Navbar logo color swap** — if the page has a dark hero section, listens to `scroll` and swaps between `protonyx_full_white.png` and `_black.png` as the hero scrolls out of view. Preloads both.
-3. **Product card video preview** — `.vector-card` hover plays `.preview-video`.
-4. **Menu overlay** — hamburger button opens `#menuOverlay`, locks `body` scroll, fades navbar. Closes on backdrop click or `#menuCloseButton`.
+Four independent blocks, each guarded by `if (element)` so pages without the relevant element are no-ops:
+
+1. **Hero video rotation** — cycles `heroVideoSources` (`1vector_demo`, `2city`, `3codingdemo`, `4stockmarket`, `5codingdemo`) every 4 seconds on `#heroVideo`.
+2. **Navbar logo color swap** — described above.
+3. **Product card video preview** — `.vector-card` hover plays its inner `.preview-video`; mouseleave pauses and rewinds.
+4. **Menu overlay open/close** — described above.
 
 ### `auth/auth.js` (shared auth + session state)
 
-- `API_URL = "http://localhost:3000"` — **hardcoded**. Update here when deploying the backend.
-- JWT stored in `localStorage.token`; username in `localStorage.username`. No httpOnly cookies.
-- `login()` / `signup()` are bound to form `submit` events inline in `auth/index.html` — the forms also define `switchToLoginTab()` / `switchToSignupTab()` in a page script block.
-- `checkAuth()` must be called on every page; it toggles visibility classes and wires logout buttons:
-  - `.auth-only` — shown only when logged in
-  - `.guest-only` — shown only when logged out
-  - `[data-username]` — text content replaced with stored username
-  - `[data-logout]` — click binds to `logout()`
-  - Pages either call `checkAuth()` directly in an inline script, or rely on the `DOMContentLoaded` listener at the bottom of `auth.js`. Both patterns exist — don't remove one without checking the other.
-- Cross-tab sync: a `storage` listener re-runs `checkAuth()` when `token`/`username` change, so logging out in one tab updates all open tabs.
+Globally exposes `getToken()`, `authHeaders()`, `login()`, `signup()`, `loadProfile()`, `logout()`, `checkAuth()`.
 
-### Account page TODOs (in-code)
+- `API_URL = "http://localhost:3000"` — **hardcoded at the top of the file**. Update here when the backend is deployed. There is no env-var injection.
+- JWT is stored in `localStorage.token`; **httpOnly cookies are not used.**
+- The login form accepts a username **or** an email — the field is labeled "Username or Email" and the value is sent as `{ username, password }`. The backend resolves both.
+- Signup form fields: `username`, `email`, `password`. The form posts to `/signup` and on success switches to the login tab via `switchToLoginTab()` (defined inline in `auth/index.html`).
+- `loadProfile()` calls `GET /me` with `authHeaders()` and mirrors fields into `localStorage`: `username`, `email`, `plan`, `member_since`, `beta_access` (`"true"`/`"false"`), `download_count` (string-coerced). It is called from `login()` after the token is stored, and from any page that wants fresh profile data (e.g. the account page).
+- `logout()` clears every profile-related localStorage key (`token`, `username`, `email`, `plan`, `member_since`, `beta_access`, `download_count`) and redirects to `/auth/index.html`.
+- `checkAuth()` runs on every page load (via `DOMContentLoaded`, or directly if the script loads after parse) and:
+  - Toggles `.visible` on `.auth-only` and `.guest-only` elements.
+  - Replaces text content of `[data-username]` elements with the stored username (falling back to `"User"`).
+  - Binds a click handler on `[data-logout]` elements that calls `logout()` (idempotent — uses `dataset.logoutBound` to avoid duplicate listeners).
+- A `storage` event listener re-runs `checkAuth()` when `token` or `username` changes in another tab, so logging out in one tab updates all open tabs.
+- Some pages call `checkAuth()` explicitly in an inline script after loading `auth.js`. Both patterns coexist; do not remove one without checking the other still works.
 
-`frontend/account/index.html` has `<!-- TODO: ... GET /me -->` markers for email / plan / member-since fields. The `/me` endpoint does not exist on the backend yet — adding it is a pending task. When you add it, `auth.js` should gain a helper that calls `GET /me` with `authHeaders()` and surfaces those fields.
+### Account page (`account/index.html`)
+
+A self-contained dashboard rendered inline at the bottom of the HTML. Renders six fields from `GET /me`:
+
+| DOM id | Source | Notes |
+|---|---|---|
+| `infoUsername` | `user.username` | |
+| `infoEmail` | `user.email` | |
+| `infoPlan` | `user.plan` | Capitalized; gets the `.plan-pro` class (transparent text + brand gradient via `background-clip: text`) when value is `"pro"`. |
+| `infoMemberSince` | `user.member_since` | Formatted with `toLocaleDateString` (long month, numeric year/day). |
+| `infoBetaAccess` | `user.beta_access` | Rendered as `"Enabled"` / `"Not enabled"`. |
+| `infoDownloadCount` | `user.download_count` | |
+
+**Render flow:** on load, the page first paints from cached localStorage values (so there's no blank flicker), then calls `loadProfile()` and re-renders with the authoritative server response. If the user has no token, the page redirects immediately to `/auth/index.html`. The hero label (`#accountHeroTitle`) shows the cached username.
+
+### Download page (`download/index.html` + `download.js`)
+
+A gated landing page with a single "Download Vector" CTA. When clicked:
+
+1. If a token exists, `POST /download` (Bearer-authenticated) is fired to bump `download_count`. Network failures are swallowed (`.catch(() => {})`) — the download still proceeds.
+2. A hidden `<a href="#" download="">` is created and clicked to trigger the browser download.
+
+The actual binary URL is currently `"#"` — there's a `TODO` to replace it with an S3 or GitHub Releases URL once a release artifact exists. The displayed version label says **0.4.1**, but the desktop app is on **0.4.2** (`vector/constants.py::APP_VERSION`); the download page label needs to be bumped manually whenever a new build ships.
+
+The download page does **not** redirect unauthenticated users away — it lets them click the button. Without a token, the `POST /download` step is skipped and the (currently broken) anchor click happens anyway. When a real download URL is wired up, decide whether to require auth before showing the button or before kicking off the download.
+
+### Auth UX gotcha (was a real issue, now fixed — keep an eye on it)
+
+The backend always names its error field `message`. Earlier versions of the frontend read `data.error`, so backend error messages never surfaced to users. The current `auth.js` reads `data.message || data.error`, which works against either field. If you add a new endpoint, prefer `message` and don't rely on the fallback.
 
 ---
 
 ## 6. Vector Desktop App (`app/`)
 
-Empty. Intended stack: **Python + PyQt6**, talking to the same `http://localhost:3000` (or eventually a deployed) backend. "Lens" is the name for Vector's proprietary analytics engine — when that scaffolding lands, it's likely to be a Python module imported by the PyQt app.
+The Vector desktop app is fully developed and self-documenting. Its own `app/CLAUDE.md` (~410 lines) is the authoritative reference — read it before making changes. This section is a **map**, not a duplicate.
 
-Currently there is nothing to build, run, or test here.
+### High-level
+
+- **Entry point:** `app/main.py` → `vector.app.main()`.
+- **Stack:** Python 3.12, PyQt6, `yfinance` for market data, `pandas`/`numpy` for math, `matplotlib` for charts, `lxml`/`bs4`/`requests`/`urllib3`/`certifi` as transitive yfinance deps.
+- **Build tool:** Nuitka standalone (`build.bat`, `build-debug.bat`). The build command pins specific `--include-package` flags for the yfinance dep tree because Nuitka misses them statically.
+- **Persistence:** all user data lives under `%LOCALAPPDATA%/Protonyx/Vector/` on Windows (or `~/Vector/data/` as fallback). Six JSON files: `positions.json`, `settings.json`, `app_state.json`, `market_data.json`, `dashboard_layout.json`, `lens_history.json`.
+- **No tests.** Manual verification only.
+
+### Top-level package layout (`app/vector/`)
+
+| File / dir | Role |
+|---|---|
+| `app.py` | Thin shell: stylesheets, `MainShell`, `VectorMainWindow`, `_ShortcutsDialog`, `main()`. Page classes live in `pages/`, not here. |
+| `pages/dashboard.py` | `DashboardPage`, `DashboardGrid`, `WidgetPickerDialog`, grid sizing constants (`_UNIT`, `_GAP`, `_CELL`, `_CONTENT_W = 1090`). |
+| `pages/lens_page.py` | Full Vector Lens page: `VectorLensPage`, `_GraphCard`, `_PieCard`, `_CTAReportCard`, `_CautionCard`, `_MCContextCard`, `_LensHistoryDialog`, `_LensHistoryCard`, `_CautionBadge`. |
+| `pages/onboarding.py` | First-run wizard: `OnboardingPage`, `PositionDialog`, `PositionCard`, `_RiskTierCard`. |
+| `pages/profile.py` | `ProfilePage`. |
+| `pages/settings.py` | Settings page with seven accordion sections plus static cards. Includes `SettingsPage._export_to_csv` (Export Positions to CSV). |
+| `analytics.py` | Portfolio math: linear-regression slope, annualized volatility, Sharpe ratio, beta, insight-text composition. |
+| `store.py` | `DataStore` — single source of truth for positions, settings, app state, market data, layout. Use this; do **not** reach into `StorageManager`/`MarketDataService` directly. |
+| `lens_engine.py` | Thin wrapper: `generate_lens()` (canonical 7-tuple) and `generate_lens_full()` (full result dict). |
+| `lens/` | The Lens engine package — see below. |
+| `monte_carlo.py` | `run_projection()` and `build_historical_curve()` — GBM-based projection used for the Lens Projections graphs. |
+| `widget_base.py` | `VectorWidget` — base `QFrame` for all dashboard widgets; handles edit-mode drag and right-click delete. |
+| `widget_registry.py` | `discover_widgets()` / `get_widget_class()` — registry of concrete widget types. |
+| `widget_types/` | Eight concrete widget classes plus `LensDisplay` (the typewriter Lens Brief readout). |
+| `widgets.py` | Shared UI primitives: `CardFrame`, `GradientBorderFrame`, `GradientLine`, `BlurrableStack`, `DimOverlay`, `EmptyState`, `LoadingButton`. |
+| `constants.py` | File paths, TTLs, default settings, threshold maps, `APP_VERSION = "0.4.2"`. |
+| `paths.py` | `resource_path()` (PyInstaller- and Nuitka-aware asset lookup), `user_data_dir()`, `user_file()`. |
+| `scale.py` | DPI scaling helpers. |
+
+### The eight dashboard widgets
+
+`Total Equity`, `Portfolio Vector` (direction arrow + slope %), `Portfolio Volatility`, `Portfolio Diversification` (sector pie), `Portfolio Beta`, `Sharpe Ratio` (rendered at 16pt — do **not** re-inflate to 22pt), `Positions List`, `Dividend Calendar`. The Lens Brief is a **permanent** fixture on the dashboard, not a removable widget.
+
+### The Lens engine (`vector/lens/`)
+
+Modular pipeline: **analyzers → analysis pool → CTA engine → sentence composers → assembler**.
+
+- 8 analyzers in `lens/analyzers/`: `slope`, `volatility`, `concentration`, `earnings`, `dividends`, `beta`, `performance`, `index_fund`. Each exposes `analyze(positions, store, settings, risk_profile) → dict` with a `ticker_results` map and a `portfolio_result` aggregate (each containing `value`, `severity`, `flag`, `weight`, `details`).
+- `analysis_pool.py` runs them in dependency order (slope/vol first, earnings second, rest after) and applies post-processing — notably index-fund suppression that forces concentration flags off for index ETFs.
+- `cta_engine.py` reads analyzer output and emits a prioritized list of CTAs. **11 priority levels** (1 = highest): steep decline (sell), excessive volatility (sell), winner drift (rebalance), index fund informational (hold), high portfolio beta (buy), single-stock concentration (buy, up to 3 across underweight sectors), sector over-concentration (buy, up to 3, never in the overweight sector), dead weight (sell), underrepresented sector (buy, up to 3 — one per thin sector <10%), unrealized loss (hold), portfolio healthy (hold).
+- Buy CTAs are sector-aware: every suggested ticker is verified to be **outside** the problem sector. `_underweight_sectors_sorted()` ranks targets lightest-first and `_split_dollars_by_underweight()` allocates the buy amount proportionally. `_cap_buy_amount()` keeps every buy proportional to total equity. Sells are gated by `_sell_too_small()`.
+- `sentence1.py` (portfolio state, slope + volatility), `sentence2.py` (timing/catalyst, earnings + dividends), `sentence3.py` (CTA — always prefers diversification CTAs for the brief). Templates in `lens/templates/sentences.json`. Selection is deterministic (SHA-256 of portfolio state).
+- `risk_profile.py` loads the user's tier (`high`, `regular`, `low`) and returns threshold overrides. Conservative tier (`low`) suppresses priorities 8 and parts of 1/2/3, and uses `sell_scale = 0.15` (vs `0.5` regular, `0.3` aggressive).
+- `lens_output.py` is the top-level assembler. It joins the three sentences, computes a 1–99 caution score (`total CTA dollars / total equity × 100`, clamped), runs `_apply_all_ctas()` to produce `projected_positions` plus `net_cta_delta`, and writes a snapshot to `lens_history.json` (rolling 50 entries, dedup'd against the most recent entry by `brief`/`caution_score`/`action_type`/`cta_count`). Pass `save_history=False` from debug runners to avoid polluting real history.
+- Color mapping: `sell → #ff4d4d`, `rebalance → #ff9f43`, `buy_new`/`buy_more → #38bdf8`, `hold → #8d98af`.
+
+`LensDisplay.refresh()` in `widget_types/lens.py` accepts tuple lengths 7, 6, 5, 4, 3, 2 for backwards compatibility — when changing the engine signature, do not break this.
+
+### Visual / layout invariants worth knowing
+
+- All three scrollable pages (Dashboard, Lens, Settings) use `setWidgetResizable(False)` + `container.setFixedWidth(_CONTENT_W=1090)` so content width is stable on window resize.
+- `_CTAReportCard`'s sizing is **measured, not estimated** — see `app/CLAUDE.md` for the exact `_resize_for_cards` recipe. Hardcoded per-card heights produced clipping in earlier versions; do not regress.
+- Graph margins on the Lens Projections charts: `subplots_adjust(left=0.06, right=0.88, top=0.90, bottom=0.22)`. Do not drop `bottom` below 0.22 — y-axis labels clip at 1080p. Canvas minimum height is 320 px.
+- `LensDisplay` typewriter timer (`_tw_timer`) can have its C++ wrapper torn down during reparenting. `_ensure_tw_timer()` reconstructs it on demand inside a try/except `RuntimeError`. Do not remove this defensive pattern.
+
+### Qt stylesheet rules (Vector UI only)
+
+Qt supports a limited CSS subset. Always wrap rules in a class selector (`QFrame { … }` not bare `{ … }`). **Supported:** `background`, `background-color`, `color`, `border`, `border-left/top/bottom`, `border-radius`, `font-size`, `font-weight`, `padding` (only on buttons/edits where it's known to behave). **Not supported (will silently break):** `gap`, `calc()`, `var()`, `box-shadow` (use `QGraphicsDropShadowEffect`), `transform`, `transition`, `display: flex`, `filter`, `backdrop-filter`, `::before`, `::after`, nested/SCSS selectors. Prefer `setContentsMargins()` over stylesheet `padding`/`margin` for internal widget layout.
+
+### Storage (Vector)
+
+| File | Contents |
+|---|---|
+| `positions.json` | List of `{ ticker, shares, equity, sector, name, price, added_at }` |
+| `settings.json` | `theme`, `currency`, `date_format`, `refresh_interval`, `risk_tier`, `direction_thresholds`, `volatility`, `lens_signals`, `monte_carlo` |
+| `app_state.json` | `onboarding_complete`, `first_launch_date`, `risk_tier_selected` |
+| `market_data.json` | Per-ticker: `quote`, `meta`, `history`, `history_ohlcv`, `history_intraday`, `dividends`, `earnings` (UTC timestamps) |
+| `dashboard_layout.json` | Ordered list of `{ class_name, row, col, rowspan, colspan }` |
+| `lens_history.json` | `{ "snapshots": [...] }` — rolling 50 |
+
+Market data TTLs (in `store.py`): quote/intraday matches `refresh_interval`, daily history 60 min, meta/dividends/earnings 24 h.
+
+### Keyboard shortcuts (Vector)
+
+`R` refresh, `L` Lens page, `D` Dashboard, `S` Settings, `A` Add Position (onboarding only), `?` Shortcuts modal, `Esc` close any modal, `Space` advance onboarding step (widget-scoped, ignored when focus is a `QLineEdit`).
+
+### When to consult `app/CLAUDE.md`
+
+Anything more specific than the map above — exact widget struct, accordion measure logic, Nuitka include flags, splash-screen sequence, page-by-page layout arithmetic, sentence-template selection — is documented there. Do not duplicate it here; update both files when behaviors change.
 
 ---
 
 ## 7. Conventions & Gotchas
 
-- **No tests anywhere.** Don't add a test suite, testing framework, or CI config unless explicitly asked. When making changes, verify manually against the running dev server.
-- **No lint/format config.** Match the style of the file you're editing: 4-space indentation in backend TS, 2-space in frontend HTML/JS, double quotes for strings.
-- **Backend error field is `message`, frontend reads `error`** — see §4. Known issue, flag it before "fixing" one side in isolation.
-- **CORS origin list is strict.** Adding a new frontend URL requires editing `server.ts`.
-- **Rate limit is global and low (20/60s).** Don't be surprised by `429`s during frontend testing.
-- **Passwords are bcrypt with cost 10.** Don't lower it. Don't log `user.password` anywhere.
-- **JWT secret is in `.env`.** The file is gitignored; don't commit it, and don't paste real secrets into code or conversation. If you see a placeholder like `your-secret-here`, treat it as a placeholder, not a real secret to preserve.
-- **Schema changes are manual.** Editing `db.ts` only adds tables via `IF NOT EXISTS` — it will not migrate existing tables. For column additions/changes, run SQL against the dev DB yourself and update `db.ts` so fresh DBs match.
-- **`any`-typed handlers.** Protected-route handlers use `request: any, reply: any` to avoid typing `request.user`. Preserve this when editing nearby code unless you're explicitly tightening types.
-- **Root-absolute frontend paths.** `<a href="/auth/index.html">` only resolves if Live Server is rooted at `frontend/`. If someone complains links 404, that's the first thing to check.
-- **Windows dev environment.** Primary dev machine is Windows 11 with bash (Git Bash / MSYS). Paths in shells use forward slashes; `.env` line endings should be LF.
+### Cross-cutting
+
+- **No tests anywhere.** Do not introduce a test framework or CI config unless the user explicitly asks. Verify changes manually against the running dev server / app.
+- **No lint or format config.** Match the style of the file you are editing. Backend TS uses 4-space indentation and double quotes; frontend HTML/JS uses 2-space indentation and double quotes; Python in `app/` follows roughly PEP 8 with project-specific patterns documented in `app/CLAUDE.md`.
+- **Windows-first dev environment.** Primary machine is Windows 11 with bash (Git Bash / MSYS). Paths in shells use forward slashes; `.env` files should be LF-terminated.
+- **`scripts/` and `database/` are intentionally empty.** `database/` is a leftover from the SQLite era and is gitignored. Do not put runtime files in either unless the user is starting that workstream.
+
+### Backend
+
+- **Dev mode wipes the users table on every boot.** Do not run `npm run dev` against a database that holds real accounts. The seeded test user is `testuser` / `password123`.
+- **Rate limit is 20 / 60 s per IP, global.** Expect `429`s during frontend testing. This is a deliberate brake during early dev — don't loosen it casually.
+- **CORS allowlist is strict.** Adding a new frontend origin (staging, production) means editing `server.ts`. Every preflight failure during testing is almost always a wrong port or origin.
+- **Passwords are bcrypt cost 10.** Do not lower it. Do not log `user.password` anywhere — `/me` deliberately omits it from its `SELECT`.
+- **JWT expiry is 7 days.** No refresh-token flow. When a token expires, the user is bounced to `/auth/index.html` (frontend handles 401s by clearing localStorage on logout, but expired tokens currently surface only as failed `/me` calls — be aware).
+- **`JWT_SECRET`, `DATABASE_URL`, and `RESEND_API_KEY` live in `.env`.** `.env` is gitignored. Never commit it; never paste real values into code or chat. `JWT_SECRET=your-secret-here` style placeholders in docs are placeholders — do not preserve them as if they were real.
+- **The error field on the wire is `message`.** New endpoints should keep it that way. The frontend's `data.message || data.error` fallback exists for historical reasons but should not be relied on.
+- **`better-sqlite3`** is still in `package.json` but no runtime code imports it. Removing it (and `@types/better-sqlite3`) is safe cleanup if you are touching `package.json` anyway. Do not re-introduce SQLite code paths.
+
+### Frontend
+
+- **Live Server must be rooted at `frontend/`.** Root-absolute hrefs (`/auth/index.html`, `/account/index.html`, `/download`) only resolve when this is true. If links 404, this is the first thing to check.
+- **Live Server must use port 5500 or 5501.** Other ports will fail CORS against the backend allowlist.
+- **`API_URL` is hardcoded** at the top of `auth.js`. Update there when deploying.
+- **Navbar and menu overlay are duplicated per page.** Changing them means editing every `index.html`. There is currently no template/include system. If you add a new page, copy from a recent one (`account/index.html` and `download/index.html` have the latest markup).
+- **The download page's version label is hardcoded** (currently `0.4.1`); the app's actual version comes from `app/vector/constants.py::APP_VERSION` (currently `0.4.2`). Bump the page label on each release.
+- **The download page does not gate on auth.** The CTA fires regardless of login state; only the `POST /download` counter call is skipped when there is no token. Reconsider this when wiring up a real binary URL.
+
+### Vector desktop app
+
+- See `app/CLAUDE.md` for the exhaustive list. The most painful regressions to avoid: re-inflating Sharpe to 22pt, removing the QTimer defensive pattern in `LensDisplay`, hardcoding `_CTAReportCard` heights, dropping graph margin `bottom` below 0.22, and forgetting to include `vector/lens/templates` or the yfinance package list in the Nuitka build.
+
+### Don't do this
+
+- Don't add a notes feature back. The endpoints, table, frontend hooks, and tests have all been removed deliberately.
+- Don't paper over CORS or rate-limit failures by widening the allowlist or raising limits "to make testing easier." Fix the test setup instead.
+- Don't reach into `StorageManager` or `MarketDataService` from Vector code — `DataStore` is the authoritative layer.
+- Don't introduce a new package manager, monorepo orchestrator, Docker setup, or CI config without an explicit ask.
