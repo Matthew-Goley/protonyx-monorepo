@@ -30,6 +30,14 @@ const setup = async () => {
         )
     `);
 
+    // Idempotent migration: add verification_token column if it doesn't exist.
+    // Wrapped in try/catch so a transient failure doesn't prevent server boot.
+    try {
+        await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS verification_token TEXT DEFAULT NULL");
+    } catch (err) {
+        console.error("Failed to add verification_token column:", err);
+    }
+
     // Dev-only: seed a known test account (password = "password123").
     if (process.env.NODE_ENV === "development") {
         const hashedPassword = await bcrypt.hash("password123", 10);

@@ -1,8 +1,9 @@
 import { FastifyInstance } from "fastify";
+import crypto from "crypto";
 import pool from "../db";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
-import { sendWelcomeEmail } from "../email";
+import { sendWelcomeEmail, sendVerificationEmail } from "../email";
 
 const JWT_SECRET = process.env.JWT_SECRET as string;
 
@@ -50,12 +51,55 @@ export default async function authRoutes(app: FastifyInstance) {
             [username, email, hashedPassword]
         );
 
-        // Fire-and-forget welcome email (failures are logged inside, never thrown)
+        // Issue email-verification token and store it on the new row
+        const verificationToken = crypto.randomBytes(32).toString("hex");
+        await pool.query(
+            "UPDATE users SET verification_token = $1 WHERE email = $2",
+            [verificationToken, email]
+        );
+
+        // Fire-and-forget transactional emails (failures are logged inside, never thrown)
         sendWelcomeEmail(email, username);
+        sendVerificationEmail(email, username, verificationToken);
 
         return reply.status(201).send({
             success: true,
             message: "User Created"
+        });
+    });
+
+    // Verify-email GET — consumes a one-time token and flips email_verified to true
+    app.get("/verify-email", async (request: any, reply: any) => {
+        const { token } = request.query as { token: string };
+
+        if (!token) {
+            return reply.status(400).send({
+                success: false,
+                message: "Invalid or expired verification token"
+            });
+        }
+
+        const result = await pool.query(
+            "SELECT id FROM users WHERE verification_token = $1",
+            [token]
+        );
+        const user = result.rows[0] as { id: number } | undefined;
+
+        if (!user) {
+            return reply.status(400).send({
+                success: false,
+                message: "Invalid or expired verification token"
+            });
+        }
+
+        await pool.query(
+            "UPDATE users SET email_verified = true, verification_token = NULL WHERE id = $1",
+            [user.id]
+        );
+
+        return reply.status(200).send({
+            success: true,
+            message: "Email verified successfully"
         });
     });
 
