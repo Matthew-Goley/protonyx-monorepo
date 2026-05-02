@@ -30,12 +30,24 @@ const setup = async () => {
         )
     `);
 
-    // Idempotent migration: add verification_token column if it doesn't exist.
-    // Wrapped in try/catch so a transient failure doesn't prevent server boot.
+    // Idempotent migrations: add new columns if they don't exist.
+    // Each is wrapped in try/catch so a transient failure doesn't prevent server boot.
     try {
         await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS verification_token TEXT DEFAULT NULL");
     } catch (err) {
         console.error("Failed to add verification_token column:", err);
+    }
+
+    try {
+        await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_token TEXT DEFAULT NULL");
+    } catch (err) {
+        console.error("Failed to add reset_token column:", err);
+    }
+
+    try {
+        await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_token_expires_at TIMESTAMP DEFAULT NULL");
+    } catch (err) {
+        console.error("Failed to add reset_token_expires_at column:", err);
     }
 
     // Dev-only: seed a known test account (password = "password123").

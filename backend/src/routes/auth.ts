@@ -3,7 +3,7 @@ import crypto from "crypto";
 import pool from "../db";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
-import { sendWelcomeEmail, sendVerificationEmail } from "../email";
+import { sendWelcomeEmail, sendVerificationEmail, sendPasswordResetEmail } from "../email";
 
 const JWT_SECRET = process.env.JWT_SECRET as string;
 
@@ -100,6 +100,82 @@ export default async function authRoutes(app: FastifyInstance) {
         return reply.status(200).send({
             success: true,
             message: "Email verified successfully"
+        });
+    });
+
+    // Forgot-password POST — issues a 1-hour reset token and emails it.
+    // Always returns the same generic envelope to avoid revealing whether an
+    // email is registered (account-enumeration defense).
+    app.post("/forgot-password", async (request, reply) => {
+        const { email } = request.body as { email?: string };
+
+        const genericResponse = {
+            success: true,
+            message: "If that email exists you will receive a reset link"
+        };
+
+        if (!email) {
+            return reply.status(200).send(genericResponse);
+        }
+
+        const result = await pool.query(
+            "SELECT id, username FROM users WHERE email = $1",
+            [email]
+        );
+        const user = result.rows[0] as { id: number; username: string } | undefined;
+
+        if (!user) {
+            return reply.status(200).send(genericResponse);
+        }
+
+        const resetToken = crypto.randomBytes(32).toString("hex");
+        const expires = new Date(Date.now() + 60 * 60 * 1000); // 1 hour from now
+
+        await pool.query(
+            "UPDATE users SET reset_token = $1, reset_token_expires_at = $2 WHERE id = $3",
+            [resetToken, expires, user.id]
+        );
+
+        // Fire-and-forget — never reveal email-delivery failures to the caller
+        sendPasswordResetEmail(email, user.username, resetToken);
+
+        return reply.status(200).send(genericResponse);
+    });
+
+    // Reset-password POST — consumes a non-expired reset token and rehashes the password
+    app.post("/reset-password", async (request, reply) => {
+        const { token, newPassword } = request.body as { token?: string; newPassword?: string };
+
+        if (!token || !newPassword) {
+            return reply.status(400).send({
+                success: false,
+                message: "Token and new password are required"
+            });
+        }
+
+        const result = await pool.query(
+            "SELECT id FROM users WHERE reset_token = $1 AND reset_token_expires_at > NOW()",
+            [token]
+        );
+        const user = result.rows[0] as { id: number } | undefined;
+
+        if (!user) {
+            return reply.status(400).send({
+                success: false,
+                message: "Invalid or expired reset token"
+            });
+        }
+
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+        await pool.query(
+            "UPDATE users SET password = $1, reset_token = NULL, reset_token_expires_at = NULL WHERE id = $2",
+            [hashedPassword, user.id]
+        );
+
+        return reply.status(200).send({
+            success: true,
+            message: "Password reset successfully"
         });
     });
 

@@ -32,11 +32,11 @@ _monorepo/
 │   ├── src/
 │   │   ├── server.ts              # Fastify bootstrap + plugin/route registration
 │   │   ├── db.ts                  # pg Pool + dev-only DROP/CREATE/seed + idempotent ALTER migrations
-│   │   ├── email.ts               # Resend transactional email (welcome + verify)
+│   │   ├── email.ts               # Resend transactional email (welcome + verify + password reset)
 │   │   ├── middleware/
 │   │   │   └── authenticate.ts    # JWT bearer preHandler
 │   │   └── routes/
-│   │       ├── auth.ts            # /signup, /login, /verify-email
+│   │       ├── auth.ts            # /signup, /login, /verify-email, /forgot-password, /reset-password
 │   │       └── debug.ts           # /protected, /me, /download
 │   ├── package.json
 │   ├── tsconfig.json
@@ -55,6 +55,10 @@ _monorepo/
 │   │   └── download.js            # Calls POST /download, then triggers file download
 │   ├── verify-email/
 │   │   └── index.html             # Standalone email-verification landing (loading/success/error)
+│   ├── forgot-password/
+│   │   └── index.html             # Standalone "request reset link" form
+│   ├── reset-password/
+│   │   └── index.html             # Standalone "set a new password" form (token in query string)
 │   ├── about/ careers/ contact/ privacy/ tos/   # Static pages
 │   ├── products/
 │   │   ├── index.html
@@ -179,8 +183,10 @@ CREATE TABLE IF NOT EXISTS users (
     member_since        TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
--- Idempotent migration applied on every boot (try/catch wrapped):
+-- Idempotent migrations applied on every boot (each try/catch wrapped):
 ALTER TABLE users ADD COLUMN IF NOT EXISTS verification_token TEXT DEFAULT NULL;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_token TEXT DEFAULT NULL;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_token_expires_at TIMESTAMP DEFAULT NULL;
 
 -- DEV ONLY: seed a known test account
 INSERT INTO users (username, email, password, plan, beta_access)
@@ -189,6 +195,8 @@ ON CONFLICT DO NOTHING;
 ```
 
 The `verification_token` column holds a 64-char hex string (`crypto.randomBytes(32).toString("hex")`) issued at signup and cleared the moment `GET /verify-email` flips `email_verified=true`. A `NULL` token means either "already verified" or "never issued."
+
+The `reset_token` / `reset_token_expires_at` pair is the same shape: a 64-char hex token issued by `POST /forgot-password` with a 1-hour `TIMESTAMP` expiry, both cleared the moment `POST /reset-password` succeeds. The DB-level expiry check uses `reset_token_expires_at > NOW()` so server clock skew between issuer and validator can never widen the window. Both columns are `NULL` whenever there is no active reset request.
 
 **Critical dev behavior:** when `NODE_ENV=development`, the users table is **dropped and recreated on every boot**. Every restart of `npm run dev` wipes all accounts and re-seeds `testuser` (password `password123`). This is intentional during early schema churn — there is no migration tooling, so dropping is the simplest way to apply schema changes. Do **not** run dev mode against a database that holds data you care about. In any other environment (`NODE_ENV !== "development"`), the `DROP` and seed are skipped and `CREATE TABLE IF NOT EXISTS` runs as normal.
 
@@ -238,6 +246,8 @@ The error field is always named `message`. The frontend (`auth.js`) reads `data.
 | `POST` | `/signup` | — | `{ username, email, password }` | Validates all three are present; rejects duplicate `username` or `email` (409); bcrypt-hashes (cost 10); inserts row; **issues a `crypto.randomBytes(32).toString("hex")` verification token and stores it on the row**; **fires `sendWelcomeEmail` and `sendVerificationEmail` fire-and-forget** (failures logged, never thrown); returns 201. |
 | `POST` | `/login` | — | `{ username, password }` | The `username` field accepts **either a username or an email** (`WHERE username = $1 OR email = $1`). On success, stamps `last_login = CURRENT_TIMESTAMP` and returns a JWT (`{ id, username }`, signed with `JWT_SECRET`, **7-day expiry**). Login does **not** currently gate on `email_verified` — verification is informational until that policy is decided. |
 | `GET` | `/verify-email` | — | query: `?token=<hex>` | Looks up the user by `verification_token`. Missing or unknown token → 400 `{ success: false, message: "Invalid or expired verification token" }`. Found → sets `email_verified = true`, nulls `verification_token`, returns 200 `{ success: true, message: "Email verified successfully" }`. The token is single-use because it's cleared on success; re-clicking the link returns 400. |
+| `POST` | `/forgot-password` | — | `{ email }` | **Always returns 200 with `{ success: true, message: "If that email exists you will receive a reset link" }`** — even when the email is missing, malformed, or unknown. This is account-enumeration defense; never special-case it back to a 404/400. When the email is registered, issues a 1-hour `reset_token`, persists it with `reset_token_expires_at = NOW() + 1h`, and fires `sendPasswordResetEmail` fire-and-forget. |
+| `POST` | `/reset-password` | — | `{ token, newPassword }` | Validates both fields (400 `Token and new password are required` if missing). Looks up the row by `reset_token = $1 AND reset_token_expires_at > NOW()` so expiry is enforced at the DB level. Invalid/expired token → 400 `{ success: false, message: "Invalid or expired reset token" }`. Valid → bcrypt-rehashes (cost 10), nulls both reset columns, returns 200 `{ success: true, message: "Password reset successfully" }`. Single-use by construction (token cleared on success). |
 | `GET` | `/protected` | ✅ | — | Smoke test. Returns `{ message: "Hello <username>" }`. |
 | `GET` | `/me` | ✅ | — | Returns the full user profile **excluding `password`, `stripe_customer_id`, and `verification_token`**. Shape: `{ success, user: { id, username, email, plan, plan_expires_at, member_since, last_login, beta_access, download_count, email_verified, is_active } }`. The frontend calls this on login and on every account-page load. |
 | `POST` | `/download` | ✅ | — (empty body) | Increments `download_count` for the authenticated user. Called from `/download` page when the user clicks "Download Vector". Returns `{ success, message: "Download recorded" }`. The actual binary URL is **not** returned by this endpoint — the frontend triggers the download separately. |
@@ -246,7 +256,7 @@ There is **no** `/notes`, `/getnotes`, `/notes/:id` endpoint. Earlier docs refer
 
 ### Email (`src/email.ts`)
 
-Two exported functions, both using the **Resend** SDK and both fire-and-forget from the caller's perspective. Both swallow errors with `console.error` so transactional-email outages never break signup.
+Three exported functions, all using the **Resend** SDK and all fire-and-forget from the caller's perspective. All three swallow errors with `console.error` so transactional-email outages never break the calling route.
 
 **`sendWelcomeEmail(to, username)`**
 
@@ -260,6 +270,13 @@ Two exported functions, both using the **Resend** SDK and both fire-and-forget f
 - Builds the link as `http://localhost:5501/verify-email/index.html?token={token}`. The localhost host is marked with a `// TODO: replace localhost with production domain` comment — update it (and consider extracting to an env var) before the frontend is deployed.
 - Subject: `Verify your Protonyx email`. Heading: `Verify your email, {username}.` Body: short instruction + `Verify Email` CTA button.
 - Cannot be fully exercised end-to-end until a Resend domain is verified; the route itself works against the local DB without any email actually being delivered.
+
+**`sendPasswordResetEmail(to, username, token)`**
+
+- Same sender, same dark/teal styling, same try/catch behavior.
+- Builds the link as `http://localhost:5501/reset-password/index.html?token={token}` with the same `// TODO: replace localhost with production domain` marker. When the verify-email URL is updated, update this one in lockstep.
+- Subject: `Reset your Protonyx password`. Heading: `Password reset requested, {username}.` Body explicitly mentions the **1-hour expiry** and tells the recipient to ignore the email if they didn't request a reset (anti-confusion + anti-phishing language).
+- Same caveat as the other transactional emails: real delivery requires a verified Resend domain; the `/forgot-password` route still functions against the DB without it (the token is written, the email send fails silently).
 
 ### Dependencies — quick map
 
@@ -389,6 +406,23 @@ Flow on load:
    - **Error** — exclamation icon, `Verification failed.`, the API's `message` (or a network-fallback string), and a "Back to sign in" link.
 
 All three states are rendered into a single `#verifyState` container by inline `render*()` helpers — markup is intentionally local to this page rather than added to `style.css`, since nothing else uses these styles.
+
+### Forgot-password page (`forgot-password/index.html`)
+
+Standalone centered page (no navbar, no footer) reachable from the **"Forgot your password?"** link on `auth/index.html`. Loads `../style.css` and `../auth/auth.js` only for `API_URL`. Single email input → `POST /forgot-password` with `{ email }`. **Always renders the same success message** ("If that email is registered you will receive a reset link shortly.") on a 200 response, regardless of whether the email is real — the backend already enforces account-enumeration defense, and the UI must match. Disables the submit button on success to discourage rapid-fire submissions; re-enables on error. The "Back to login" link points to `../auth/index.html`.
+
+### Reset-password page (`reset-password/index.html`)
+
+Same shell as the forgot-password page. Reads `?token=` via `URLSearchParams` on load:
+
+- **No token** → renders an "Invalid reset link." state with a link back to `../forgot-password/index.html` to request a fresh one. Never POSTs anything.
+- **Token present** → renders the form (new password + confirm password). Client-side validation: both fields populated, both fields match. Submitting POSTs `{ token, newPassword }` to `/reset-password`. On success, the form is replaced in-place with a "Password reset successfully." panel + a link to `../auth/index.html`. On failure (400 from the backend, typically expired/invalid token), shows the API's `message` and re-enables the submit button.
+
+Like the verify-email page, the three render states are inline `render*()` helpers writing into `#resetState`. The page does **not** validate password strength client-side — bcrypt-cost-10 absorbs whatever the user types. If a strength policy gets added, enforce it both here and in the backend route.
+
+### Auth-page link
+
+`auth/index.html` shows a small muted **"Forgot your password?"** link directly under the login form's submit button, styled by `.auth-forgot-link` in `style.css`. The link is in the login form only (not the signup form) and points at `../forgot-password/index.html`.
 
 ### Auth UX gotcha (was a real issue, now fixed — keep an eye on it)
 
