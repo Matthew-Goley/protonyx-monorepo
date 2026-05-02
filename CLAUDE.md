@@ -2,6 +2,8 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository. It is intentionally detailed so that someone with no prior exposure to the project can act on it without reading every source file. Update it when the things it claims become wrong.
 
+> **Keep this file current.** Whenever you change the codebase in a way that contradicts something written here — new endpoint, new column, new page, renamed file, removed feature, changed convention, version bump, new dependency, new env var — update the relevant section of `CLAUDE.md` *in the same change*. Treat the doc as part of the diff, not a follow-up. If the change touches the desktop app, update `app/CLAUDE.md` too. Drift is the single most expensive thing that can happen to this file: every stale claim costs the next session real time, so the rule is "if a future reader of this file would now be misled, fix it now."
+
 ---
 
 ## 1. What This Repo Is
@@ -29,12 +31,12 @@ _monorepo/
 ├── backend/                       # Fastify + TypeScript REST API (PostgreSQL)
 │   ├── src/
 │   │   ├── server.ts              # Fastify bootstrap + plugin/route registration
-│   │   ├── db.ts                  # pg Pool + dev-only DROP/CREATE/seed
-│   │   ├── email.ts               # Resend transactional email (welcome)
+│   │   ├── db.ts                  # pg Pool + dev-only DROP/CREATE/seed + idempotent ALTER migrations
+│   │   ├── email.ts               # Resend transactional email (welcome + verify)
 │   │   ├── middleware/
 │   │   │   └── authenticate.ts    # JWT bearer preHandler
 │   │   └── routes/
-│   │       ├── auth.ts            # /signup, /login
+│   │       ├── auth.ts            # /signup, /login, /verify-email
 │   │       └── debug.ts           # /protected, /me, /download
 │   ├── package.json
 │   ├── tsconfig.json
@@ -51,6 +53,8 @@ _monorepo/
 │   ├── download/
 │   │   ├── index.html             # Gated download landing page
 │   │   └── download.js            # Calls POST /download, then triggers file download
+│   ├── verify-email/
+│   │   └── index.html             # Standalone email-verification landing (loading/success/error)
 │   ├── about/ careers/ contact/ privacy/ tos/   # Static pages
 │   ├── products/
 │   │   ├── index.html
@@ -175,11 +179,16 @@ CREATE TABLE IF NOT EXISTS users (
     member_since        TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Idempotent migration applied on every boot (try/catch wrapped):
+ALTER TABLE users ADD COLUMN IF NOT EXISTS verification_token TEXT DEFAULT NULL;
+
 -- DEV ONLY: seed a known test account
 INSERT INTO users (username, email, password, plan, beta_access)
 VALUES ('testuser', 'test@protonyx.dev', <bcrypt('password123')>, 'free', true)
 ON CONFLICT DO NOTHING;
 ```
+
+The `verification_token` column holds a 64-char hex string (`crypto.randomBytes(32).toString("hex")`) issued at signup and cleared the moment `GET /verify-email` flips `email_verified=true`. A `NULL` token means either "already verified" or "never issued."
 
 **Critical dev behavior:** when `NODE_ENV=development`, the users table is **dropped and recreated on every boot**. Every restart of `npm run dev` wipes all accounts and re-seeds `testuser` (password `password123`). This is intentional during early schema churn — there is no migration tooling, so dropping is the simplest way to apply schema changes. Do **not** run dev mode against a database that holds data you care about. In any other environment (`NODE_ENV !== "development"`), the `DROP` and seed are skipped and `CREATE TABLE IF NOT EXISTS` runs as normal.
 
@@ -190,6 +199,8 @@ All queries use parameterized `$1, $2, ...` placeholders. Never interpolate user
 1. Edit the `CREATE TABLE` block (and seed block, if needed) in `db.ts`.
 2. Restart `npm run dev` — the table is dropped and recreated.
 3. To apply the same change to a non-dev environment, write SQL by hand and run it via `psql` (or whatever migration tool gets adopted later). The `IF NOT EXISTS` guard does **not** alter existing tables.
+
+For columns added to an existing prod-shaped table, prefer the **idempotent `ALTER TABLE ... ADD COLUMN IF NOT EXISTS` pattern** already in `setup()` (see `verification_token`). Wrap each `ALTER` in try/catch so a transient failure doesn't kill server boot. These run on every boot in every environment, which is the closest thing to a migration tool the backend has right now.
 
 ### Route module convention
 
@@ -224,22 +235,31 @@ The error field is always named `message`. The frontend (`auth.js`) reads `data.
 
 | Method | Path | Auth | Body | Behavior |
 |---|---|---|---|---|
-| `POST` | `/signup` | — | `{ username, email, password }` | Validates all three are present; rejects duplicate `username` or `email` (409); bcrypt-hashes (cost 10); inserts row; **fires `sendWelcomeEmail` fire-and-forget** (failures logged, never thrown); returns 201. |
-| `POST` | `/login` | — | `{ username, password }` | The `username` field accepts **either a username or an email** (`WHERE username = $1 OR email = $1`). On success, stamps `last_login = CURRENT_TIMESTAMP` and returns a JWT (`{ id, username }`, signed with `JWT_SECRET`, **7-day expiry**). |
+| `POST` | `/signup` | — | `{ username, email, password }` | Validates all three are present; rejects duplicate `username` or `email` (409); bcrypt-hashes (cost 10); inserts row; **issues a `crypto.randomBytes(32).toString("hex")` verification token and stores it on the row**; **fires `sendWelcomeEmail` and `sendVerificationEmail` fire-and-forget** (failures logged, never thrown); returns 201. |
+| `POST` | `/login` | — | `{ username, password }` | The `username` field accepts **either a username or an email** (`WHERE username = $1 OR email = $1`). On success, stamps `last_login = CURRENT_TIMESTAMP` and returns a JWT (`{ id, username }`, signed with `JWT_SECRET`, **7-day expiry**). Login does **not** currently gate on `email_verified` — verification is informational until that policy is decided. |
+| `GET` | `/verify-email` | — | query: `?token=<hex>` | Looks up the user by `verification_token`. Missing or unknown token → 400 `{ success: false, message: "Invalid or expired verification token" }`. Found → sets `email_verified = true`, nulls `verification_token`, returns 200 `{ success: true, message: "Email verified successfully" }`. The token is single-use because it's cleared on success; re-clicking the link returns 400. |
 | `GET` | `/protected` | ✅ | — | Smoke test. Returns `{ message: "Hello <username>" }`. |
-| `GET` | `/me` | ✅ | — | Returns the full user profile **excluding `password` and `stripe_customer_id`**. Shape: `{ success, user: { id, username, email, plan, plan_expires_at, member_since, last_login, beta_access, download_count, email_verified, is_active } }`. The frontend calls this on login and on every account-page load. |
+| `GET` | `/me` | ✅ | — | Returns the full user profile **excluding `password`, `stripe_customer_id`, and `verification_token`**. Shape: `{ success, user: { id, username, email, plan, plan_expires_at, member_since, last_login, beta_access, download_count, email_verified, is_active } }`. The frontend calls this on login and on every account-page load. |
 | `POST` | `/download` | ✅ | — (empty body) | Increments `download_count` for the authenticated user. Called from `/download` page when the user clicks "Download Vector". Returns `{ success, message: "Download recorded" }`. The actual binary URL is **not** returned by this endpoint — the frontend triggers the download separately. |
 
 There is **no** `/notes`, `/getnotes`, `/notes/:id` endpoint. Earlier docs referenced them; they have been removed.
 
 ### Email (`src/email.ts`)
 
-`sendWelcomeEmail(to, username)` uses the **Resend** SDK to send a single transactional welcome email. Implementation notes:
+Two exported functions, both using the **Resend** SDK and both fire-and-forget from the caller's perspective. Both swallow errors with `console.error` so transactional-email outages never break signup.
 
-- Sender is `onboarding@resend.dev` (Resend's default sandbox sender). When a real domain is verified, change this string here.
+**`sendWelcomeEmail(to, username)`**
+
+- Sender is `onboarding@resend.dev` (Resend's default sandbox sender). When a real domain is verified, change this string in *both* email functions.
 - The HTML body is inline-styled (table-based layout for email-client compatibility), uses the brand palette (`#0b1020` background, `#e7ebf3` text, `#2dd4bf` CTA), and links to `https://protonyx.dev/download`. That URL is currently hardcoded — update it if the public download page moves.
-- Errors are caught and `console.error`'d — they never propagate. Signup succeeds even if Resend is down or the API key is missing.
 - The function logs `Resend key inside function: <bool>` before sending. That log line is debugging instrumentation; remove it before any meaningful production deployment.
+
+**`sendVerificationEmail(to, username, token)`**
+
+- Same sender, same dark/teal styling, same try/catch behavior.
+- Builds the link as `http://localhost:5501/verify-email/index.html?token={token}`. The localhost host is marked with a `// TODO: replace localhost with production domain` comment — update it (and consider extracting to an env var) before the frontend is deployed.
+- Subject: `Verify your Protonyx email`. Heading: `Verify your email, {username}.` Body: short instruction + `Verify Email` CTA button.
+- Cannot be fully exercised end-to-end until a Resend domain is verified; the route itself works against the local DB without any email actually being delivered.
 
 ### Dependencies — quick map
 
@@ -354,6 +374,21 @@ A gated landing page with a single "Download Vector" CTA. When clicked:
 The actual binary URL is currently `"#"` — there's a `TODO` to replace it with an S3 or GitHub Releases URL once a release artifact exists. The displayed version label says **0.4.1**, but the desktop app is on **0.4.2** (`vector/constants.py::APP_VERSION`); the download page label needs to be bumped manually whenever a new build ships.
 
 The download page does **not** redirect unauthenticated users away — it lets them click the button. Without a token, the `POST /download` step is skipped and the (currently broken) anchor click happens anyway. When a real download URL is wired up, decide whether to require auth before showing the button or before kicking off the download.
+
+### Verify-email page (`verify-email/index.html`)
+
+Standalone landing page hit by the link in the verification email. Deliberately bare — **no navbar, no footer, no menu overlay** — since the user might not be signed in and the page is intentionally one job. It loads `../style.css` and reuses `../auth/auth.js` purely to pick up `API_URL`.
+
+Flow on load:
+
+1. Reads `token` via `new URLSearchParams(window.location.search).get("token")`. Missing token → renders the error state immediately without hitting the API.
+2. Renders the **loading** state (`Verifying your email...`).
+3. `fetch("${API_URL}/verify-email?token=" + encodeURIComponent(token))` (GET, no body, no auth header — written as a template literal in the source).
+4. Renders one of two terminal states:
+   - **Success** — checkmark, large `Email verified.`, muted subline, and a button linking to `/auth/index.html`.
+   - **Error** — exclamation icon, `Verification failed.`, the API's `message` (or a network-fallback string), and a "Back to sign in" link.
+
+All three states are rendered into a single `#verifyState` container by inline `render*()` helpers — markup is intentionally local to this page rather than added to `style.css`, since nothing else uses these styles.
 
 ### Auth UX gotcha (was a real issue, now fixed — keep an eye on it)
 
@@ -482,9 +517,14 @@ Anything more specific than the map above — exact widget struct, accordion mea
 
 - See `app/CLAUDE.md` for the exhaustive list. The most painful regressions to avoid: re-inflating Sharpe to 22pt, removing the QTimer defensive pattern in `LensDisplay`, hardcoding `_CTAReportCard` heights, dropping graph margin `bottom` below 0.22, and forgetting to include `vector/lens/templates` or the yfinance package list in the Nuitka build.
 
+### Always do this
+
+- **Update `CLAUDE.md` in the same change that makes its claims stale.** New routes, columns, pages, env vars, version bumps, removed features, renamed files, changed conventions — all require touching the relevant section here. If the desktop app is affected, update `app/CLAUDE.md` too. The doc is a code artifact: it lives or dies with the diff that introduced the change. Do not defer this; do not "open a follow-up." Fix it now.
+
 ### Don't do this
 
 - Don't add a notes feature back. The endpoints, table, frontend hooks, and tests have all been removed deliberately.
 - Don't paper over CORS or rate-limit failures by widening the allowlist or raising limits "to make testing easier." Fix the test setup instead.
 - Don't reach into `StorageManager` or `MarketDataService` from Vector code — `DataStore` is the authoritative layer.
 - Don't introduce a new package manager, monorepo orchestrator, Docker setup, or CI config without an explicit ask.
+- Don't ship a code change and leave `CLAUDE.md` describing the old behavior. Stale docs are worse than no docs.
