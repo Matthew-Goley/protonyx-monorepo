@@ -50,7 +50,7 @@ export async function sendWelcomeEmail(to: string, username: string): Promise<vo
 
     try {
         await resend.emails.send({
-            from: "onboarding@resend.dev",
+            from: "noreply@protonyxdata.com",
             to,
             subject: "Welcome to Protonyx",
             html,
@@ -110,7 +110,7 @@ export async function sendVerificationEmail(to: string, username: string, token:
 
     try {
         await resend.emails.send({
-            from: "onboarding@resend.dev",
+            from: "noreply@protonyxdata.com",
             to,
             subject: "Verify your Protonyx email",
             html,
@@ -170,7 +170,7 @@ export async function sendPasswordResetEmail(to: string, username: string, token
 
     try {
         await resend.emails.send({
-            from: "onboarding@resend.dev",
+            from: "noreply@protonyxdata.com",
             to,
             subject: "Reset your Protonyx password",
             html,

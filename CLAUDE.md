@@ -262,7 +262,7 @@ Three exported functions, all using the **Resend** SDK and all fire-and-forget f
 
 **`sendWelcomeEmail(to, username)`**
 
-- Sender is `onboarding@resend.dev` (Resend's default sandbox sender). When a real domain is verified, change this string in *both* email functions.
+- Sender is `noreply@protonyxdata.com` (verified Resend domain). All three email functions use the same sender string — change them in lockstep.
 - The HTML body is inline-styled (table-based layout for email-client compatibility), uses the brand palette (`#0b1020` background, `#e7ebf3` text, `#2dd4bf` CTA), and links to `https://protonyx.dev/download`. That URL is currently hardcoded — update it if the public download page moves.
 - The function logs `Resend key inside function: <bool>` before sending. That log line is debugging instrumentation; remove it before any meaningful production deployment.
 
