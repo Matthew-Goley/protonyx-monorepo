@@ -33,11 +33,12 @@ _monorepo/
 │   │   ├── server.ts              # Fastify bootstrap + plugin/route registration
 │   │   ├── db.ts                  # pg Pool + dev-only DROP/CREATE/seed + idempotent ALTER migrations
 │   │   ├── email.ts               # Resend transactional email (welcome + verify + password reset)
+│   │   ├── version.json           # Single source of truth for the latest Vector version (served by GET /version)
 │   │   ├── middleware/
 │   │   │   └── authenticate.ts    # JWT bearer preHandler
 │   │   └── routes/
 │   │       ├── auth.ts            # /signup, /login, /verify-email, /forgot-password, /reset-password
-│   │       └── debug.ts           # /protected, /me, /download
+│   │       └── debug.ts           # /protected, /me, /download, /version
 │   ├── package.json
 │   ├── tsconfig.json
 │   └── .env                       # JWT_SECRET, DATABASE_URL, RESEND_API_KEY — gitignored
@@ -251,6 +252,7 @@ The error field is always named `message`. The frontend (`auth.js`) reads `data.
 | `GET` | `/protected` | ✅ | — | Smoke test. Returns `{ message: "Hello <username>" }`. |
 | `GET` | `/me` | ✅ | — | Returns the full user profile **excluding `password`, `stripe_customer_id`, and `verification_token`**. Shape: `{ success, user: { id, username, email, plan, plan_expires_at, member_since, last_login, beta_access, download_count, email_verified, is_active } }`. The frontend calls this on login and on every account-page load. |
 | `POST` | `/download` | ✅ | — (empty body) | Increments `download_count` for the authenticated user. Called from `/download` page when the user clicks "Download Vector". Returns `{ success, message: "Download recorded" }`. The actual binary URL is **not** returned by this endpoint — the frontend triggers the download separately. |
+| `GET` | `/version` | — | — | Public, no auth. Reads `src/version.json` (imported at module load via `resolveJsonModule`) and returns `{ success: true, version: "<x.y.z>" }`. **Single source of truth for the latest Vector release** — to ship a new version, edit `src/version.json` and nothing else on the backend. The frontend download page and the desktop auto-update check should both consume this endpoint rather than hardcoding the version. |
 
 There is **no** `/notes`, `/getnotes`, `/notes/:id` endpoint. Earlier docs referenced them; they have been removed.
 

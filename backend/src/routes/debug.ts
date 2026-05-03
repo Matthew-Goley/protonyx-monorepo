@@ -1,8 +1,17 @@
 import { FastifyInstance } from "fastify";
 import pool from "../db";
 import { authenticate } from "../middleware/authenticate";
+import versionData from "../version.json";
 
 export default async function debugRoutes(app: FastifyInstance) {
+    // Public: latest Vector version
+    app.get("/version", async () => {
+        return {
+            success: true,
+            version: versionData.version
+        };
+    });
+
     // Protected route
     app.get("/protected", { preHandler: authenticate }, async (request: any) => {
         return { message: `Hello ${request.user.username}` };
