@@ -111,7 +111,7 @@ export default async function authRoutes(app: FastifyInstance) {
 
         const genericResponse = {
             success: true,
-            message: "If that email exists you will receive a reset link"
+            message: "If that email exists, you will receive a reset link"
         };
 
         if (!email) {

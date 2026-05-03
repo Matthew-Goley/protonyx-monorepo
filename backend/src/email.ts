@@ -64,7 +64,7 @@ export async function sendVerificationEmail(to: string, username: string, token:
     const resend = new Resend(process.env.RESEND_API_KEY);
 
     // TODO: replace localhost with production domain
-    const verifyUrl = `http://localhost:5501/verify-email/index.html?token=${token}`;
+    const verifyUrl = `http://localhost:5500/verify-email/index.html?token=${token}`;
 
     const html = `<!DOCTYPE html>
 <html>
@@ -124,7 +124,7 @@ export async function sendPasswordResetEmail(to: string, username: string, token
     const resend = new Resend(process.env.RESEND_API_KEY);
 
     // TODO: replace localhost with production domain
-    const resetUrl = `http://localhost:5501/reset-password/index.html?token=${token}`;
+    const resetUrl = `http://localhost:5500/reset-password/index.html?token=${token}`;
 
     const html = `<!DOCTYPE html>
 <html>
