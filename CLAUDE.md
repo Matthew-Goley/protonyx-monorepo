@@ -32,7 +32,8 @@ _monorepo/
 │   ├── src/
 │   │   ├── server.ts              # Fastify bootstrap + plugin/route registration
 │   │   ├── db.ts                  # pg Pool + dev-only DROP/CREATE/seed + idempotent ALTER migrations
-│   │   ├── email.ts               # Resend transactional email (welcome + verify + password reset)
+│   │   ├── email.ts               # Resend send logic (welcome + verify + password reset)
+│   │   ├── emailTemplates.ts      # Inline HTML strings for the three transactional emails
 │   │   ├── version.json           # Single source of truth for the latest Vector version (served by GET /version)
 │   │   ├── middleware/
 │   │   │   └── authenticate.ts    # JWT bearer preHandler
@@ -45,7 +46,11 @@ _monorepo/
 │
 ├── frontend/                      # Static site, one index.html per route
 │   ├── index.html                 # Landing / hero (rotating background videos)
-│   ├── style.css                  # ~1700 lines, single shared stylesheet
+│   ├── style.css                  # Entry stylesheet — @imports the four files below in cascade order
+│   ├── base.css                   # Resets, :root tokens, typography, button primitives
+│   ├── chrome.css                 # Navbar, menu overlay, footer, auth-state toggles
+│   ├── pages.css                  # Landing, products, Vector product page, account page
+│   ├── auth.css                   # Auth/forgot/reset/verify page shells
 │   ├── script.js                  # Hero video rotation, logo color swap, menu overlay
 │   ├── auth/
 │   │   ├── index.html             # Tabbed login/signup form
@@ -256,13 +261,13 @@ The error field is always named `message`. The frontend (`auth.js`) reads `data.
 
 There is **no** `/notes`, `/getnotes`, `/notes/:id` endpoint. Earlier docs referenced them; they have been removed.
 
-### Email (`src/email.ts`)
+### Email (`src/email.ts` + `src/emailTemplates.ts`)
 
-Three exported functions, all using the **Resend** SDK and all fire-and-forget from the caller's perspective. All three swallow errors with `console.error` so transactional-email outages never break the calling route.
+Three exported functions in `email.ts`, all using the **Resend** SDK and all fire-and-forget from the caller's perspective. All three swallow errors with `console.error` so transactional-email outages never break the calling route. The HTML bodies live in `src/emailTemplates.ts` as three exported functions (`welcomeEmailHtml`, `verifyEmailHtml`, `resetPasswordEmailHtml`) returning the rendered string for a given username and URL — keeping them out of `email.ts` so the send logic stays scannable. Edit copy/styling there; edit send behavior in `email.ts`.
 
 **`sendWelcomeEmail(to, username)`**
 
-- Sender is `noreply@protonyxdata.com` (verified Resend domain). All three email functions use the same sender string — change them in lockstep.
+- Sender is `noreply@protonyxdata.com` (verified Resend domain), exported as `FROM_ADDRESS` at the top of `email.ts` and reused by all three functions — change in one place.
 - The HTML body is inline-styled (table-based layout for email-client compatibility), uses the brand palette (`#0b1020` background, `#e7ebf3` text, `#2dd4bf` CTA), and links to `https://protonyx.dev/download`. That URL is currently hardcoded — update it if the public download page moves.
 - The function logs `Resend key inside function: <bool>` before sending. That log line is debugging instrumentation; remove it before any meaningful production deployment.
 
@@ -330,7 +335,16 @@ Dark hero sections (`.hero`, `.vector-hero`, `.products-hero`) use the white log
 
 ### CSS system
 
-CSS custom properties are defined in `:root` at the top of `style.css`. The most-used tokens:
+Every page links a single stylesheet (`style.css`), which is now a thin shim that `@import`s four files in cascade order. **Edit the split files, not `style.css`** — `style.css` is just the entry point:
+
+| File | Contains |
+|---|---|
+| `base.css` | `*` reset, `:root` tokens, `html`/`body`, `h1`–`h3`/`p`, button primitives (`.btn-primary`, `.btn-ghost`, `.btn-grad`, `.btn-outline-gray`), the `h1` mobile size override |
+| `chrome.css` | Floating navbar, navbar profile/signup auth toggles, full-screen menu overlay (incl. logout button + reveal animation), site footer |
+| `pages.css` | Landing hero/intro/product cards, products listing hero, the entire Vector product page (hero, sections, lens outputs, access pricing cards, flow stepper, closing CTA), account page; plus the `.access-card .btn-ghost` light-bg override |
+| `auth.css` | `.auth-body` shell + auth card, tabs, form, inputs, submit button, message states, footer/forgot links — used by `auth/`, `verify-email/`, `forgot-password/`, `reset-password/` |
+
+CSS custom properties are defined in `:root` at the top of `base.css`. The most-used tokens:
 
 ```css
 --bg-base: #f2f1ee        /* off-white page background */
@@ -341,6 +355,8 @@ CSS custom properties are defined in `:root` at the top of `style.css`. The most
 ```
 
 Use these tokens; do not hardcode colors. The navbar floats at the top with a blurred glass effect (`backdrop-filter: blur(10px)`).
+
+Cascade order matters: `base` → `chrome` → `pages` → `auth`. Don't reorder the imports without checking that page-specific overrides still win. If you split out a fifth file, add it to `style.css`'s `@import` block in the right slot.
 
 ### `script.js` (shared across pages)
 
