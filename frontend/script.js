@@ -13,10 +13,23 @@ let currentHeroVideoIndex = 0;
 const heroVideoElement = document.getElementById("heroVideo");
 
 if (heroVideoElement) {
+  // preload the next video in a hidden element
+  const bufferVideo = document.createElement("video");
+  bufferVideo.muted = true;
+  bufferVideo.playsInline = true;
+  bufferVideo.preload = "auto";
+
   setInterval(() => {
     currentHeroVideoIndex = (currentHeroVideoIndex + 1) % heroVideoSources.length;
-    heroVideoElement.src = heroVideoSources[currentHeroVideoIndex];
-    heroVideoElement.play();
+    bufferVideo.src = heroVideoSources[currentHeroVideoIndex];
+
+    bufferVideo.addEventListener("canplaythrough", function onReady() {
+      bufferVideo.removeEventListener("canplaythrough", onReady);
+      heroVideoElement.src = bufferVideo.src;
+      heroVideoElement.play();
+    }, { once: true });
+
+    bufferVideo.load();
   }, 4000);
 }
 
