@@ -10,26 +10,44 @@ const heroVideoSources = [
 ];
 
 let currentHeroVideoIndex = 0;
-const heroVideoElement = document.getElementById("heroVideo");
+const heroVideo = document.getElementById("heroVideo");
 
-if (heroVideoElement) {
-  // preload the next video in a hidden element
-  const bufferVideo = document.createElement("video");
-  bufferVideo.muted = true;
-  bufferVideo.playsInline = true;
-  bufferVideo.preload = "auto";
+if (heroVideo) {
+  // create a second video element stacked on top
+  const nextVideo = heroVideo.cloneNode(true);
+  nextVideo.removeAttribute("id");
+  nextVideo.style.opacity = "0";
+  nextVideo.style.transition = "opacity 0.4s ease";
+  heroVideo.style.transition = "opacity 0.4s ease";
+  heroVideo.parentElement.style.position = "relative";
+  nextVideo.style.position = "absolute";
+  nextVideo.style.inset = "0";
+  nextVideo.style.width = "100%";
+  nextVideo.style.height = "100%";
+  nextVideo.style.objectFit = heroVideo.style.objectFit || "cover";
+  heroVideo.parentElement.appendChild(nextVideo);
+
+  let frontVideo = heroVideo;
+  let backVideo = nextVideo;
 
   setInterval(() => {
     currentHeroVideoIndex = (currentHeroVideoIndex + 1) % heroVideoSources.length;
-    bufferVideo.src = heroVideoSources[currentHeroVideoIndex];
+    backVideo.src = heroVideoSources[currentHeroVideoIndex];
 
-    bufferVideo.addEventListener("canplaythrough", function onReady() {
-      bufferVideo.removeEventListener("canplaythrough", onReady);
-      heroVideoElement.src = bufferVideo.src;
-      heroVideoElement.play();
-    }, { once: true });
+    backVideo.addEventListener("canplaythrough", function onReady() {
+    backVideo.removeEventListener("canplaythrough", onReady);
+    backVideo.currentTime = 0;
+    backVideo.play();
+    backVideo.style.opacity = "1";
+    setTimeout(() => {
+      frontVideo.src = backVideo.src;
+      frontVideo.currentTime = 0;
+      frontVideo.play();
+      backVideo.style.opacity = "0";
+    }, 450);
+  }, { once: true });
 
-    bufferVideo.load();
+    backVideo.load();
   }, 4000);
 }
 
