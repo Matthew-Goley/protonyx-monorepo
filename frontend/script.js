@@ -1,59 +1,8 @@
 // ─────────────────────────────────────────────
-//  Hero Video Rotation  (landing page)
-// ─────────────────────────────────────────────
-const heroVideoSources = [
-  "assets/video/1vector_demo.mp4",
-  "assets/video/2city.mp4",
-  "assets/video/3codingdemo.mp4",
-  "assets/video/4stockmarket.mp4",
-  "assets/video/5codingdemo.mp4"
-];
-
-let currentHeroVideoIndex = 0;
-const heroVideo = document.getElementById("heroVideo");
-
-if (heroVideo) {
-  // create a second video element stacked on top
-  const nextVideo = heroVideo.cloneNode(true);
-  nextVideo.removeAttribute("id");
-  nextVideo.style.opacity = "0";
-  nextVideo.style.transition = "opacity 0.4s ease";
-  heroVideo.style.transition = "opacity 0.4s ease";
-  heroVideo.parentElement.style.position = "relative";
-  nextVideo.style.position = "absolute";
-  nextVideo.style.inset = "0";
-  nextVideo.style.width = "100%";
-  nextVideo.style.height = "100%";
-  nextVideo.style.objectFit = heroVideo.style.objectFit || "cover";
-  heroVideo.parentElement.appendChild(nextVideo);
-
-  let frontVideo = heroVideo;
-  let backVideo = nextVideo;
-
-  setInterval(() => {
-    currentHeroVideoIndex = (currentHeroVideoIndex + 1) % heroVideoSources.length;
-    backVideo.src = heroVideoSources[currentHeroVideoIndex];
-
-    backVideo.addEventListener("canplaythrough", function onReady() {
-    backVideo.removeEventListener("canplaythrough", onReady);
-    backVideo.currentTime = 0;
-    backVideo.play();
-    backVideo.style.opacity = "1";
-    setTimeout(() => {
-      frontVideo.src = backVideo.src;
-      frontVideo.currentTime = 0;
-      frontVideo.play();
-      backVideo.style.opacity = "0";
-    }, 450);
-  }, { once: true });
-
-    backVideo.load();
-  }, 4000);
-}
-
-
-// ─────────────────────────────────────────────
 //  Navbar Logo  (all pages)
+//
+//  Swap between white/black Protonyx logo as the
+//  user scrolls out of a dark hero section.
 // ─────────────────────────────────────────────
 const navbarLogo = document.getElementById("navbarLogo");
 const whiteLogo = "/assets/company/protonyx_full_white.png";
@@ -65,7 +14,7 @@ if (navbarLogo) {
   new Image().src = whiteLogo;
   new Image().src = blackLogo;
 
-  const darkHeroSection = document.querySelector(".hero, .vector-hero, .products-hero");
+  const darkHeroSection = document.querySelector(".landing-hero, .vector-hero, .products-hero");
 
   function shouldLogoBeWhite() {
     if (!darkHeroSection) return false;
@@ -95,7 +44,7 @@ if (navbarLogo) {
 
 
 // ─────────────────────────────────────────────
-//  Product Card Video Preview  (home + products pages)
+//  Product Card Video Preview  (products listing page)
 // ─────────────────────────────────────────────
 const vectorCard = document.querySelector(".vector-card");
 
@@ -143,4 +92,30 @@ if (menuButton && menuOverlay && menuCloseButton) {
   menuOverlay.addEventListener("click", (e) => {
     if (e.target === menuOverlay) closeMenu();
   });
+}
+
+
+// ─────────────────────────────────────────────
+//  Scroll fade-in  (landing page sections)
+//
+//  Any element with .fade-in animates to visible
+//  once it enters the viewport. Guarded so pages
+//  without .fade-in elements pay nothing.
+// ─────────────────────────────────────────────
+const fadeTargets = document.querySelectorAll(".fade-in");
+
+if (fadeTargets.length && "IntersectionObserver" in window) {
+  const fadeObserver = new IntersectionObserver(
+    (entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add("visible");
+          fadeObserver.unobserve(entry.target);
+        }
+      });
+    },
+    { threshold: 0.15, rootMargin: "0px 0px -40px 0px" }
+  );
+
+  fadeTargets.forEach((el) => fadeObserver.observe(el));
 }

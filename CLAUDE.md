@@ -45,13 +45,14 @@ _monorepo/
 │   └── .env                       # JWT_SECRET, DATABASE_URL, RESEND_API_KEY — gitignored
 │
 ├── frontend/                      # Static site, one index.html per route
-│   ├── index.html                 # Landing / hero (rotating background videos)
+│   ├── index.html                 # Landing page (Vector-first: hero 2-col → value props → Lens section → features → pricing → steps → final CTA)
 │   ├── style.css                  # Entry stylesheet — @imports the four files below in cascade order
 │   ├── base.css                   # Resets, :root tokens, typography, button primitives
 │   ├── chrome.css                 # Navbar, menu overlay, footer, auth-state toggles
-│   ├── pages.css                  # Landing, products, Vector product page, account page
+│   ├── pages.css                  # Landing-section legacy + products listing, Vector product page, account page
 │   ├── auth.css                   # Auth/forgot/reset/verify page shells
-│   ├── script.js                  # Hero video rotation, logo color swap, menu overlay
+│   ├── landing.css                # Landing-only styles (hero, value props, lens section, features grid, pricing, steps, fade-in). Loaded *only* by index.html, alongside style.css.
+│   ├── script.js                  # Navbar logo swap, products-page hover preview, menu overlay, landing fade-in observer
 │   ├── auth/
 │   │   ├── index.html             # Tabbed login/signup form
 │   │   └── auth.js                # All auth + session logic + GET /me helper
@@ -307,7 +308,7 @@ Three exported functions in `email.ts`, all using the **Resend** SDK and all fir
 
 ### Stack
 
-Plain static HTML + CSS + vanilla JS. **No framework, no bundler, no build step.** The only external font is IBM Plex Mono from Google Fonts, loaded via `<link>` on every page. All CSS lives in one ~1700-line file (`frontend/style.css`) shared by every page.
+Plain static HTML + CSS + vanilla JS. **No framework, no bundler, no build step.** The only external font is IBM Plex Mono from Google Fonts, loaded via `<link>` on every page. CSS is split across `style.css` (which `@import`s `base.css` + `chrome.css` + `pages.css` + `auth.css`) and a landing-only `landing.css` that the landing page loads in addition to `style.css`.
 
 ### Page structure
 
@@ -341,8 +342,9 @@ Every page links a single stylesheet (`style.css`), which is now a thin shim tha
 |---|---|
 | `base.css` | `*` reset, `:root` tokens, `html`/`body`, `h1`–`h3`/`p`, button primitives (`.btn-primary`, `.btn-ghost`, `.btn-grad`, `.btn-outline-gray`), the `h1` mobile size override |
 | `chrome.css` | Floating navbar, navbar profile/signup auth toggles, full-screen menu overlay (incl. logout button + reveal animation), site footer |
-| `pages.css` | Landing hero/intro/product cards, products listing hero, the entire Vector product page (hero, sections, lens outputs, access pricing cards, flow stepper, closing CTA), account page; plus the `.access-card .btn-ghost` light-bg override |
+| `pages.css` | Legacy `.hero` (no longer used by `index.html`), products listing hero, the entire Vector product page (hero, sections, lens outputs, access pricing cards, flow stepper, closing CTA), account page; plus the `.access-card .btn-ghost` light-bg override |
 | `auth.css` | `.auth-body` shell + auth card, tabs, form, inputs, submit button, message states, footer/forgot links — used by `auth/`, `verify-email/`, `forgot-password/`, `reset-password/` |
+| `landing.css` | **Loaded only by `index.html` (alongside `style.css`).** Landing-page sections: `.landing-hero` (dark, two-column, glowing radial), `.demo-window` (macOS-frame video container), `.lp-section` primitives (`.base` / `.surface` / `.dark`), `.value-grid`, `.lens-engine` / `.lens-cards`, `.feature-grid-6`, `.pricing-grid`, `.steps-grid`, `.final-cta`, `.fade-in` (toggled by IntersectionObserver in `script.js`). Reuses `:root` tokens and the teal/blue brand gradient — no new design system. |
 
 CSS custom properties are defined in `:root` at the top of `base.css`. The most-used tokens:
 
@@ -362,10 +364,10 @@ Cascade order matters: `base` → `chrome` → `pages` → `auth`. Don't reorder
 
 Four independent blocks, each guarded by `if (element)` so pages without the relevant element are no-ops:
 
-1. **Hero video rotation** — cycles `heroVideoSources` (`1vector_demo`, `2city`, `3codingdemo`, `4stockmarket`, `5codingdemo`) every 4 seconds on `#heroVideo`.
-2. **Navbar logo color swap** — described above.
-3. **Product card video preview** — `.vector-card` hover plays its inner `.preview-video`; mouseleave pauses and rewinds.
-4. **Menu overlay open/close** — described above.
+1. **Navbar logo color swap** — described above. Looks for `.landing-hero, .vector-hero, .products-hero` as the dark hero section. (The legacy fullscreen `#heroVideo` rotation block was removed when the landing page was rebuilt — the new hero plays a single looping `1vector_demo.mp4` inside `.demo-window` with no JS.)
+2. **Product card video preview** — `.vector-card` hover plays its inner `.preview-video`; mouseleave pauses and rewinds. Only the products listing page (`/products/index.html`) still uses `.vector-card`; the landing page no longer does.
+3. **Menu overlay open/close** — described above.
+4. **Landing fade-in observer** — every `.fade-in` element on the landing page gets a `.visible` class when it intersects the viewport (`threshold: 0.15`, `rootMargin: 0 0 -40px 0`). One-shot — observer unobserves each element after firing.
 
 ### `auth/auth.js` (shared auth + session state)
 
