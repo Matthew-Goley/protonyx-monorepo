@@ -659,6 +659,127 @@
 
 .final-cta-actions .btn-primary { margin: 0; }
 
+/* ── Discovery (dark, vertical-stack numbered video walkthrough) ── */
+.discovery-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 5rem;
+  width: 100%;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.discovery-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+  gap: 3.5rem;
+  align-items: center;
+  text-align: left;
+}
+
+.discovery-card .demo-window {
+  width: 100%;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.55);
+}
+
+.discovery-card .demo-window-body {
+  aspect-ratio: 16 / 9;
+}
+
+.discovery-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.discovery-step {
+  display: flex;
+  align-items: baseline;
+  gap: 1.4rem;
+}
+
+.discovery-num {
+  font-size: clamp(2.4rem, 3.6vw, 4.25rem);
+  font-weight: 600;
+  line-height: 1;
+  background: linear-gradient(135deg, #2dd4bf, #38bdf8);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  flex-shrink: 0;
+}
+
+.discovery-title {
+  font-size: clamp(2rem, 3.2vw, 3.5rem);
+  font-weight: 600;
+  color: white;
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+}
+
+.discovery-caption {
+  font-size: clamp(1rem, 1.15vw, 1.35rem);
+  color: rgba(255, 255, 255, 0.6);
+  line-height: 1.6;
+  max-width: 460px;
+}
+
+
+/* ── Trust strip (light, 3 inline privacy points) ── */
+.lp-section.base.trust-strip {
+  padding: 3rem 3.5%;
+}
+
+.trust-row {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 3.5rem;
+  flex-wrap: wrap;
+  width: 100%;
+}
+
+.trust-item {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  max-width: 360px;
+}
+
+.trust-icon {
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  color: #2dd4bf;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.trust-icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.trust-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.trust-label {
+  font-size: clamp(0.95rem, 1vw, 1.1rem);
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.2;
+}
+
+.trust-sub {
+  font-size: clamp(0.82rem, 0.9vw, 1rem);
+  color: rgba(31, 34, 48, 0.6);
+  line-height: 1.5;
+}
+
 /* ── Scroll fade-in (toggled by IntersectionObserver in script.js) ── */
 .fade-in {
   opacity: 0;
@@ -681,13 +802,23 @@
   .value-grid,
   .feature-grid-6 { grid-template-columns: repeat(2, 1fr); }
   .lens-cards,
-  .pricing-grid { grid-template-columns: 1fr; }
+  .pricing-grid { grid-template-columns: 1fr; gap: 2.5rem; }
+  .discovery-grid { gap: 4rem; }
+  .discovery-card {
+    grid-template-columns: 1fr;
+    gap: 1.75rem;
+    text-align: center;
+  }
+  .discovery-step { justify-content: center; }
+  .discovery-caption { max-width: none; margin: 0 auto; }
   .steps-grid { grid-template-columns: repeat(2, 1fr); gap: 2rem; }
+  .trust-row { gap: 2rem; }
 }
 
 @media (max-width: 640px) {
   .landing-hero { padding: 120px 6% 4rem; }
   .lp-section { padding: 5rem 6%; }
+  .lp-section.base.trust-strip { padding: 2.5rem 6%; }
   .value-grid,
   .feature-grid-6,
   .steps-grid { grid-template-columns: 1fr; }
@@ -698,4 +829,6 @@
   .final-cta-actions .btn-primary,
   .final-cta-actions .btn-ghost { width: 100%; }
   .pricing-toggle-badge { display: none; }
+  .trust-row { flex-direction: column; gap: 1.5rem; align-items: flex-start; }
+  .trust-item { width: 100%; max-width: none; }
 }

@@ -45,13 +45,13 @@ _monorepo/
 │   └── .env                       # JWT_SECRET, DATABASE_URL, RESEND_API_KEY — gitignored
 │
 ├── frontend/                      # Static site, one index.html per route
-│   ├── index.html                 # Landing page (hero 2-col + pricing section only — all other sections stripped)
+│   ├── index.html                 # Landing page (hero 2-col + discovery 3-video strip + trust strip + pricing section)
 │   ├── style.css                  # Entry stylesheet — @imports the four files below in cascade order
 │   ├── base.css                   # Resets, :root tokens, typography, button primitives
 │   ├── chrome.css                 # Navbar, menu overlay, footer, auth-state toggles
 │   ├── pages.css                  # Landing-section legacy + products listing, Vector product page, account page
 │   ├── auth.css                   # Auth/forgot/reset/verify page shells
-│   ├── landing.css                # Landing-only styles (hero + pricing + fade-in). Selectors for the removed value/lens/features/steps/final-cta sections are still in the file but currently unused. Loaded *only* by index.html, alongside style.css.
+│   ├── landing.css                # Landing-only styles (hero + discovery + trust strip + pricing + fade-in). Selectors for the removed value/lens/features/steps/final-cta sections are still in the file but currently unused. Loaded *only* by index.html, alongside style.css.
 │   ├── script.js                  # Navbar logo swap, products-page hover preview, menu overlay, pricing billing-interval toggle, landing fade-in observer
 │   ├── auth/
 │   │   ├── index.html             # Tabbed login/signup form
@@ -316,9 +316,10 @@ Each route is a folder with an `index.html`. To add a page:
 
 1. Create `frontend/<slug>/index.html`.
 2. Link `../style.css`, `../script.js`, and `../auth/auth.js` with the right relative depth (e.g. `products/vector/` uses `../../`).
-3. Copy the `<nav class="navbar">` block and the `.menu-overlay` block from an existing page — they are **duplicated per-page**, not componentized. Updating them means editing every page that uses them.
-4. Use root-absolute links (`href="/about"`, `href="/auth/index.html"`) — Live Server must be rooted at `frontend/`.
-5. End the `<body>` with the standard footer, then load `script.js` and `auth/auth.js`, then a small `<script>checkAuth();</script>` if the page hasn't already wired it up.
+3. Add the site-wide favicon link `<link rel="icon" type="image/png" href="../assets/product/vector/vector_small.png">` in the `<head>` (every page carries this, with the right relative depth). The landing page also sets `<title>Vector</title>`; subpages use `<title>{Page} | Protonyx</title>`.
+4. Copy the `<nav class="navbar">` block and the `.menu-overlay` block from an existing page — they are **duplicated per-page**, not componentized. Updating them means editing every page that uses them.
+5. Use root-absolute links (`href="/about"`, `href="/auth/index.html"`) — Live Server must be rooted at `frontend/`.
+6. End the `<body>` with the standard footer, then load `script.js` and `auth/auth.js`, then a small `<script>checkAuth();</script>` if the page hasn't already wired it up.
 
 ### Navigation bar (every page)
 
@@ -344,7 +345,7 @@ Every page links a single stylesheet (`style.css`), which is now a thin shim tha
 | `chrome.css` | Floating navbar, navbar profile/signup auth toggles, full-screen menu overlay (incl. logout button + reveal animation), site footer |
 | `pages.css` | Legacy `.hero` (no longer used by `index.html`), products listing hero, the entire Vector product page (hero, sections, lens outputs, access pricing cards, flow stepper, closing CTA), account page; plus the `.access-card .btn-ghost` light-bg override |
 | `auth.css` | `.auth-body` shell + auth card, tabs, form, inputs, submit button, message states, footer/forgot links — used by `auth/`, `verify-email/`, `forgot-password/`, `reset-password/` |
-| `landing.css` | **Loaded only by `index.html` (alongside `style.css`).** Active selectors today: `.landing-hero` (dark two-column hero with pulsing radial gradient and a max-width of 1840 px scaled for 4K), `.landing-hero-actions` (hero CTA row, sized for the Windows-icon download button), `.demo-window` + `.demo-video` (macOS-frame video container), `.lp-section` primitives (`.base` / `.surface` / `.dark`), `.lp-eyebrow`, `.lp-h2`, `.lp-lead`, the `.pricing-toggle` family (centered Monthly/Annually segmented control with an animated sliding `.pricing-toggle-thumb`), `.pricing-grid` + `.pricing-card`, and `.fade-in` (toggled by `IntersectionObserver` in `script.js`). The file also retains rules for the removed mid-page sections (`.value-grid`, `.lens-engine`, `.lens-cards`, `.feature-grid-6`, `.steps-grid`, `.final-cta`); those selectors don't match anything on the current page but are kept so the sections can be reintroduced cheaply. Reuses `:root` tokens and the teal/blue brand gradient. No new design system. |
+| `landing.css` | **Loaded only by `index.html` (alongside `style.css`).** Active selectors today: `.landing-hero` (dark two-column hero with pulsing radial gradient and a max-width of 1840 px scaled for 4K), `.landing-hero-actions` (hero CTA row, sized for the Windows-icon download button), `.demo-window` + `.demo-video` (macOS-frame video container, reused by both the hero and the discovery cards), `.lp-section` primitives (`.base` / `.surface` / `.dark`), `.lp-eyebrow`, `.lp-h2`, `.lp-lead`, the `.discovery-grid` family (`.discovery-card`, `.discovery-text`, `.discovery-step`, `.discovery-num`, `.discovery-title`, `.discovery-caption`: vertically-stacked numbered video walkthrough on a dark `.lp-section`, video on the left of each row, gradient step number + title + caption on the right), the `.trust-strip` family (`.trust-row`, `.trust-item`, `.trust-icon`, `.trust-label`, `.trust-sub`: narrow light divider between discovery and pricing with reduced vertical padding), the `.pricing-toggle` family (centered Monthly/Annually segmented control with an animated sliding `.pricing-toggle-thumb`), `.pricing-grid` + `.pricing-card`, and `.fade-in` (toggled by `IntersectionObserver` in `script.js`). The file also retains rules for the removed mid-page sections (`.value-grid`, `.lens-engine`, `.lens-cards`, `.feature-grid-6`, `.steps-grid`, `.final-cta`); those selectors don't match anything on the current page but are kept so the sections can be reintroduced cheaply. Reuses `:root` tokens and the teal/blue brand gradient. No new design system. |
 
 CSS custom properties are defined in `:root` at the top of `base.css`. The most-used tokens:
 
@@ -364,7 +365,7 @@ Cascade order matters: `base` → `chrome` → `pages` → `auth`. Don't reorder
 
 Five independent blocks, each guarded by `if (element)` so pages without the relevant element are no-ops:
 
-1. **Navbar logo color swap** (described above). Collects every dark section on the page (`.landing-hero, .vector-hero, .products-hero, .lp-section.dark`) and probes a fixed y-coordinate near the navbar baseline (80 px) on every `scroll` and `resize` event. If any dark section's bounding rect covers that point, the logo fades to white; otherwise to black, with a 200 ms opacity fade on each transition. The `.lp-section.dark` selector was added when the landing page had a mid-page dark Lens section. That section has since been removed, but the selector is kept so the same logic still applies if any future page (or a re-added landing section) uses `.lp-section.dark`. (The legacy fullscreen `#heroVideo` rotation block was removed when the landing page was rebuilt; the current hero plays a single looping `1vector_demo.mp4` inside `.demo-window` with no JS.)
+1. **Navbar logo color swap** (described above). Collects every dark section on the page (`.landing-hero, .vector-hero, .products-hero, .lp-section.dark`) and probes a fixed y-coordinate near the navbar baseline (80 px) on every `scroll` and `resize` event. If any dark section's bounding rect covers that point, the logo fades to white; otherwise to black, with a 200 ms opacity fade on each transition. The `.lp-section.dark` selector is currently in use by the discovery section on the landing page (which sits directly under the hero), so the logo stays white through both. (The legacy fullscreen `#heroVideo` rotation block was removed when the landing page was rebuilt; the current hero plays a single looping `1vector_demo.mp4` inside `.demo-window` with no JS.)
 2. **Product card video preview** — `.vector-card` hover plays its inner `.preview-video`; mouseleave pauses and rewinds. Only the products listing page (`/products/index.html`) still uses `.vector-card`; the landing page no longer does.
 3. **Menu overlay open/close** — described above.
 4. **Pricing billing-interval toggle** — on the landing page, clicking the Monthly/Annually segmented control inside `.pricing-toggle` rewrites every `.pricing-price[data-annual-amount]` element from its `data-{interval}-amount` + `data-{interval}-period` attributes. Default is annual ($100 / year for Professional; monthly is $10 / month). The Free card has no data attributes so it stays "$0 / forever" regardless of toggle state.
@@ -389,7 +390,7 @@ Globally exposes `getToken()`, `authHeaders()`, `login()`, `signup()`, `loadProf
 
 ### Landing page (`index.html`)
 
-The landing page is intentionally minimal: navbar, hero, pricing, footer. Earlier versions had value-props, a Lens-engine spotlight, a features grid, a getting-started steps section, and a final-CTA section, all of which were deleted in a trimming pass. The selectors for those sections still live in `landing.css` so re-adding any of them only requires the HTML.
+The landing page has four content sections in order: navbar, hero, discovery (dark, three looping videos), trust strip (light, narrow privacy divider), pricing, footer. Earlier versions had value-props, a Lens-engine spotlight, a features grid, a getting-started steps section, and a final-CTA section, all of which were deleted in a trimming pass. The selectors for those sections still live in `landing.css` so re-adding any of them only requires the HTML.
 
 **Hero (`.landing-hero`)** is a full-height dark section with a pulsing radial gradient and a two-column grid:
 
@@ -399,6 +400,10 @@ The landing page is intentionally minimal: navbar, hero, pricing, footer. Earlie
 - **Right column.** `.demo-window` is a macOS-style frame (three traffic-light dots + body) wrapping a single looping autoplaying muted video, `assets/video/1vector_demo.mp4`. No JS rotation, no audio.
 
 Hero typography is scaled aggressively for 4K: h1 uses `clamp(2.6rem, 4.8vw, 5.75rem)`, subtitle `clamp(1.05rem, 1.2vw, 1.4rem)`, container max-width 1840 px, and 3.5% horizontal padding instead of the older 6%.
+
+**Discovery (`.lp-section.dark`)** sits directly under the hero and keeps the dark background so the navbar logo stays white through it. Eyebrow `The Workflow` + h2 `Three steps. One loop.` (`.lp-h2`), then a vertically-stacked `.discovery-grid` of three `.discovery-card`s. Each card is a two-column grid (video left, text right) with a large `.demo-window` (same macOS-frame markup as the hero, body forced to 16:9 via `aspect-ratio`, browser-chrome bar holds just the three traffic-light dots, no fake tab inside) wrapping a looping autoplaying muted `playsinline` video. The text column holds a `.discovery-step` row pairing a large gradient `.discovery-num` (`1` / `2` / `3`) with a bold `.discovery-title` (`Enter.` / `Read.` / `Act.`), and a muted `.discovery-caption` beneath. Video sources: `assets/video/discovery_enter.mp4`, `discovery_read.mp4`, `discovery_act.mp4` (files to be recorded and dropped in later; the markup references them already). Each card carries `.fade-in` so the existing `IntersectionObserver` fades it in on scroll. At 960 px the per-card two-column grid collapses to one column (video on top, centered text below).
+
+**Trust strip (`.lp-section.base.trust-strip`)** is a narrow light divider between the discovery section and pricing. Vertical padding is overridden to `3rem 3.5%` (and `2.5rem 6%` at 640 px) so it reads as a divider, not a full section. No eyebrow, no heading. `.trust-row` is a flex row of three `.trust-item`s: each is a teal-colored inline SVG icon (`.trust-icon`, single-color `currentColor` set to `#2dd4bf`, ~30 px) next to a `.trust-text` block of `.trust-label` (bold dark) + `.trust-sub` (muted dark). Copy: `Desktop app.` / `Your data never leaves your machine.`, `No brokerage link.` / `Just tickers and share counts.`, `No account to start.` / `Download and go.`. Stacks vertically at 640 px. The whole `.trust-row` is `.fade-in`.
 
 **Pricing (`#plans`, `.lp-section.base`)** has the heading `Start free.` / `Upgrade when you outgrow it.` (split across two lines with `<br>`), followed by a billing-interval toggle and two cards:
 
