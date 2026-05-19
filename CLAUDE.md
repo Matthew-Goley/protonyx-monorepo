@@ -52,7 +52,7 @@ _monorepo/
 │   ├── pages.css                  # Landing-section legacy + products listing, Vector product page, account page
 │   ├── auth.css                   # Auth/forgot/reset/verify page shells
 │   ├── landing.css                # Landing-only styles (hero + pricing + fade-in). Selectors for the removed value/lens/features/steps/final-cta sections are still in the file but currently unused. Loaded *only* by index.html, alongside style.css.
-│   ├── script.js                  # Navbar logo swap, products-page hover preview, menu overlay, landing fade-in observer
+│   ├── script.js                  # Navbar logo swap, products-page hover preview, menu overlay, pricing billing-interval toggle, landing fade-in observer
 │   ├── auth/
 │   │   ├── index.html             # Tabbed login/signup form
 │   │   └── auth.js                # All auth + session logic + GET /me helper
@@ -328,7 +328,7 @@ The nav has three states managed via CSS classes that `auth.js` toggles:
 - `.navbar-profile-icon.auth-only` — circular profile SVG linking to `/account/index.html`, shown only when logged in.
 - `.navbar-menu-button` — hamburger, always visible, opens the full-screen menu overlay.
 
-Dark hero sections (`.hero`, `.vector-hero`, `.products-hero`) use the white logo; the rest use black. `script.js` listens to `scroll` and swaps `#navbarLogo`'s `src` between `protonyx_full_white.png` and `_black.png` as the hero scrolls out of view (with a 200ms opacity fade). Both images are preloaded.
+The navbar logo follows the section that currently sits beneath it. Any dark section on the page (`.landing-hero`, `.vector-hero`, `.products-hero`, or any `.lp-section.dark`) triggers the white logo while it covers the navbar; everywhere else uses black. `script.js` listens to `scroll` and `resize`, probes a fixed y-coordinate (80 px) on every event, and swaps `#navbarLogo`'s `src` between `protonyx_full_white.png` and `protonyx_full_black.png` with a 200 ms opacity fade. Both images are preloaded.
 
 ### Menu overlay (every page)
 
@@ -344,7 +344,7 @@ Every page links a single stylesheet (`style.css`), which is now a thin shim tha
 | `chrome.css` | Floating navbar, navbar profile/signup auth toggles, full-screen menu overlay (incl. logout button + reveal animation), site footer |
 | `pages.css` | Legacy `.hero` (no longer used by `index.html`), products listing hero, the entire Vector product page (hero, sections, lens outputs, access pricing cards, flow stepper, closing CTA), account page; plus the `.access-card .btn-ghost` light-bg override |
 | `auth.css` | `.auth-body` shell + auth card, tabs, form, inputs, submit button, message states, footer/forgot links — used by `auth/`, `verify-email/`, `forgot-password/`, `reset-password/` |
-| `landing.css` | **Loaded only by `index.html` (alongside `style.css`).** Landing-page sections: `.landing-hero` (dark, two-column, glowing radial), `.demo-window` (macOS-frame video container), `.lp-section` primitives (`.base` / `.surface` / `.dark`), `.value-grid`, `.lens-engine` / `.lens-cards`, `.feature-grid-6`, `.pricing-grid`, `.steps-grid`, `.final-cta`, `.fade-in` (toggled by IntersectionObserver in `script.js`). Reuses `:root` tokens and the teal/blue brand gradient — no new design system. |
+| `landing.css` | **Loaded only by `index.html` (alongside `style.css`).** Active selectors today: `.landing-hero` (dark two-column hero with pulsing radial gradient and a max-width of 1840 px scaled for 4K), `.landing-hero-actions` (hero CTA row, sized for the Windows-icon download button), `.demo-window` + `.demo-video` (macOS-frame video container), `.lp-section` primitives (`.base` / `.surface` / `.dark`), `.lp-eyebrow`, `.lp-h2`, `.lp-lead`, the `.pricing-toggle` family (centered Monthly/Annually segmented control with an animated sliding `.pricing-toggle-thumb`), `.pricing-grid` + `.pricing-card`, and `.fade-in` (toggled by `IntersectionObserver` in `script.js`). The file also retains rules for the removed mid-page sections (`.value-grid`, `.lens-engine`, `.lens-cards`, `.feature-grid-6`, `.steps-grid`, `.final-cta`); those selectors don't match anything on the current page but are kept so the sections can be reintroduced cheaply. Reuses `:root` tokens and the teal/blue brand gradient. No new design system. |
 
 CSS custom properties are defined in `:root` at the top of `base.css`. The most-used tokens:
 
@@ -364,7 +364,7 @@ Cascade order matters: `base` → `chrome` → `pages` → `auth`. Don't reorder
 
 Five independent blocks, each guarded by `if (element)` so pages without the relevant element are no-ops:
 
-1. **Navbar logo color swap** — described above. Collects every dark section on the page (`.landing-hero, .vector-hero, .products-hero, .lp-section.dark`) and probes a fixed y-coordinate near the navbar baseline (80 px) on scroll: if any dark section's bounding rect covers that point, the logo fades to white; otherwise to black. This lets the logo flip white again when the user scrolls into the Lens section mid-page on the landing route, not just inside the top hero. Also re-runs (without animation) on `resize`. (The legacy fullscreen `#heroVideo` rotation block was removed when the landing page was rebuilt — the new hero plays a single looping `1vector_demo.mp4` inside `.demo-window` with no JS.)
+1. **Navbar logo color swap** (described above). Collects every dark section on the page (`.landing-hero, .vector-hero, .products-hero, .lp-section.dark`) and probes a fixed y-coordinate near the navbar baseline (80 px) on every `scroll` and `resize` event. If any dark section's bounding rect covers that point, the logo fades to white; otherwise to black, with a 200 ms opacity fade on each transition. The `.lp-section.dark` selector was added when the landing page had a mid-page dark Lens section. That section has since been removed, but the selector is kept so the same logic still applies if any future page (or a re-added landing section) uses `.lp-section.dark`. (The legacy fullscreen `#heroVideo` rotation block was removed when the landing page was rebuilt; the current hero plays a single looping `1vector_demo.mp4` inside `.demo-window` with no JS.)
 2. **Product card video preview** — `.vector-card` hover plays its inner `.preview-video`; mouseleave pauses and rewinds. Only the products listing page (`/products/index.html`) still uses `.vector-card`; the landing page no longer does.
 3. **Menu overlay open/close** — described above.
 4. **Pricing billing-interval toggle** — on the landing page, clicking the Monthly/Annually segmented control inside `.pricing-toggle` rewrites every `.pricing-price[data-annual-amount]` element from its `data-{interval}-amount` + `data-{interval}-period` attributes. Default is annual ($100 / year for Professional; monthly is $10 / month). The Free card has no data attributes so it stays "$0 / forever" regardless of toggle state.
@@ -386,6 +386,29 @@ Globally exposes `getToken()`, `authHeaders()`, `login()`, `signup()`, `loadProf
   - Binds a click handler on `[data-logout]` elements that calls `logout()` (idempotent — uses `dataset.logoutBound` to avoid duplicate listeners).
 - A `storage` event listener re-runs `checkAuth()` when `token` or `username` changes in another tab, so logging out in one tab updates all open tabs.
 - Some pages call `checkAuth()` explicitly in an inline script after loading `auth.js`. Both patterns coexist; do not remove one without checking the other still works.
+
+### Landing page (`index.html`)
+
+The landing page is intentionally minimal: navbar, hero, pricing, footer. Earlier versions had value-props, a Lens-engine spotlight, a features grid, a getting-started steps section, and a final-CTA section, all of which were deleted in a trimming pass. The selectors for those sections still live in `landing.css` so re-adding any of them only requires the HTML.
+
+**Hero (`.landing-hero`)** is a full-height dark section with a pulsing radial gradient and a two-column grid:
+
+- **Left column.** h1 reads `Actionable Insight for Everyone.` with three `.accent`-gradient words (`Actionable`, `Insight`, `Everyone`). Below it sits a single-sentence subtitle leading with the Lens engine. Two CTAs:
+  - `btn-primary` **Download for Windows** with an inline 4-rectangle Windows-logo SVG (the `.btn-icon` rule sizes it to 18 px and adds a 0.65 rem gap), linking to `/download`.
+  - `btn-ghost` **View plans**, an in-page anchor to `#plans`.
+- **Right column.** `.demo-window` is a macOS-style frame (three traffic-light dots + body) wrapping a single looping autoplaying muted video, `assets/video/1vector_demo.mp4`. No JS rotation, no audio.
+
+Hero typography is scaled aggressively for 4K: h1 uses `clamp(2.6rem, 4.8vw, 5.75rem)`, subtitle `clamp(1.05rem, 1.2vw, 1.4rem)`, container max-width 1840 px, and 3.5% horizontal padding instead of the older 6%.
+
+**Pricing (`#plans`, `.lp-section.base`)** has the heading `Start free.` / `Upgrade when you outgrow it.` (split across two lines with `<br>`), followed by a billing-interval toggle and two cards:
+
+- **`.pricing-toggle`** is a centered pill containing two `.pricing-toggle-option` buttons (Monthly / Annually), a sliding `.pricing-toggle-thumb` (gradient, `transform: translateX(...)` driven by `data-interval` on `.pricing-toggle-group`, eased over 0.35 s with `cubic-bezier(0.4, 0, 0.2, 1)`), and a `.pricing-toggle-badge` ("Save 17%") absolutely positioned to the right of the pill (hidden under 640 px). Annual is the default on initial render.
+- **Free card.** `$0 / forever`, ghost CTA "Download Vector" linking to `/download`. Not affected by the toggle.
+- **Professional card.** Carries `data-monthly-amount="$10"`, `data-monthly-period=" / month"`, `data-annual-amount="$100"`, `data-annual-period=" / year"` on its `.pricing-price` element. When the toggle flips, the JS block in `script.js` rewrites the inner HTML from those attributes. Primary CTA "Upgrade to Pro" links to `#` for now (TODO marker in the markup; replace with a real Stripe checkout URL once provisioned).
+
+The in-page menu overlay reflects this trimmed page: under **Navigation** it lists only `Home`, `Plans`, `About`, `Contact`, plus the auth-aware logout button. The old `Lens Engine` and `Features` entries were removed when those sections were deleted.
+
+**When you change this page, also touch this subsection.** Hero copy, button labels, the prices on the Pro card, the data attributes on `.pricing-price`, and which sections render are the load-bearing claims here. Drift in any of them sends future agents looking for elements that don't exist.
 
 ### Account page (`account/index.html`)
 
