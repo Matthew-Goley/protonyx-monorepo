@@ -14,11 +14,22 @@ if (navbarLogo) {
   new Image().src = whiteLogo;
   new Image().src = blackLogo;
 
-  const darkHeroSection = document.querySelector(".landing-hero, .vector-hero, .products-hero");
+  // Any background-dark section on the page. The navbar logo goes white
+  // whenever the navbar is sitting over one of these.
+  const darkSections = Array.from(
+    document.querySelectorAll(".landing-hero, .vector-hero, .products-hero, .lp-section.dark")
+  );
+
+  // Probe just below the floating navbar's baseline; a section "covers" the
+  // navbar when its bounding rect straddles this y-coordinate.
+  const NAVBAR_PROBE_Y = 80;
 
   function shouldLogoBeWhite() {
-    if (!darkHeroSection) return false;
-    return window.scrollY < darkHeroSection.offsetHeight - 80;
+    if (!darkSections.length) return false;
+    return darkSections.some((sec) => {
+      const rect = sec.getBoundingClientRect();
+      return rect.top <= NAVBAR_PROBE_Y && rect.bottom > NAVBAR_PROBE_Y;
+    });
   }
 
   function setLogo(isWhite, animate) {
@@ -40,6 +51,7 @@ if (navbarLogo) {
 
   setLogo(shouldLogoBeWhite(), false);
   window.addEventListener("scroll", () => setLogo(shouldLogoBeWhite(), true));
+  window.addEventListener("resize", () => setLogo(shouldLogoBeWhite(), false));
 }
 
 
@@ -91,6 +103,35 @@ if (menuButton && menuOverlay && menuCloseButton) {
 
   menuOverlay.addEventListener("click", (e) => {
     if (e.target === menuOverlay) closeMenu();
+  });
+}
+
+
+// ─────────────────────────────────────────────
+//  Pricing billing-interval toggle  (landing page)
+//
+//  Switches the Professional plan price between
+//  $10 / month and $100 / year. Default is annual.
+//  Free plan stays "$0 / forever" regardless.
+// ─────────────────────────────────────────────
+const pricingToggle = document.querySelector(".pricing-toggle");
+
+if (pricingToggle) {
+  const group = pricingToggle.querySelector(".pricing-toggle-group");
+  const options = pricingToggle.querySelectorAll(".pricing-toggle-option");
+  const priceEls = document.querySelectorAll(".pricing-price[data-annual-amount]");
+
+  function setBillingInterval(interval) {
+    if (group) group.dataset.interval = interval;
+    priceEls.forEach((el) => {
+      const amount = el.dataset[`${interval}Amount`];
+      const period = el.dataset[`${interval}Period`];
+      el.innerHTML = `${amount}<span>${period}</span>`;
+    });
+  }
+
+  options.forEach((btn) => {
+    btn.addEventListener("click", () => setBillingInterval(btn.dataset.interval));
   });
 }
 

@@ -6,7 +6,7 @@
   <link rel="stylesheet" href="style.css" />
   <link rel="stylesheet" href="landing.css" />
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@600&display=swap" rel="stylesheet">
-  <title>Vector by Protonyx — Portfolio Intelligence for Retail Investors</title>
+  <title>Vector by Protonyx | Portfolio Intelligence for Retail Investors</title>
 </head>
 <body>
 
@@ -42,17 +42,24 @@
     <div class="landing-hero-inner">
       <div class="landing-hero-left">
         <h1>
-          Welcome to your<br>
-          <span class="accent">Portfolio Intelligence.</span>
+          <span class="accent">Actionable</span> <span class="accent">Insight</span><br>
+          for <span class="accent">Everyone.</span>
         </h1>
         <p class="landing-hero-subtitle">
-          Vector turns your positions into clear, prioritized answers — slope, volatility, beta, concentration, and actionable next steps. Built for retail investors who want institutional-grade analysis without the noise.
+          Vector's Lens engine ranks what matters most in your portfolio, then tells you exactly what to do next.
         </p>
         <div class="landing-hero-actions">
-          <a href="/auth/index.html" class="btn-primary">Try Vector free</a>
-          <a href="#lens" class="btn-ghost">View demo</a>
+          <a href="/download" class="btn-primary">
+            <svg class="btn-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <rect x="3" y="3" width="8" height="8"/>
+              <rect x="13" y="3" width="8" height="8"/>
+              <rect x="3" y="13" width="8" height="8"/>
+              <rect x="13" y="13" width="8" height="8"/>
+            </svg>
+            Download for Windows
+          </a>
+          <a href="#plans" class="btn-ghost">View plans</a>
         </div>
-        <p class="landing-hero-note">No credit card required.</p>
       </div>
 
       <div class="landing-hero-right">
@@ -80,133 +87,20 @@
     </div>
   </section>
 
-  <!-- ── Value props ── -->
-  <section class="lp-section base">
-    <div class="lp-section-inner center">
-      <p class="lp-eyebrow">Portfolio Analysis</p>
-      <h2 class="lp-h2">One application. Better decisions.</h2>
-
-      <div class="value-grid fade-in">
-        <div class="value-card">
-          <div class="value-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <circle cx="11" cy="11" r="7"></circle>
-              <line x1="16.5" y1="16.5" x2="21" y2="21"></line>
-            </svg>
-          </div>
-          <h3>Lens-powered insights</h3>
-          <p>The Lens engine ranks the most consequential thing in your portfolio right now — and tells you what to do about it.</p>
-        </div>
-
-        <div class="value-card">
-          <div class="value-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <polyline points="13 2 13 10 20 10"></polyline>
-              <path d="M20 13a8 8 0 1 1-7-7"></path>
-            </svg>
-          </div>
-          <h3>Set up in one minute</h3>
-          <p>Add your tickers and share counts. Vector pulls quotes, history, dividends, and earnings — no brokerage link, no signup gauntlet.</p>
-        </div>
-
-        <div class="value-card">
-          <div class="value-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <rect x="3" y="4" width="18" height="14" rx="2"></rect>
-              <line x1="8" y1="21" x2="16" y2="21"></line>
-              <line x1="12" y1="18" x2="12" y2="21"></line>
-            </svg>
-          </div>
-          <h3>Your data, your machine</h3>
-          <p>Vector is a desktop app. Your positions live in <code>%LOCALAPPDATA%</code>, never on our servers. We can't see what you hold.</p>
-        </div>
-      </div>
-
-      <div class="value-actions">
-        <a href="/auth/index.html" class="btn-primary">Create free account</a>
-        <a href="/download" class="btn-ghost">Download Vector</a>
-      </div>
-    </div>
-  </section>
-
-  <!-- ── Lens engine (dark contrast) ── -->
-  <section class="lp-section dark" id="lens">
-    <div class="lp-section-inner">
-      <div class="lens-engine fade-in">
-        <div class="lens-engine-left">
-          <p class="lp-eyebrow">The Lens Engine</p>
-          <h2 class="lp-h2">Finally see your portfolio's <span class="accent">true direction.</span></h2>
-          <ul class="lens-checklist">
-            <li>Lens Brief — a three-sentence read on portfolio state</li>
-            <li>Projections — historical curve plus a forward GBM run</li>
-            <li>Monte Carlo — 1,000-path simulation with percentile bands</li>
-            <li>Diversification — sector concentration and rebalance targets</li>
-          </ul>
-          <p class="lp-lead">
-            Eight analyzers — slope, volatility, concentration, earnings, dividends, beta, performance, and index-fund detection — feed a prioritized CTA engine. You see the one decision that matters most, not eleven dashboards fighting for attention.
-          </p>
-        </div>
-
-        <div class="lens-engine-right">
-          <div class="lens-screenshot-wrap">
-            <img src="assets/product/vector/lens_preview.png" alt="Vector Lens page preview">
-          </div>
-        </div>
-      </div>
-
-      <div class="lens-cards fade-in">
-        <div class="lens-card">
-          <h3>Lens Brief</h3>
-          <p>Three sentences. Portfolio state, timing catalyst, and the highest-priority action — composed deterministically so it never contradicts itself between refreshes.</p>
-        </div>
-        <div class="lens-card">
-          <h3>Lens Projections</h3>
-          <p>One year of historical equity curve joined to a forward Monte Carlo projection. See the realistic range of outcomes, not a single optimistic line.</p>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- ── Features grid ── -->
-  <section class="lp-section base" id="features">
-    <div class="lp-section-inner">
-      <p class="lp-eyebrow">Inside Vector</p>
-      <h2 class="lp-h2">Built for clarity, not clutter.</h2>
-
-      <div class="feature-grid-6 fade-in">
-        <div class="feature-card-lg">
-          <h3>Dashboard</h3>
-          <p>Eight customizable widgets — equity, vector slope, volatility, diversification pie, beta, Sharpe, positions list, dividend calendar.</p>
-        </div>
-        <div class="feature-card-lg">
-          <h3>Lens Page</h3>
-          <p>Dedicated full-page view with the brief, projections graph, CTA report, caution badge, and rolling Lens history.</p>
-        </div>
-        <div class="feature-card-lg">
-          <h3>Lens Brief</h3>
-          <p>Permanent typewriter readout on the dashboard so the most important sentence is always one glance away.</p>
-        </div>
-        <div class="feature-card-lg">
-          <h3>Dark &amp; Light Mode</h3>
-          <p>Theme-aware throughout. Switch from Settings — every chart, card, and color token re-renders without a restart.</p>
-        </div>
-        <div class="feature-card-lg">
-          <h3>Editable Layout</h3>
-          <p>Drag widgets, resize the grid, hide what you don't use. Your layout is saved per machine, restored on launch.</p>
-        </div>
-        <div class="feature-card-lg">
-          <h3>Adjustable Thresholds</h3>
-          <p>Three risk tiers — conservative, regular, aggressive — change every threshold the Lens engine uses to flag CTAs.</p>
-        </div>
-      </div>
-    </div>
-  </section>
-
   <!-- ── Pricing ── -->
   <section class="lp-section base" id="plans">
     <div class="lp-section-inner center">
       <p class="lp-eyebrow">Plans</p>
-      <h2 class="lp-h2">Start free. Upgrade when you outgrow it.</h2>
+      <h2 class="lp-h2">Start free.<br>Upgrade when you outgrow it.</h2>
+
+      <div class="pricing-toggle">
+        <div class="pricing-toggle-group" data-interval="annual" role="group" aria-label="Billing interval">
+          <span class="pricing-toggle-thumb" aria-hidden="true"></span>
+          <button type="button" class="pricing-toggle-option" data-interval="monthly">Monthly</button>
+          <button type="button" class="pricing-toggle-option" data-interval="annual">Annually</button>
+          <span class="pricing-toggle-badge">Save 17%</span>
+        </div>
+      </div>
 
       <div class="pricing-grid fade-in">
         <div class="pricing-card">
@@ -226,11 +120,11 @@
         <div class="pricing-card featured">
           <span class="pricing-badge">Recommended</span>
           <p class="pricing-tier paid">Professional</p>
-          <div class="pricing-price">$50<span> / year</span></div>
+          <div class="pricing-price" data-monthly-amount="$10" data-monthly-period=" / month" data-annual-amount="$100" data-annual-period=" / year">$100<span> / year</span></div>
           <hr class="pricing-divider">
           <ul class="pricing-features">
             <li>Everything in Free</li>
-            <li>Full Lens engine — Projections, Monte Carlo, CTA report</li>
+            <li>Full Lens engine: Projections, Monte Carlo, CTA report</li>
             <li>Adjustable risk thresholds</li>
             <li>Lens history (rolling 50 snapshots)</li>
             <li>Editable dashboard layout</li>
@@ -243,51 +137,7 @@
     </div>
   </section>
 
-  <!-- ── Steps ── -->
-  <section class="lp-section surface">
-    <div class="lp-section-inner">
-      <p class="lp-eyebrow">Getting started</p>
-      <h2 class="lp-h2">From signup to insight in four steps.</h2>
-
-      <div class="steps-grid fade-in">
-        <div class="step-card">
-          <div class="step-num">01</div>
-          <h3>Create account</h3>
-          <p>Username, email, password. No credit card, no brokerage link.</p>
-        </div>
-        <div class="step-card">
-          <div class="step-num">02</div>
-          <h3>Download Vector</h3>
-          <p>Standalone Windows app. Installs in seconds, no admin required.</p>
-        </div>
-        <div class="step-card">
-          <div class="step-num">03</div>
-          <h3>Add positions</h3>
-          <p>Type tickers and share counts. Vector fetches the rest.</p>
-        </div>
-        <div class="step-card">
-          <div class="step-num">04</div>
-          <h3>Get insights</h3>
-          <p>The Lens engine surfaces the highest-priority action immediately.</p>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- ── Final CTA ── -->
-  <section class="lp-section base">
-    <div class="lp-section-inner center">
-      <div class="final-cta">
-        <h2>Understand your <span class="accent">portfolio.</span></h2>
-        <div class="final-cta-actions">
-          <a href="/auth/index.html" class="btn-primary">Create free account</a>
-          <a href="#lens" class="btn-ghost">View Lens demo</a>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- ── Menu overlay (kept duplicated per page — same pattern as rest of site) ── -->
+  <!-- ── Menu overlay (kept duplicated per page, same pattern as rest of site) ── -->
   <div class="menu-overlay" id="menuOverlay">
     <div class="menu-overlay-inner">
       <div class="menu-overlay-header">
@@ -305,8 +155,6 @@
           <p class="menu-label">Navigation</p>
 
           <a href="/" class="menu-link-reveal">Home</a>
-          <a href="/#lens" class="menu-link-reveal">Lens Engine</a>
-          <a href="/#features" class="menu-link-reveal">Features</a>
           <a href="/#plans" class="menu-link-reveal">Plans</a>
           <a href="/about" class="menu-link-reveal">About</a>
           <a href="/contact" class="menu-link-reveal">Contact</a>

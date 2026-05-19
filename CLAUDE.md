@@ -45,13 +45,13 @@ _monorepo/
 │   └── .env                       # JWT_SECRET, DATABASE_URL, RESEND_API_KEY — gitignored
 │
 ├── frontend/                      # Static site, one index.html per route
-│   ├── index.html                 # Landing page (Vector-first: hero 2-col → value props → Lens section → features → pricing → steps → final CTA)
+│   ├── index.html                 # Landing page (hero 2-col + pricing section only — all other sections stripped)
 │   ├── style.css                  # Entry stylesheet — @imports the four files below in cascade order
 │   ├── base.css                   # Resets, :root tokens, typography, button primitives
 │   ├── chrome.css                 # Navbar, menu overlay, footer, auth-state toggles
 │   ├── pages.css                  # Landing-section legacy + products listing, Vector product page, account page
 │   ├── auth.css                   # Auth/forgot/reset/verify page shells
-│   ├── landing.css                # Landing-only styles (hero, value props, lens section, features grid, pricing, steps, fade-in). Loaded *only* by index.html, alongside style.css.
+│   ├── landing.css                # Landing-only styles (hero + pricing + fade-in). Selectors for the removed value/lens/features/steps/final-cta sections are still in the file but currently unused. Loaded *only* by index.html, alongside style.css.
 │   ├── script.js                  # Navbar logo swap, products-page hover preview, menu overlay, landing fade-in observer
 │   ├── auth/
 │   │   ├── index.html             # Tabbed login/signup form
@@ -362,12 +362,13 @@ Cascade order matters: `base` → `chrome` → `pages` → `auth`. Don't reorder
 
 ### `script.js` (shared across pages)
 
-Four independent blocks, each guarded by `if (element)` so pages without the relevant element are no-ops:
+Five independent blocks, each guarded by `if (element)` so pages without the relevant element are no-ops:
 
-1. **Navbar logo color swap** — described above. Looks for `.landing-hero, .vector-hero, .products-hero` as the dark hero section. (The legacy fullscreen `#heroVideo` rotation block was removed when the landing page was rebuilt — the new hero plays a single looping `1vector_demo.mp4` inside `.demo-window` with no JS.)
+1. **Navbar logo color swap** — described above. Collects every dark section on the page (`.landing-hero, .vector-hero, .products-hero, .lp-section.dark`) and probes a fixed y-coordinate near the navbar baseline (80 px) on scroll: if any dark section's bounding rect covers that point, the logo fades to white; otherwise to black. This lets the logo flip white again when the user scrolls into the Lens section mid-page on the landing route, not just inside the top hero. Also re-runs (without animation) on `resize`. (The legacy fullscreen `#heroVideo` rotation block was removed when the landing page was rebuilt — the new hero plays a single looping `1vector_demo.mp4` inside `.demo-window` with no JS.)
 2. **Product card video preview** — `.vector-card` hover plays its inner `.preview-video`; mouseleave pauses and rewinds. Only the products listing page (`/products/index.html`) still uses `.vector-card`; the landing page no longer does.
 3. **Menu overlay open/close** — described above.
-4. **Landing fade-in observer** — every `.fade-in` element on the landing page gets a `.visible` class when it intersects the viewport (`threshold: 0.15`, `rootMargin: 0 0 -40px 0`). One-shot — observer unobserves each element after firing.
+4. **Pricing billing-interval toggle** — on the landing page, clicking the Monthly/Annually segmented control inside `.pricing-toggle` rewrites every `.pricing-price[data-annual-amount]` element from its `data-{interval}-amount` + `data-{interval}-period` attributes. Default is annual ($100 / year for Professional; monthly is $10 / month). The Free card has no data attributes so it stays "$0 / forever" regardless of toggle state.
+5. **Landing fade-in observer** — every `.fade-in` element on the landing page gets a `.visible` class when it intersects the viewport (`threshold: 0.15`, `rootMargin: 0 0 -40px 0`). One-shot — observer unobserves each element after firing.
 
 ### `auth/auth.js` (shared auth + session state)
 
@@ -544,6 +545,7 @@ Anything more specific than the map above — exact widget struct, accordion mea
 
 - **No tests anywhere.** Do not introduce a test framework or CI config unless the user explicitly asks. Verify changes manually against the running dev server / app.
 - **No lint or format config.** Match the style of the file you are editing. Backend TS uses 4-space indentation and double quotes; frontend HTML/JS uses 2-space indentation and double quotes; Python in `app/` follows roughly PEP 8 with project-specific patterns documented in `app/CLAUDE.md`.
+- **No em dashes (`—`, U+2014) anywhere.** This applies to user-facing copy (HTML, marketing text, button labels, page titles), code comments, commit messages, and PR descriptions. Use a comma, period, colon, parentheses, or a regular hyphen (`-`) instead, whichever best fits the sentence. En dashes (`–`) are also discouraged outside of numeric ranges. The frontend has been swept clean of em dashes; do not reintroduce them. If you find one lingering anywhere in the repo, remove it as part of whatever change touches that file.
 - **Windows-first dev environment.** Primary machine is Windows 11 with bash (Git Bash / MSYS). Paths in shells use forward slashes; `.env` files should be LF-terminated.
 - **`scripts/` and `database/` are intentionally empty.** `database/` is a leftover from the SQLite era and is gitignored. Do not put runtime files in either unless the user is starting that workstream.
 
@@ -582,3 +584,4 @@ Anything more specific than the map above — exact widget struct, accordion mea
 - Don't reach into `StorageManager` or `MarketDataService` from Vector code — `DataStore` is the authoritative layer.
 - Don't introduce a new package manager, monorepo orchestrator, Docker setup, or CI config without an explicit ask.
 - Don't ship a code change and leave `CLAUDE.md` describing the old behavior. Stale docs are worse than no docs.
+- Don't use em dashes (`—`) anywhere: not in copy, not in code comments, not in commit messages. See the Cross-cutting section for the rationale and acceptable substitutes.

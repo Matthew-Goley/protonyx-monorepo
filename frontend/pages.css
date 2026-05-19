@@ -1,5 +1,5 @@
 /* ──────────────────────────────────────────────
-   pages.css — page-specific layouts: landing
+   pages.css: page-specific layouts. Landing
    hero, intro, product cards, products listing,
    the Vector product page, and the account page.
    Anything that's not site chrome (chrome.css)
@@ -684,7 +684,7 @@
   background: var(--bg-base);
 }
 
-/* Access section — pricing cards */
+/* Access section: pricing cards */
 .access-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
