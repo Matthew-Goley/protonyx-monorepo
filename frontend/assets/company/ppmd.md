@@ -121,6 +121,8 @@ The Services are intended for users 18 years of age and older. We do not knowing
 
 We may update this Privacy Policy from time to time. When we do, we will update the Effective Date at the top of this page. Material changes will be communicated via email to registered users or through a notice on the website. Continued use of the Services after changes constitutes acceptance of the revised policy.
 
+
+
 ## 11. Contact
 
 For privacy-related questions, requests, or concerns, contact Protonyx LLC at:

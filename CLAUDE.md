@@ -49,10 +49,10 @@ _monorepo/
 │   ├── style.css                  # Entry stylesheet — @imports the four files below in cascade order
 │   ├── base.css                   # Resets, :root tokens, typography, button primitives
 │   ├── chrome.css                 # Navbar, menu overlay, footer, auth-state toggles
-│   ├── pages.css                  # Landing-section legacy + products listing, Vector product page, account page
+│   ├── pages.css                  # Landing-section legacy + account page (+ dormant products listing & Vector product page CSS)
 │   ├── auth.css                   # Auth/forgot/reset/verify page shells
 │   ├── landing.css                # Landing-only styles (hero + discovery + trust strip + pricing + fade-in). Selectors for the removed value/lens/features/steps/final-cta sections are still in the file but currently unused. Loaded *only* by index.html, alongside style.css.
-│   ├── script.js                  # Navbar logo swap, products-page hover preview, menu overlay, pricing billing-interval toggle, landing fade-in observer
+│   ├── script.js                  # Navbar logo swap, menu overlay, pricing billing-interval toggle, landing fade-in observer
 │   ├── auth/
 │   │   ├── index.html             # Tabbed login/signup form
 │   │   └── auth.js                # All auth + session logic + GET /me helper
@@ -66,10 +66,7 @@ _monorepo/
 │   │   └── index.html             # Standalone "request reset link" form
 │   ├── reset-password/
 │   │   └── index.html             # Standalone "set a new password" form (token in query string)
-│   ├── about/ careers/ contact/ privacy/ tos/   # Static pages
-│   ├── products/
-│   │   ├── index.html
-│   │   └── vector/index.html
+│   ├── about/ contact/ privacy/ tos/   # Static pages
 │   ├── assets/
 │   │   ├── company/               # protonyx_full_white.png, _black.png
 │   │   ├── product/vector/        # Vector product artwork (logo, dashboard, lens preview)
@@ -315,7 +312,7 @@ Plain static HTML + CSS + vanilla JS. **No framework, no bundler, no build step.
 Each route is a folder with an `index.html`. To add a page:
 
 1. Create `frontend/<slug>/index.html`.
-2. Link `../style.css`, `../script.js`, and `../auth/auth.js` with the right relative depth (e.g. `products/vector/` uses `../../`).
+2. Link `../style.css`, `../script.js`, and `../auth/auth.js` with the right relative depth (every current page is one level under `frontend/`, so `../`; a more deeply nested page would need `../../`).
 3. Add the site-wide favicon link `<link rel="icon" type="image/png" href="../assets/product/vector/vector_small.png">` in the `<head>` (every page carries this, with the right relative depth). The landing page also sets `<title>Vector</title>`; subpages use `<title>{Page} | Protonyx</title>`.
 4. Copy the `<nav class="navbar">` block and the `.menu-overlay` block from an existing page — they are **duplicated per-page**, not componentized. Updating them means editing every page that uses them.
 5. Use root-absolute links (`href="/about"`, `href="/auth/index.html"`) — Live Server must be rooted at `frontend/`.
@@ -325,15 +322,15 @@ Each route is a folder with an `index.html`. To add a page:
 
 The nav has three states managed via CSS classes that `auth.js` toggles:
 
-- `.navbar-signup-link.guest-only` — "Create Account" link, shown only when logged out.
+- `.navbar-signup-link.guest-only` — "Create Account" link (points to `/auth/index.html?mode=signup` so the auth page opens on the Create account tab), shown only when logged out.
 - `.navbar-profile-icon.auth-only` — circular profile SVG linking to `/account/index.html`, shown only when logged in.
 - `.navbar-menu-button` — hamburger, always visible, opens the full-screen menu overlay.
 
-The navbar logo follows the section that currently sits beneath it. Any dark section on the page (`.landing-hero`, `.vector-hero`, `.products-hero`, or any `.lp-section.dark`) triggers the white logo while it covers the navbar; everywhere else uses black. `script.js` listens to `scroll` and `resize`, probes a fixed y-coordinate (80 px) on every event, and swaps `#navbarLogo`'s `src` between `protonyx_full_white.png` and `protonyx_full_black.png` with a 200 ms opacity fade. Both images are preloaded.
+The navbar logo follows the section that currently sits beneath it. Any dark section on the page (`.landing-hero`, `.products-hero`, or any `.lp-section.dark`) triggers the white logo while it covers the navbar; everywhere else uses black. `script.js` listens to `scroll` and `resize`, probes a fixed y-coordinate (80 px) on every event, and swaps `#navbarLogo`'s `src` between `protonyx_full_white.png` and `protonyx_full_black.png` with a 200 ms opacity fade. Both images are preloaded.
 
 ### Menu overlay (every page)
 
-`#menuOverlay` is a full-viewport panel with two columns: **Navigation** and **Account**. Account links use the same `.guest-only` / `.auth-only` toggle pattern. The hamburger button opens it (locks `body` overflow, fades the navbar to opacity 0); a close button or backdrop click dismisses it. Same caveat as the navbar — the markup is duplicated per page.
+`#menuOverlay` is a full-viewport panel with two columns: **Navigation** and **Account**. Account links use the same `.guest-only` / `.auth-only` toggle pattern. The hamburger button opens it (locks `body` overflow, fades the navbar to opacity 0); a close button or backdrop click dismisses it. Same caveat as the navbar — the markup is duplicated per page. In the Account column, the "Create Account" link points to `/auth/index.html?mode=signup` (opens the signup tab) while the "Login" link points to plain `/auth/index.html` (default Sign in tab). The shared `.menu-link-reveal` rule carries a small `padding-bottom` so the reveal `clip-path` (combined with the tight `line-height: 1.05`) does not crop lowercase descenders, e.g. the "g" in "Login"; do not remove it.
 
 ### CSS system
 
@@ -343,7 +340,7 @@ Every page links a single stylesheet (`style.css`), which is now a thin shim tha
 |---|---|
 | `base.css` | `*` reset, `:root` tokens, `html`/`body`, `h1`–`h3`/`p`, button primitives (`.btn-primary`, `.btn-ghost`, `.btn-grad`, `.btn-outline-gray`), the `h1` mobile size override |
 | `chrome.css` | Floating navbar, navbar profile/signup auth toggles, full-screen menu overlay (incl. logout button + reveal animation), site footer |
-| `pages.css` | Legacy `.hero` (no longer used by `index.html`), products listing hero, the entire Vector product page (hero, sections, lens outputs, access pricing cards, flow stepper, closing CTA), account page; plus the `.access-card .btn-ghost` light-bg override |
+| `pages.css` | Legacy `.hero` (no longer used by `index.html`) and the account page, plus the `.access-card .btn-ghost` light-bg override. Also retains the products-listing-hero and full Vector-product-page rules (hero, sections, lens outputs, access pricing cards, flow stepper, closing CTA) even though those pages were removed; kept dormant for possible reintroduction. |
 | `auth.css` | `.auth-body` shell + auth card, tabs, form, inputs, submit button, message states, footer/forgot links — used by `auth/`, `verify-email/`, `forgot-password/`, `reset-password/` |
 | `landing.css` | **Loaded only by `index.html` (alongside `style.css`).** Active selectors today: `.landing-hero` (dark two-column hero with pulsing radial gradient and a max-width of 1840 px scaled for 4K), `.landing-hero-actions` (hero CTA row, sized for the Windows-icon download button), `.demo-window` + `.demo-video` (macOS-frame video container, reused by both the hero and the discovery cards), `.lp-section` primitives (`.base` / `.surface` / `.dark`), `.lp-eyebrow`, `.lp-h2`, `.lp-lead`, the `.discovery-grid` family (`.discovery-card`, `.discovery-text`, `.discovery-step`, `.discovery-num`, `.discovery-title`, `.discovery-caption`: vertically-stacked numbered video walkthrough on a dark `.lp-section`, video on the left of each row, gradient step number + title + caption on the right), the `.trust-strip` family (`.trust-row`, `.trust-item`, `.trust-icon`, `.trust-label`, `.trust-sub`: narrow light divider between discovery and pricing with reduced vertical padding), the `.pricing-toggle` family (centered Monthly/Annually segmented control with an animated sliding `.pricing-toggle-thumb`), `.pricing-grid` + `.pricing-card`, and `.fade-in` (toggled by `IntersectionObserver` in `script.js`). The file also retains rules for the removed mid-page sections (`.value-grid`, `.lens-engine`, `.lens-cards`, `.feature-grid-6`, `.steps-grid`, `.final-cta`); those selectors don't match anything on the current page but are kept so the sections can be reintroduced cheaply. Reuses `:root` tokens and the teal/blue brand gradient. No new design system. |
 
@@ -363,13 +360,12 @@ Cascade order matters: `base` → `chrome` → `pages` → `auth`. Don't reorder
 
 ### `script.js` (shared across pages)
 
-Five independent blocks, each guarded by `if (element)` so pages without the relevant element are no-ops:
+Four independent blocks, each guarded by `if (element)` so pages without the relevant element are no-ops:
 
-1. **Navbar logo color swap** (described above). Collects every dark section on the page (`.landing-hero, .vector-hero, .products-hero, .lp-section.dark`) and probes a fixed y-coordinate near the navbar baseline (80 px) on every `scroll` and `resize` event. If any dark section's bounding rect covers that point, the logo fades to white; otherwise to black, with a 200 ms opacity fade on each transition. The `.lp-section.dark` selector is currently in use by the discovery section on the landing page (which sits directly under the hero), so the logo stays white through both. (The legacy fullscreen `#heroVideo` rotation block was removed when the landing page was rebuilt; the current hero plays a single looping `1vector_demo.mp4` inside `.demo-window` with no JS.)
-2. **Product card video preview** — `.vector-card` hover plays its inner `.preview-video`; mouseleave pauses and rewinds. Only the products listing page (`/products/index.html`) still uses `.vector-card`; the landing page no longer does.
-3. **Menu overlay open/close** — described above.
-4. **Pricing billing-interval toggle** — on the landing page, clicking the Monthly/Annually segmented control inside `.pricing-toggle` rewrites every `.pricing-price[data-annual-amount]` element from its `data-{interval}-amount` + `data-{interval}-period` attributes. Default is annual ($100 / year for Professional; monthly is $10 / month). The Free card has no data attributes so it stays "$0 / forever" regardless of toggle state.
-5. **Landing fade-in observer** — every `.fade-in` element on the landing page gets a `.visible` class when it intersects the viewport (`threshold: 0.15`, `rootMargin: 0 0 -40px 0`). One-shot — observer unobserves each element after firing.
+1. **Navbar logo color swap** (described above). Collects every dark section on the page (`.landing-hero, .products-hero, .lp-section.dark`) and probes a fixed y-coordinate near the navbar baseline (80 px) on every `scroll` and `resize` event. If any dark section's bounding rect covers that point, the logo fades to white; otherwise to black, with a 200 ms opacity fade on each transition. The `.lp-section.dark` selector is currently in use by the discovery section on the landing page (which sits directly under the hero), so the logo stays white through both. (The legacy fullscreen `#heroVideo` rotation block was removed when the landing page was rebuilt; the current hero plays a single looping `1vector_demo.mp4` inside `.demo-window` with no JS.)
+2. **Menu overlay open/close** — described above.
+3. **Pricing billing-interval toggle** — on the landing page, clicking the Monthly/Annually segmented control inside `.pricing-toggle` rewrites every `.pricing-price[data-annual-amount]` element from its `data-{interval}-amount` + `data-{interval}-period` attributes. Default is annual ($100 / year for Professional; monthly is $10 / month). The Free card has no data attributes so it stays "$0 / forever" regardless of toggle state.
+4. **Landing fade-in observer** — every `.fade-in` element on the landing page gets a `.visible` class when it intersects the viewport (`threshold: 0.15`, `rootMargin: 0 0 -40px 0`). One-shot — observer unobserves each element after firing.
 
 ### `auth/auth.js` (shared auth + session state)
 
@@ -379,6 +375,7 @@ Globally exposes `getToken()`, `authHeaders()`, `login()`, `signup()`, `loadProf
 - JWT is stored in `localStorage.token`; **httpOnly cookies are not used.**
 - The login form accepts a username **or** an email — the field is labeled "Username or Email" and the value is sent as `{ username, password }`. The backend resolves both.
 - Signup form fields: `username`, `email`, `password`. The form posts to `/signup` and on success switches to the login tab via `switchToLoginTab()` (defined inline in `auth/index.html`).
+- The page defaults to the **Sign in** tab, but when loaded with `?mode=signup` in the query string the inline script calls `switchToSignupTab()` on load and it opens on the **Create account** tab instead. The "Create Account" links in the navbar and menu overlay (every page) use this; the "Login" links omit the param and land on Sign in.
 - `loadProfile()` calls `GET /me` with `authHeaders()` and mirrors fields into `localStorage`: `username`, `email`, `plan`, `member_since`, `beta_access` (`"true"`/`"false"`), `download_count` (string-coerced). It is called from `login()` after the token is stored, and from any page that wants fresh profile data (e.g. the account page).
 - `logout()` clears every profile-related localStorage key (`token`, `username`, `email`, `plan`, `member_since`, `beta_access`, `download_count`) and redirects to `/auth/index.html`.
 - `checkAuth()` runs on every page load (via `DOMContentLoaded`, or directly if the script loads after parse) and:
