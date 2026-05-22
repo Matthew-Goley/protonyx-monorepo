@@ -6,7 +6,10 @@
       "Bash(curl *)",
       "Bash(node -e ' *)",
       "Bash(ffprobe *)",
-      "Bash(python3 -c ' *)"
+      "Bash(python3 -c ' *)",
+      "Bash(dir \"C:\\\\Users\\\\Matthew\\\\Documents\\\\_Dev_ALL\\\\_monorepo\" /s /b *.md)",
+      "Bash(findstr /v node_modules)",
+      "Bash(findstr /v \"app\\\\\\\\.venv\")"
     ]
   }
 }

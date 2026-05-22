@@ -1,7 +1,7 @@
 # Protonyx LLC — Privacy Policy
 
-**Effective Date:** May 20, 2026
-**Version:** 2.0
+**Effective Date:** May 25, 2026
+**Version:** 3.0
 
 ---
 
@@ -11,13 +11,15 @@ Protonyx LLC ("Protonyx," "we," "us," or "our") operates the website protonyxdat
 
 We built Vector with a local-first architecture by design — your portfolio data never leaves your device. This policy reflects that commitment.
 
-This Privacy Policy applies to users in the United States and internationally, including residents of the European Economic Area ("EEA"), the United Kingdom, and California. Jurisdiction-specific rights are addressed in Sections 11 and 12.
+This Privacy Policy applies to users in the United States. The Services are not directed to, and are not available to, residents of the European Economic Area or the United Kingdom. Jurisdiction-specific rights for California residents are addressed in Section 11.
 
 ---
 
 ## 1. Who This Policy Applies To
 
-This policy applies to all users of protonyxdata.com and the Vector desktop application. **You must be at least 18 years old to create a Protonyx account or use the Services.** We do not knowingly collect personal information from anyone under 18. If we learn that we have collected personal information from a person under 18, we will delete it from our systems within 30 days. If you believe a minor has created an account, contact us immediately at legal@protonyxdata.com.
+This policy applies to all users of protonyxdata.com and the Vector desktop application. **You must be at least 18 years old to create a Protonyx account or use the Services.** The Services are intended solely for users located in the United States. Users located in the European Economic Area or the United Kingdom are not permitted to use the Services and should not submit any personal information to Protonyx.
+
+We do not knowingly collect personal information from anyone under 18 or from residents of the EEA or UK. If we learn that we have collected personal information from either group, we will delete it from our systems within 30 days. If you believe a minor has created an account, contact us immediately at legal@protonyxdata.com.
 
 ---
 
@@ -47,7 +49,7 @@ We do not collect your legal name, phone number, physical address, payment card 
 
 **Authentication token:** When you log in, a JSON Web Token (JWT) is stored in your browser's localStorage. This token identifies your session and contains only your user ID and username — it is not a tracking mechanism and is not shared with any third party. Tokens expire automatically after 7 days.
 
-**Server logs:** Our hosting infrastructure may generate standard server access logs (IP address, timestamp, HTTP method, request path, response code). These logs are used solely for security monitoring and infrastructure debugging. We do not use server logs for marketing, advertising, or user profiling, and we retain server logs for no longer than **90 days**, after which they are automatically deleted.
+**Server logs:** Our hosting infrastructure may generate standard server access logs (IP address, timestamp, HTTP method, request path, response code). These logs are used solely for security monitoring and infrastructure debugging. We do not use server logs for marketing, advertising, or user profiling. We retain server logs for no longer than **90 days**, after which they are automatically deleted.
 
 ### 2c. Information the Desktop Application Does NOT Transmit
 
@@ -65,17 +67,17 @@ The application does make outbound requests to third-party market data providers
 
 ## 3. How We Use Your Information
 
-We process your personal information only for the following specific purposes:
+We process your personal information only for the following specific, defined purposes:
 
-| Purpose | Legal Basis (GDPR) |
+| Purpose | Description |
 |---|---|
-| Account creation and authentication | Performance of a contract |
-| Email verification | Performance of a contract |
-| Password reset | Performance of a contract |
-| Transactional email (welcome, verification, reset) | Performance of a contract |
-| Download tracking (visible to you on your account page) | Performance of a contract |
-| Security monitoring and fraud prevention | Legitimate interests |
-| Service improvement using aggregate, non-identifiable operational data | Legitimate interests |
+| Account creation and authentication | To create and maintain your account and verify your identity on login |
+| Email verification | To confirm your email address is valid via a one-time verification link |
+| Password reset | To send a secure reset link when you request one |
+| Transactional email | To send account-related communications via our email provider, Resend |
+| Download tracking | To record how many times you have downloaded Vector, visible to you on your account page |
+| Security monitoring and fraud prevention | To detect and respond to unauthorized access, abuse, or security threats |
+| Service improvement | Aggregate, non-identifiable operational data may be used to improve the Services |
 
 We do not use your personal information for advertising, behavioral profiling, or sale to any third party under any circumstances.
 
@@ -109,7 +111,7 @@ We implement and maintain the following technical and organizational security me
 - Access controls limiting database access to authorized personnel only
 - Regular review of access logs for anomalous activity
 
-No method of electronic transmission or storage is 100% secure. We cannot guarantee absolute security. **In the event of a data breach that affects your personal information, we will notify affected users within 72 hours of discovery where required by applicable law**, and no later than 30 days in all other cases. Notification will be provided via email and, where appropriate, via a notice on protonyxdata.com.
+No method of electronic transmission or storage is 100% secure. We cannot guarantee absolute security. **In the event of a data breach affecting your personal information, we will notify affected users no later than 30 days after discovery**, or within the timeframe required by applicable state law if shorter. Notification will be provided via email and, where appropriate, via a notice on protonyxdata.com.
 
 If you believe your account has been compromised, contact us immediately at legal@protonyxdata.com.
 
@@ -121,7 +123,7 @@ We retain your account data for as long as your account is active. If you reques
 
 | Data Type | Retention Period |
 |---|---|
-| Account information (username, email, hashed password) | Duration of account + 30 days post-deletion |
+| Account information (username, email, hashed password) | Duration of account + 30 days post-deletion request |
 | Server access logs | 90 days |
 | Email verification tokens | Single-use; deleted immediately upon use or expiration (24-hour expiry) |
 | Password reset tokens | Single-use; deleted immediately upon use or expiration (1-hour expiry) |
@@ -131,14 +133,14 @@ We retain your account data for as long as your account is active. If you reques
 
 ## 7. Your Rights
 
-Depending on your location, you have the following rights regarding your personal information. To exercise any right, email us at legal@protonyxdata.com. We will respond within **30 days** (or within the timeframe required by applicable law).
+You have the following rights regarding your personal information. To exercise any right, email us at legal@protonyxdata.com. We will respond within **30 days**, or within the timeframe required by applicable law for your jurisdiction.
 
 - **Access** — request a copy of the personal data we hold about you
 - **Correction** — request correction of inaccurate or incomplete data
 - **Deletion** — request deletion of your account and all associated personal data
 - **Portability** — request your personal data in a portable, machine-readable format
 - **Restriction** — request that we restrict processing of your data in certain circumstances
-- **Objection** — object to processing based on legitimate interests
+- **Objection** — object to processing of your data for specific purposes
 
 We will not discriminate against you for exercising any of your privacy rights.
 
@@ -162,41 +164,31 @@ The Services are intended exclusively for users 18 years of age and older. We do
 
 We may update this Privacy Policy from time to time to reflect changes in our practices, the Services, or applicable law. When we update this policy, we will revise the Effective Date at the top of this document.
 
-**Material changes** — meaning changes that meaningfully affect how we collect, use, or share your personal information — will be communicated to you via email to the address associated with your account no less than **14 days** before the changes take effect. Continued use of the Services after the effective date of any material change constitutes your acceptance of the revised policy.
+**Material changes** — meaning changes that meaningfully affect how we collect, use, or share your personal information — will be communicated to you via email to the address associated with your account **and** through a prominent notice on protonyxdata.com, no less than **14 days** before the changes take effect. Continued use of the Services after the effective date of any material change constitutes your acceptance of the revised policy.
 
 ---
 
-## 11. Additional Rights for EEA and United Kingdom Residents (GDPR / UK GDPR)
-
-If you are located in the European Economic Area or the United Kingdom, the following additional provisions apply.
-
-**Data Controller.** Protonyx LLC is the data controller for personal data collected through the Services. Contact: legal@protonyxdata.com.
-
-**Legal Bases for Processing.** We process personal data only where we have a valid legal basis to do so, as described in Section 3.
-
-**International Transfers.** Your personal data is processed and stored in the United States. If you are located in the EEA or UK, your data is transferred to the U.S. under appropriate safeguards, including Standard Contractual Clauses where required.
-
-**Right to Lodge a Complaint.** If you believe our processing of your personal data violates applicable law, you have the right to lodge a complaint with your local data protection authority. For EEA residents, a list of national supervisory authorities is available at edpb.europa.eu. For UK residents, the relevant authority is the Information Commissioner's Office (ico.org.uk).
-
-**Data Retention for EEA/UK Users.** We retain personal data only for as long as necessary to fulfill the purposes described in this policy or as required by applicable law.
-
----
-
-## 12. Additional Rights for California Residents (CCPA/CPRA)
+## 11. Additional Rights for California Residents (CCPA/CPRA)
 
 If you are a California resident, the following additional provisions apply under the California Consumer Privacy Act ("CCPA") and the California Privacy Rights Act ("CPRA").
 
 **Categories of Personal Information Collected.** In the past 12 months, we have collected the following categories of personal information: identifiers (username, email address, IP address); internet or other electronic network activity information (server logs, login timestamps); and inferences drawn from account activity (download count, plan type).
 
-**We Do Not Sell or Share Personal Information.** We do not sell your personal information to any third party. We do not share your personal information for cross-context behavioral advertising purposes. You therefore have no need to opt out of sale or sharing, but you retain the right to submit such a request and we will confirm our non-sale status.
+**We Do Not Sell or Share Personal Information.** We do not sell your personal information to any third party. We do not share your personal information for cross-context behavioral advertising purposes. You therefore have no need to opt out of sale or sharing, but you retain the right to submit such a request and we will confirm our non-sale status in writing.
 
 **Your California Rights.** You have the right to: know what personal information we collect, use, disclose, or sell; request deletion of your personal information; correct inaccurate personal information; and opt out of sale or sharing (not applicable — we do not sell or share).
 
-**Non-Discrimination.** We will not discriminate against you for exercising any of your California privacy rights.
+**Non-Discrimination.** We will not discriminate against you in any way for exercising your California privacy rights.
 
-**Authorized Agents.** You may designate an authorized agent to make requests on your behalf. We may require verification of the agent's authorization before processing such requests.
+**Authorized Agents.** You may designate an authorized agent to make requests on your behalf. We may require verification of the agent's identity and authorization before processing such requests.
 
-To exercise your California rights, email legal@protonyxdata.com. We will respond within 45 days, with a possible extension of an additional 45 days where reasonably necessary.
+To exercise your California rights, email legal@protonyxdata.com. We will respond within **45 days**, with a possible extension of an additional 45 days where reasonably necessary, and will notify you of any extension within the initial 45-day period.
+
+---
+
+## 12. Geographic Restriction — EEA and UK Users
+
+The Services are not directed to, and are not intended for use by, residents of the European Economic Area or the United Kingdom. If you are located in the EEA or UK, you must not use the Services or submit any personal information to Protonyx. We do not knowingly collect personal information from EEA or UK residents. If we become aware that we have done so, we will delete that information from our systems within 30 days.
 
 ---
 
@@ -211,6 +203,6 @@ We will respond within 30 days, or within the timeframe required by applicable l
 
 ---
 
-*Protonyx LLC | Version 2.0 | May 20, 2026*
+*Protonyx LLC | Version 3.0 | May 25, 2026*
 
 *DRAFT — Consult qualified legal counsel before finalizing and distributing.*
