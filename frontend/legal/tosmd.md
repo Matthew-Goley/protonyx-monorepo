@@ -219,5 +219,3 @@ We will respond within 30 days.
 ---
 
 *Protonyx LLC | Version 3.0 | May 25, 2026*
-
-*DRAFT — Consult qualified legal counsel before finalizing and distributing.*

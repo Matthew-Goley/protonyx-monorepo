@@ -5,6 +5,7 @@
 //  user scrolls out of a dark hero section.
 // ─────────────────────────────────────────────
 const navbarLogo = document.getElementById("navbarLogo");
+const navbarEl = document.querySelector(".navbar");
 const whiteLogo = "/assets/company/protonyx_full_white.png";
 const blackLogo = "/assets/company/protonyx_full_black.png";
 
@@ -14,8 +15,8 @@ if (navbarLogo) {
   new Image().src = whiteLogo;
   new Image().src = blackLogo;
 
-  // Any background-dark section on the page. The navbar logo goes white
-  // whenever the navbar is sitting over one of these.
+  // Any background-dark section on the page. The navbar goes white
+  // whenever it is sitting over one of these.
   const darkSections = Array.from(
     document.querySelectorAll(".landing-hero, .products-hero, .lp-section.dark")
   );
@@ -35,6 +36,8 @@ if (navbarLogo) {
   function setLogo(isWhite, animate) {
     const target = isWhite ? "white" : "black";
     if (target === currentLogo) return;
+
+    if (navbarEl) navbarEl.classList.toggle("navbar--light", !isWhite);
 
     if (animate) {
       navbarLogo.style.opacity = 0;
