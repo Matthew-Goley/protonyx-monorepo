@@ -318,9 +318,10 @@ Each route is a folder with an `index.html`. To add a page:
 
 ### Navigation bar (every page)
 
-The nav has three states managed via CSS classes that `auth.js` toggles:
+The nav has these states managed via CSS classes that `auth.js` toggles:
 
 - `.navbar-signup-link.guest-only` — "Create Account" link (points to `/auth/index.html?mode=signup` so the auth page opens on the Create account tab), shown only when logged out.
+- `.navbar-plan-badge.pro-only` — a plain-text "Professional" badge sitting immediately to the left of the profile icon, shown only when the signed-in user's cached `plan` is `"pro"` (see the `.pro-only` toggle in `checkAuth()`). It is not a link. Its text color follows the same white/black swap as the rest of the navbar (white by default, dark under `.navbar--light`).
 - `.navbar-profile-icon.auth-only` — circular profile SVG linking to `/account/index.html`, shown only when logged in.
 - `.navbar-menu-button` — hamburger, always visible, opens the full-screen menu overlay.
 
@@ -337,7 +338,7 @@ Every page links a single stylesheet (`style.css`), which is now a thin shim tha
 | File | Contains |
 |---|---|
 | `base.css` | `*` reset, `:root` tokens, `html`/`body`, `h1`–`h3`/`p`, button primitives (`.btn-primary`, `.btn-ghost`, `.btn-grad`, `.btn-outline-gray`), the `h1` mobile size override |
-| `chrome.css` | Floating navbar, navbar profile/signup auth toggles, full-screen menu overlay (incl. logout button + reveal animation), site footer |
+| `chrome.css` | Floating navbar, navbar profile/signup auth toggles, the `.navbar-plan-badge` Pro badge (white/black text swap under `.navbar--light`), full-screen menu overlay (incl. logout button + reveal animation), site footer |
 | `pages.css` | Legacy `.hero` (no longer used by `index.html`) and the account page, plus the `.access-card .btn-ghost` light-bg override. Also retains the products-listing-hero and full Vector-product-page rules (hero, sections, lens outputs, access pricing cards, flow stepper, closing CTA) even though those pages were removed; kept dormant for possible reintroduction. |
 | `auth.css` | `.auth-body` shell + auth card, tabs, form, inputs, submit button, message states, footer/forgot links — used by `auth/`, `verify-email/`, `forgot-password/`, `reset-password/` |
 | `landing.css` | **Loaded only by `index.html` (alongside `style.css`).** Active selectors today: `.landing-hero` (dark two-column hero with pulsing radial gradient and a max-width of 1840 px scaled for 4K), `.landing-hero-actions` (hero CTA row, sized for the Windows-icon download button), `.demo-window` + `.demo-video` (macOS-frame video container, reused by both the hero and the discovery cards), `.lp-section` primitives (`.base` / `.surface` / `.dark`), `.lp-eyebrow`, `.lp-h2`, `.lp-lead`, the `.discovery-grid` family (`.discovery-card`, `.discovery-text`, `.discovery-step`, `.discovery-num`, `.discovery-title`, `.discovery-caption`: vertically-stacked numbered video walkthrough on a dark `.lp-section`, video on the left of each row, gradient step number + title + caption on the right), the `.trust-strip` family (`.trust-row`, `.trust-item`, `.trust-icon`, `.trust-label`, `.trust-sub`: narrow light divider between discovery and pricing with reduced vertical padding), the `.pricing-toggle` family (centered Monthly/Annually segmented control with an animated sliding `.pricing-toggle-thumb`), `.pricing-grid` + `.pricing-card`, and `.fade-in` (toggled by `IntersectionObserver` in `script.js`). The file also retains rules for the removed mid-page sections (`.value-grid`, `.lens-engine`, `.lens-cards`, `.feature-grid-6`, `.steps-grid`, `.final-cta`); those selectors don't match anything on the current page but are kept so the sections can be reintroduced cheaply. Reuses `:root` tokens and the teal/blue brand gradient. No new design system. |
@@ -379,9 +380,10 @@ Globally exposes `getToken()`, `authHeaders()`, `login()`, `signup()`, `loadProf
 - `logout()` clears every profile-related localStorage key (`token`, `username`, `email`, `plan`, `member_since`, `beta_access`, `download_count`) and redirects to `/auth/index.html`.
 - `checkAuth()` runs on every page load (via `DOMContentLoaded`, or directly if the script loads after parse) and:
   - Toggles `.visible` on `.auth-only` and `.guest-only` elements.
+  - Toggles `.visible` on `.pro-only` elements when the user is logged in **and** the cached `plan` (lowercased) is `"pro"` — drives the navbar "Professional" badge. Plan comes from localStorage (mirrored by `loadProfile()`), so on pages that don't refetch `/me` it reflects the plan as of the last profile load.
   - Replaces text content of `[data-username]` elements with the stored username (falling back to `"User"`).
   - Binds a click handler on `[data-logout]` elements that calls `logout()` (idempotent — uses `dataset.logoutBound` to avoid duplicate listeners).
-- A `storage` event listener re-runs `checkAuth()` when `token` or `username` changes in another tab, so logging out in one tab updates all open tabs.
+- A `storage` event listener re-runs `checkAuth()` when `token`, `username`, or `plan` changes in another tab, so logging out (or a plan change) in one tab updates all open tabs.
 - Some pages call `checkAuth()` explicitly in an inline script after loading `auth.js`. Both patterns coexist; do not remove one without checking the other still works.
 
 ### Landing page (`index.html`)

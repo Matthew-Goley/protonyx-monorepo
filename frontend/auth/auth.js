@@ -160,6 +160,14 @@ function checkAuth() {
     el.classList.toggle("visible", !loggedIn);
   });
 
+  // Pro-only elements (e.g. the navbar "Professional" badge) show only when the
+  // signed-in user's cached plan is "pro". Plan is mirrored to localStorage by
+  // loadProfile(); other pages render from that cached value.
+  const isPro = loggedIn && (localStorage.getItem("plan") || "").toLowerCase() === "pro";
+  document.querySelectorAll(".pro-only").forEach((el) => {
+    el.classList.toggle("visible", isPro);
+  });
+
   document.querySelectorAll("[data-username]").forEach((el) => {
     el.textContent = username || "User";
   });
@@ -182,7 +190,7 @@ if (document.readyState === "loading") {
 }
 
 window.addEventListener("storage", (e) => {
-  if (e.key === "token" || e.key === "username" || e.key === null) {
+  if (e.key === "token" || e.key === "username" || e.key === "plan" || e.key === null) {
     checkAuth();
   }
 });

@@ -122,6 +122,24 @@
   display: inline-block;
 }
 
+/* Pro-plan badge: shown left of the profile icon only when the user is on Pro.
+   Same white/black text-color swap as the other navbar items. */
+.navbar-plan-badge {
+  display: none;
+  padding: 0 4px;
+  color: rgba(255, 255, 255, 0.9);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  user-select: none;
+  transition: color 0.2s ease;
+}
+
+.navbar-plan-badge.visible {
+  display: inline-block;
+}
+
 /* ── Navbar light-background overrides ── */
 .navbar--light .navbar-menu-button {
   background-color: var(--text-primary);
@@ -142,6 +160,10 @@
 
 .navbar--light .navbar-signup-link:hover {
   color: black;
+}
+
+.navbar--light .navbar-plan-badge {
+  color: rgba(0, 0, 0, 0.75);
 }
 
 /* ── Menu overlay ── */
