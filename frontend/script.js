@@ -143,3 +143,34 @@ if (fadeTargets.length && "IntersectionObserver" in window) {
 
   fadeTargets.forEach((el) => fadeObserver.observe(el));
 }
+
+
+// ─────────────────────────────────────────────
+//  Download counter  (all pages)
+//
+//  Every [data-download] element is a native download
+//  link (href + download attr) pointing at the Vector
+//  installer, so the browser handles the actual file
+//  download. On click we additionally bump the signed-in
+//  user's download_count via POST /download. A missing
+//  token or a failed counter call never blocks the
+//  download. API_URL comes from auth/auth.js.
+// ─────────────────────────────────────────────
+const downloadLinks = document.querySelectorAll("[data-download]");
+
+if (downloadLinks.length) {
+  downloadLinks.forEach((el) => {
+    el.addEventListener("click", () => {
+      const token = localStorage.getItem("token");
+      if (!token || typeof API_URL === "undefined") return;
+      fetch(`${API_URL}/download`, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({})
+      }).catch(() => {});
+    });
+  });
+}

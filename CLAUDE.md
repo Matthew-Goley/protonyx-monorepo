@@ -14,8 +14,8 @@ There are three deliverables:
 
 | Product | Stack | Purpose |
 |---|---|---|
-| **Vector** (`app/`) | Python 3.12 + PyQt6, packaged with Nuitka | Downloadable Windows desktop app. Tracks positions, fetches market data via `yfinance`, and renders an analytics dashboard powered by a proprietary engine called **Lens**. Currently version **0.4.2**. |
-| **Web frontend** (`frontend/`) | Plain static HTML/CSS/JS, served by VS Code Live Server | Marketing site, signup/login, account dashboard, gated download page. No framework, no bundler. |
+| **Vector** (`app/`) | Python 3.12 + PyQt6, packaged with Nuitka | Downloadable Windows desktop app. Tracks positions, fetches market data via `yfinance`, and renders an analytics dashboard powered by a proprietary engine called **Lens**. Currently version **0.5.0**. |
+| **Web frontend** (`frontend/`) | Plain static HTML/CSS/JS, served by VS Code Live Server | Marketing site, signup/login, account dashboard, direct app download. No framework, no bundler. |
 | **Backend API** (`backend/`) | Fastify + TypeScript on Node, PostgreSQL | Authentication, account profile, download counter, and (eventually) the API the desktop app talks to. |
 
 The three components share **one user database** but **no build system** — each subdirectory is developed independently. There is no root `package.json`, no monorepo tooling (Turbo/Nx/Lerna), no Docker, no CI pipeline. Treat each top-level folder as a self-contained project.
@@ -52,14 +52,11 @@ _monorepo/
 │   ├── pages.css                  # Landing-section legacy + account page (+ dormant products listing & Vector product page CSS)
 │   ├── auth.css                   # Auth/forgot/reset/verify page shells
 │   ├── landing.css                # Landing-only styles (hero + discovery + trust strip + pricing + fade-in). Selectors for the removed value/lens/features/steps/final-cta sections are still in the file but currently unused. Loaded *only* by index.html, alongside style.css.
-│   ├── script.js                  # Navbar logo swap, menu overlay, pricing billing-interval toggle, landing fade-in observer
+│   ├── script.js                  # Navbar logo swap, menu overlay, pricing billing-interval toggle, landing fade-in observer, download counter
 │   ├── auth/
 │   │   ├── index.html             # Tabbed login/signup form
 │   │   └── auth.js                # All auth + session logic + GET /me helper
 │   ├── account/index.html         # Profile dashboard (renders GET /me)
-│   ├── download/
-│   │   ├── index.html             # Gated download landing page
-│   │   └── download.js            # Calls POST /download, then triggers file download
 │   ├── verify-email/
 │   │   └── index.html             # Standalone email-verification landing (loading/success/error)
 │   ├── forgot-password/
@@ -70,7 +67,8 @@ _monorepo/
 │   ├── assets/
 │   │   ├── company/               # protonyx_full_white.png, _black.png
 │   │   ├── product/vector/        # Vector product artwork (logo, dashboard, lens preview)
-│   │   └── video/                 # 1vector_demo.mp4, 2city.mp4, 3codingdemo.mp4, 4stockmarket.mp4, 5codingdemo.mp4
+│   │   ├── video/                 # 1vector_demo.mp4, 2city.mp4, 3codingdemo.mp4, 4stockmarket.mp4, 5codingdemo.mp4
+│   │   └── downloads/             # Vector-Setup.exe (placeholder installer served by the site Download buttons)
 │   └── .vscode/settings.json      # Live Server pinned to port 5501
 │
 ├── app/                           # Vector desktop app (PyQt6) — see app/CLAUDE.md
@@ -254,8 +252,8 @@ The error field is always named `message`. The frontend (`auth.js`) reads `data.
 | `POST` | `/reset-password` | — | `{ token, newPassword }` | Validates both fields (400 `Token and new password are required` if missing). Looks up the row by `reset_token = $1 AND reset_token_expires_at > NOW()` so expiry is enforced at the DB level. Invalid/expired token → 400 `{ success: false, message: "Invalid or expired reset token" }`. Valid → bcrypt-rehashes (cost 10), nulls both reset columns, returns 200 `{ success: true, message: "Password reset successfully" }`. Single-use by construction (token cleared on success). |
 | `GET` | `/protected` | ✅ | — | Smoke test. Returns `{ message: "Hello <username>" }`. |
 | `GET` | `/me` | ✅ | — | Returns the full user profile **excluding `password`, `stripe_customer_id`, and `verification_token`**. Shape: `{ success, user: { id, username, email, plan, plan_expires_at, member_since, last_login, beta_access, download_count, email_verified, is_active } }`. The frontend calls this on login and on every account-page load. |
-| `POST` | `/download` | ✅ | — (empty body) | Increments `download_count` for the authenticated user. Called from `/download` page when the user clicks "Download Vector". Returns `{ success, message: "Download recorded" }`. The actual binary URL is **not** returned by this endpoint — the frontend triggers the download separately. |
-| `GET` | `/version` | — | — | Public, no auth. Reads `src/version.json` (imported at module load via `resolveJsonModule`) and returns `{ success: true, version: "<x.y.z>" }`. **Single source of truth for the latest Vector release** — to ship a new version, edit `src/version.json` and nothing else on the backend. The frontend download page and the desktop auto-update check should both consume this endpoint rather than hardcoding the version. |
+| `POST` | `/download` | ✅ | — (empty body) | Increments `download_count` for the authenticated user. Fired by the shared `[data-download]` click handler in `script.js` (hero button + pricing Free card + per-page menu overlay link) for signed-in users only. Returns `{ success, message: "Download recorded" }`. The actual binary URL is **not** returned by this endpoint — the buttons download `/assets/downloads/Vector-Setup.exe` natively via the `download` attribute. |
+| `GET` | `/version` | — | — | Public, no auth. Reads `src/version.json` (imported at module load via `resolveJsonModule`) and returns `{ success: true, version: "<x.y.z>" }`. **Single source of truth for the latest Vector release** — to ship a new version, edit `src/version.json` and nothing else on the backend. The frontend and the desktop auto-update check should both consume this endpoint rather than hardcoding the version. |
 
 There is **no** `/notes`, `/getnotes`, `/notes/:id` endpoint. Earlier docs referenced them; they have been removed.
 
@@ -266,7 +264,7 @@ Three exported functions in `email.ts`, all using the **Resend** SDK and all fir
 **`sendWelcomeEmail(to, username)`**
 
 - Sender is `noreply@protonyxdata.com` (verified Resend domain), exported as `FROM_ADDRESS` at the top of `email.ts` and reused by all three functions — change in one place.
-- The HTML body is inline-styled (table-based layout for email-client compatibility), uses the brand palette (`#0b1020` background, `#e7ebf3` text, `#2dd4bf` CTA), and links to `https://protonyx.dev/download`. That URL is currently hardcoded — update it if the public download page moves.
+- The HTML body is inline-styled (table-based layout for email-client compatibility), uses the brand palette (`#0b1020` background, `#e7ebf3` text, `#2dd4bf` CTA), and links to `https://protonyx.dev/download`. That URL is currently hardcoded and now points at a route that no longer exists in the frontend (the dedicated download page was removed; downloads happen via buttons on the landing page) — repoint it to the landing page or its `#plans` anchor before this email goes live.
 - The function logs `Resend key inside function: <bool>` before sending. That log line is debugging instrumentation; remove it before any meaningful production deployment.
 
 **`sendVerificationEmail(to, username, token)`**
@@ -360,12 +358,13 @@ Cascade order matters: `base` → `chrome` → `pages` → `auth`. Don't reorder
 
 ### `script.js` (shared across pages)
 
-Four independent blocks, each guarded by `if (element)` so pages without the relevant element are no-ops:
+Five independent blocks, each guarded by `if (element)` so pages without the relevant element are no-ops:
 
 1. **Navbar logo color swap** (described above). Collects every dark section on the page (`.landing-hero, .products-hero, .lp-section.dark`) and probes a fixed y-coordinate near the navbar baseline (80 px) on every `scroll` and `resize` event. If any dark section's bounding rect covers that point, the logo fades to white; otherwise to black, with a 200 ms opacity fade on each transition. The `.lp-section.dark` selector is currently in use by the discovery section on the landing page (which sits directly under the hero), so the logo stays white through both. (The legacy fullscreen `#heroVideo` rotation block was removed when the landing page was rebuilt; the current hero plays a single looping `1vector_demo.mp4` inside `.demo-window` with no JS.)
 2. **Menu overlay open/close** — described above.
 3. **Pricing billing-interval toggle** — on the landing page, clicking the Monthly/Annually segmented control inside `.pricing-toggle` rewrites every `.pricing-price[data-annual-amount]` element from its `data-{interval}-amount` + `data-{interval}-period` attributes. Default is annual ($100 / year for Professional; monthly is $10 / month). The Free card has no data attributes so it stays "$0 / forever" regardless of toggle state.
 4. **Landing fade-in observer** — every `.fade-in` element on the landing page gets a `.visible` class when it intersects the viewport (`threshold: 0.15`, `rootMargin: 0 0 -40px 0`). One-shot — observer unobserves each element after firing.
+5. **Download counter** — binds a click handler to every `[data-download]` element (the hero + pricing download buttons and the per-page menu "Download" link). Those elements are native `download` anchors pointing at `/assets/downloads/Vector-Setup.exe`, so the browser handles the file download; the handler additionally fires `POST /download` (Bearer-authenticated) to bump `download_count`, but only when a `token` is present and `API_URL` (from `auth/auth.js`) is defined. A missing token or a failed counter call never blocks the download.
 
 ### `auth/auth.js` (shared auth + session state)
 
@@ -392,7 +391,7 @@ The landing page has four content sections in order: navbar, hero, discovery (da
 **Hero (`.landing-hero`)** is a full-height dark section with a pulsing radial gradient and a two-column grid:
 
 - **Left column.** h1 reads `Actionable Insight for Everyone.` with three `.accent`-gradient words (`Actionable`, `Insight`, `Everyone`). Below it sits a single-sentence subtitle leading with the Lens engine. Two CTAs:
-  - `btn-primary` **Download for Windows** with an inline 4-rectangle Windows-logo SVG (the `.btn-icon` rule sizes it to 18 px and adds a 0.65 rem gap), linking to `/download`.
+  - `btn-primary` **Download for Windows** with an inline 4-rectangle Windows-logo SVG (the `.btn-icon` rule sizes it to 18 px and adds a 0.65 rem gap). It carries `href="/assets/downloads/Vector-Setup.exe" download data-download`, so the browser downloads the installer directly (no intermediate page).
   - `btn-ghost` **View plans**, an in-page anchor to `#plans`.
 - **Right column.** `.demo-window` is a macOS-style frame (three traffic-light dots + body) wrapping a single looping autoplaying muted video, `assets/video/1vector_demo.mp4`. No JS rotation, no audio.
 
@@ -405,7 +404,7 @@ Hero typography is scaled aggressively for 4K: h1 uses `clamp(2.6rem, 4.8vw, 5.7
 **Pricing (`#plans`, `.lp-section.base`)** has the heading `Start free.` / `Upgrade when you outgrow it.` (split across two lines with `<br>`), followed by a billing-interval toggle and two cards:
 
 - **`.pricing-toggle`** is a centered pill containing two `.pricing-toggle-option` buttons (Monthly / Annually), a sliding `.pricing-toggle-thumb` (gradient, `transform: translateX(...)` driven by `data-interval` on `.pricing-toggle-group`, eased over 0.35 s with `cubic-bezier(0.4, 0, 0.2, 1)`), and a `.pricing-toggle-badge` ("Save 17%") absolutely positioned to the right of the pill (hidden under 640 px). Annual is the default on initial render.
-- **Free card.** `$0 / forever`, ghost CTA "Download Vector" linking to `/download`. Not affected by the toggle.
+- **Free card.** `$0 / forever`, ghost CTA "Download Vector" that downloads `/assets/downloads/Vector-Setup.exe` directly (same `download` + `data-download` attributes as the hero button). Not affected by the toggle.
 - **Professional card.** Carries `data-monthly-amount="$10"`, `data-monthly-period=" / month"`, `data-annual-amount="$100"`, `data-annual-period=" / year"` on its `.pricing-price` element. When the toggle flips, the JS block in `script.js` rewrites the inner HTML from those attributes. Primary CTA "Upgrade to Pro" links to `#` for now (TODO marker in the markup; replace with a real Stripe checkout URL once provisioned).
 
 The in-page menu overlay reflects this trimmed page: under **Navigation** it lists only `Home`, `Plans`, `About`, `Contact`, plus the auth-aware logout button. The old `Lens Engine` and `Features` entries were removed when those sections were deleted.
@@ -427,16 +426,15 @@ A self-contained dashboard rendered inline at the bottom of the HTML. Renders si
 
 **Render flow:** on load, the page first paints from cached localStorage values (so there's no blank flicker), then calls `loadProfile()` and re-renders with the authoritative server response. If the user has no token, the page redirects immediately to `/auth/index.html`. The hero label (`#accountHeroTitle`) shows the cached username.
 
-### Download page (`download/index.html` + `download.js`)
+### Downloads (no dedicated page)
 
-A gated landing page with a single "Download Vector" CTA. When clicked:
+There is **no** standalone download page. The Vector installer is served as a static asset at `/assets/downloads/Vector-Setup.exe` — currently a **placeholder file**; replace its contents with the real Nuitka build output (`Vector-v<version>.exe`) on each release, keeping the filename so the URL stays stable. The site downloads it directly from three places, all of which carry `href="/assets/downloads/Vector-Setup.exe" download data-download`:
 
-1. If a token exists, `POST /download` (Bearer-authenticated) is fired to bump `download_count`. Network failures are swallowed (`.catch(() => {})`) — the download still proceeds.
-2. A hidden `<a href="#" download="">` is created and clicked to trigger the browser download.
+1. The hero **Download for Windows** button (`index.html`).
+2. The pricing Free card **Download Vector** button (`index.html`).
+3. The **Download** link in every page's menu overlay (Account column).
 
-The actual binary URL is currently `"#"` — there's a `TODO` to replace it with an S3 or GitHub Releases URL once a release artifact exists. The displayed version label says **0.4.1**, but the desktop app is on **0.4.2** (`vector/constants.py::APP_VERSION`); the download page label needs to be bumped manually whenever a new build ships.
-
-The download page does **not** redirect unauthenticated users away — it lets them click the button. Without a token, the `POST /download` step is skipped and the (currently broken) anchor click happens anyway. When a real download URL is wired up, decide whether to require auth before showing the button or before kicking off the download.
+The browser's native `download` attribute does the actual file download, so it works with JS disabled and for logged-out visitors. The shared `[data-download]` click handler in `script.js` additionally fires `POST /download` (Bearer-authenticated) to bump `download_count` for signed-in users only; a missing token or a failed counter call never blocks the download. There is **no** auth gate, ToS/EULA disclaimer, or version label in front of the download anymore — the dedicated page that once carried those (and the per-release version label) was removed in favor of these direct buttons.
 
 ### Verify-email page (`verify-email/index.html`)
 
@@ -507,7 +505,7 @@ The Vector desktop app is fully developed and self-documenting. Its own `app/CLA
 | `widget_registry.py` | `discover_widgets()` / `get_widget_class()` — registry of concrete widget types. |
 | `widget_types/` | Eight concrete widget classes plus `LensDisplay` (the typewriter Lens Brief readout). |
 | `widgets.py` | Shared UI primitives: `CardFrame`, `GradientBorderFrame`, `GradientLine`, `BlurrableStack`, `DimOverlay`, `EmptyState`, `LoadingButton`. |
-| `constants.py` | File paths, TTLs, default settings, threshold maps, `APP_VERSION = "0.4.2"`. |
+| `constants.py` | File paths, TTLs, default settings, threshold maps, `APP_VERSION = "0.5.0"`. |
 | `paths.py` | `resource_path()` (PyInstaller- and Nuitka-aware asset lookup), `user_data_dir()`, `user_file()`. |
 | `scale.py` | DPI scaling helpers. |
 
@@ -587,12 +585,12 @@ Anything more specific than the map above — exact widget struct, accordion mea
 
 ### Frontend
 
-- **Live Server must be rooted at `frontend/`.** Root-absolute hrefs (`/auth/index.html`, `/account/index.html`, `/download`) only resolve when this is true. If links 404, this is the first thing to check.
+- **Live Server must be rooted at `frontend/`.** Root-absolute hrefs (`/auth/index.html`, `/account/index.html`, `/assets/downloads/Vector-Setup.exe`) only resolve when this is true. If links 404, this is the first thing to check.
 - **Live Server must use port 5500 or 5501.** Other ports will fail CORS against the backend allowlist.
 - **`API_URL` is hardcoded** at the top of `auth.js`. Update there when deploying.
-- **Navbar and menu overlay are duplicated per page.** Changing them means editing every `index.html`. There is currently no template/include system. If you add a new page, copy from a recent one (`account/index.html` and `download/index.html` have the latest markup).
-- **The download page's version label is hardcoded** (currently `0.4.1`); the app's actual version comes from `app/vector/constants.py::APP_VERSION` (currently `0.4.2`). Bump the page label on each release.
-- **The download page does not gate on auth.** The CTA fires regardless of login state; only the `POST /download` counter call is skipped when there is no token. Reconsider this when wiring up a real binary URL.
+- **Navbar and menu overlay are duplicated per page.** Changing them means editing every `index.html`. There is currently no template/include system. If you add a new page, copy from a recent one (`account/index.html` has the latest markup). The menu overlay's "Download" link is one of the `data-download` buttons (see below) — copy it intact.
+- **There is no longer a version label in the frontend.** It used to live on the (now removed) download page. The desktop app's version comes from `app/vector/constants.py::APP_VERSION` (currently `0.5.0`) and `backend/src/version.json` should match it; keep the two in sync on each release. `GET /version` serves `version.json` if the frontend ever needs to display it again.
+- **Downloads do not gate on auth.** The hero, pricing, and menu "Download" buttons download `/assets/downloads/Vector-Setup.exe` natively regardless of login state; only the `POST /download` counter call is skipped when there is no token. The served file is a placeholder until a real build artifact replaces it. Reconsider gating when wiring up a hosted (non-local) binary URL.
 
 ### Vector desktop app
 
