@@ -136,6 +136,40 @@ async function loadProfile() {
   }
 }
 
+// Check whether the signed-in user has accepted the current Terms of Service.
+// If not, shows the blocking TOS modal (from legal-modal.js) and resolves only
+// once the user accepts. Resolves immediately when logged out.
+//
+// Fails open: if GET /legal/status errors for any reason, the user is logged
+// (to console) and let through rather than blocked.
+async function checkLegalAcceptance() {
+  const token = getToken();
+  if (!token) return;
+
+  let data;
+  try {
+    const response = await fetch(`${API_URL}/legal/status`, {
+      headers: { ...authHeaders() },
+    });
+
+    data = await response.json().catch(() => ({}));
+
+    if (!response.ok || !data.success) {
+      console.error("Legal status check failed; allowing through.");
+      return;
+    }
+  } catch (err) {
+    console.error("Legal status check failed; allowing through.", err);
+    return;
+  }
+
+  if (data.tos_accepted) return;
+
+  if (typeof showTosModal === "function") {
+    await showTosModal();
+  }
+}
+
 function logout() {
   localStorage.removeItem("token");
   localStorage.removeItem("username");

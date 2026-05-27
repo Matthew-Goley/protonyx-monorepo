@@ -4,6 +4,7 @@ import pool from "../db";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { sendWelcomeEmail, sendVerificationEmail, sendPasswordResetEmail } from "../email";
+import { CURRENT_TOS_VERSION } from "../legalVersions";
 
 const JWT_SECRET = process.env.JWT_SECRET as string;
 
@@ -45,10 +46,12 @@ export default async function authRoutes(app: FastifyInstance) {
         // Create User and encrypt
         const hashedPassword = await bcrypt.hash(password, 10);
 
-        // Push to db
+        // Push to db. New accounts auto-accept the current TOS version at
+        // creation time (the signup form carries the agreement notice).
         await pool.query(
-            "INSERT INTO users (username, email, password) VALUES ($1, $2, $3)",
-            [username, email, hashedPassword]
+            `INSERT INTO users (username, email, password, tos_version_accepted, tos_accepted_at)
+             VALUES ($1, $2, $3, $4, NOW())`,
+            [username, email, hashedPassword, CURRENT_TOS_VERSION]
         );
 
         // Issue email-verification token and store it on the new row
@@ -68,7 +71,7 @@ export default async function authRoutes(app: FastifyInstance) {
         });
     });
 
-    // Verify-email GET — consumes a one-time token and flips email_verified to true
+    // Verify-email GET: consumes a one-time token and flips email_verified to true
     app.get("/verify-email", async (request: any, reply: any) => {
         const { token } = request.query as { token: string };
 
@@ -103,7 +106,7 @@ export default async function authRoutes(app: FastifyInstance) {
         });
     });
 
-    // Forgot-password POST — issues a 1-hour reset token and emails it.
+    // Forgot-password POST: issues a 1-hour reset token and emails it.
     // Always returns the same generic envelope to avoid revealing whether an
     // email is registered (account-enumeration defense).
     app.post("/forgot-password", async (request, reply) => {
@@ -136,13 +139,13 @@ export default async function authRoutes(app: FastifyInstance) {
             [resetToken, expires, user.id]
         );
 
-        // Fire-and-forget — never reveal email-delivery failures to the caller
+        // Fire-and-forget, never reveal email-delivery failures to the caller
         sendPasswordResetEmail(email, user.username, resetToken);
 
         return reply.status(200).send(genericResponse);
     });
 
-    // Reset-password POST — consumes a non-expired reset token and rehashes the password
+    // Reset-password POST: consumes a non-expired reset token and rehashes the password
     app.post("/reset-password", async (request, reply) => {
         const { token, newPassword } = request.body as { token?: string; newPassword?: string };
 
@@ -179,7 +182,7 @@ export default async function authRoutes(app: FastifyInstance) {
         });
     });
 
-    // Login POST — accepts either username or email in the `username` field
+    // Login POST: accepts either username or email in the `username` field
     app.post("/login", async (request, reply) => {
         const { username, password } = request.body as {
             username: string,

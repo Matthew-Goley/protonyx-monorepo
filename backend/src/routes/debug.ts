@@ -22,7 +22,8 @@ export default async function debugRoutes(app: FastifyInstance) {
     app.get("/me", { preHandler: authenticate }, async (request: any, reply: any) => {
         const result = await pool.query(
             `SELECT id, username, email, plan, plan_expires_at, member_since,
-                    last_login, beta_access, download_count, email_verified, is_active
+                    last_login, beta_access, download_count, email_verified, is_active,
+                    tos_version_accepted
              FROM users WHERE id = $1`,
             [request.user.id]
         );

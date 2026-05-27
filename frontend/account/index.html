@@ -135,6 +135,7 @@
 
   <script src="../script.js"></script>
   <script src="../auth/auth.js"></script>
+  <script src="../legal-modal.js"></script>
   <script>
     (function () {
       if (!localStorage.getItem("token")) {
@@ -194,6 +195,12 @@
       }
 
       checkAuth();
+
+      // User is confirmed logged in (token check above). Prompt for TOS
+      // acceptance if their stored version is stale; fails open on error.
+      if (typeof checkLegalAcceptance === "function") {
+        checkLegalAcceptance();
+      }
     })();
   </script>
 </body>

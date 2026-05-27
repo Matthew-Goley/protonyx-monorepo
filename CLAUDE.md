@@ -35,11 +35,13 @@ _monorepo/
 │   │   ├── email.ts               # Resend send logic (welcome + verify + password reset)
 │   │   ├── emailTemplates.ts      # Inline HTML strings for the three transactional emails
 │   │   ├── version.json           # Single source of truth for the latest Vector version (served by GET /version)
+│   │   ├── legalVersions.ts       # Single source of truth for the current TOS version (CURRENT_TOS_VERSION)
 │   │   ├── middleware/
 │   │   │   └── authenticate.ts    # JWT bearer preHandler
 │   │   └── routes/
 │   │       ├── auth.ts            # /signup, /login, /verify-email, /forgot-password, /reset-password
-│   │       └── debug.ts           # /protected, /me, /download, /version
+│   │       ├── debug.ts           # /protected, /me, /download, /version
+│   │       └── legal.ts           # /legal/status, /legal/accept
 │   ├── package.json
 │   ├── tsconfig.json
 │   └── .env                       # JWT_SECRET, DATABASE_URL, RESEND_API_KEY — gitignored
@@ -53,6 +55,7 @@ _monorepo/
 │   ├── auth.css                   # Auth/forgot/reset/verify page shells
 │   ├── landing.css                # Landing-only styles (hero + discovery + trust strip + pricing + fade-in). Selectors for the removed value/lens/features/steps/final-cta sections are still in the file but currently unused. Loaded *only* by index.html, alongside style.css.
 │   ├── script.js                  # Navbar logo swap, menu overlay, pricing billing-interval toggle, landing fade-in observer, download counter
+│   ├── legal-modal.js             # window.showTosModal(): blocking TOS acceptance modal (loaded on protected pages)
 │   ├── auth/
 │   │   ├── index.html             # Tabbed login/signup form
 │   │   └── auth.js                # All auth + session logic + GET /me helper
@@ -155,7 +158,7 @@ If `RESEND_API_KEY` is missing, signup still succeeds — `sendWelcomeEmail` is 
    - `http://127.0.0.1:5501`
    - `http://localhost:5501`
    Methods: `GET, POST, DELETE, PATCH`. (Fastify handles preflight automatically; no explicit `OPTIONS`.) Adding any new origin (staging URL, deployed frontend) requires editing this list.
-3. **Route modules**: `authRoutes`, `debugRoutes`. Both are mounted at the **root path** with no prefix — the `/protected` and `/me` endpoints live under `debug.ts` for historical reasons even though they are not strictly debug.
+3. **Route modules**: `authRoutes`, `debugRoutes`, `legalRoutes`. All are mounted at the **root path** with no prefix. The `/protected` and `/me` endpoints live under `debug.ts` for historical reasons even though they are not strictly debug, and the `/legal/*` endpoints live under `legal.ts`.
 
 `db.ts` is imported transitively from the route modules. Its top-level `setup()` call fires on module load, which means **the server will not start cleanly without a reachable Postgres**.
 
@@ -182,6 +185,8 @@ CREATE TABLE IF NOT EXISTS users (
     is_active           BOOLEAN NOT NULL DEFAULT TRUE,
     beta_access         BOOLEAN NOT NULL DEFAULT FALSE,
     download_count      INTEGER NOT NULL DEFAULT 0,
+    tos_version_accepted TEXT DEFAULT NULL,
+    tos_accepted_at     TIMESTAMP DEFAULT NULL,
     member_since        TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -189,6 +194,8 @@ CREATE TABLE IF NOT EXISTS users (
 ALTER TABLE users ADD COLUMN IF NOT EXISTS verification_token TEXT DEFAULT NULL;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_token TEXT DEFAULT NULL;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_token_expires_at TIMESTAMP DEFAULT NULL;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS tos_version_accepted TEXT DEFAULT NULL;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS tos_accepted_at TIMESTAMP DEFAULT NULL;
 
 -- DEV ONLY: seed a known test account
 INSERT INTO users (username, email, password, plan, beta_access)
@@ -199,6 +206,8 @@ ON CONFLICT DO NOTHING;
 The `verification_token` column holds a 64-char hex string (`crypto.randomBytes(32).toString("hex")`) issued at signup and cleared the moment `GET /verify-email` flips `email_verified=true`. A `NULL` token means either "already verified" or "never issued."
 
 The `reset_token` / `reset_token_expires_at` pair is the same shape: a 64-char hex token issued by `POST /forgot-password` with a 1-hour `TIMESTAMP` expiry, both cleared the moment `POST /reset-password` succeeds. The DB-level expiry check uses `reset_token_expires_at > NOW()` so server clock skew between issuer and validator can never widen the window. Both columns are `NULL` whenever there is no active reset request.
+
+The `tos_version_accepted` / `tos_accepted_at` pair tracks Terms of Service acceptance. `tos_version_accepted` holds the version string (e.g. `"3.1"`) the user last accepted; `tos_accepted_at` is the `TIMESTAMP` of that acceptance. The current version lives in `src/legalVersions.ts` (`CURRENT_TOS_VERSION`); the user is considered "current" only when `tos_version_accepted` equals it. A `NULL` (or stale) value means the user must (re-)accept. Signup auto-accepts the current version; `POST /legal/accept` is what re-stamps both columns when the version is bumped. To re-prompt every user after a TOS change, bump `CURRENT_TOS_VERSION` and nothing else.
 
 **Critical dev behavior:** when `NODE_ENV=development`, the users table is **dropped and recreated on every boot**. Every restart of `npm run dev` wipes all accounts and re-seeds `testuser` (password `password123`). This is intentional during early schema churn — there is no migration tooling, so dropping is the simplest way to apply schema changes. Do **not** run dev mode against a database that holds data you care about. In any other environment (`NODE_ENV !== "development"`), the `DROP` and seed are skipped and `CREATE TABLE IF NOT EXISTS` runs as normal.
 
@@ -245,17 +254,23 @@ The error field is always named `message`. The frontend (`auth.js`) reads `data.
 
 | Method | Path | Auth | Body | Behavior |
 |---|---|---|---|---|
-| `POST` | `/signup` | — | `{ username, email, password }` | Validates all three are present; rejects duplicate `username` or `email` (409); bcrypt-hashes (cost 10); inserts row; **issues a `crypto.randomBytes(32).toString("hex")` verification token and stores it on the row**; **fires `sendWelcomeEmail` and `sendVerificationEmail` fire-and-forget** (failures logged, never thrown); returns 201. |
+| `POST` | `/signup` | — | `{ username, email, password }` | Validates all three are present; rejects duplicate `username` or `email` (409); bcrypt-hashes (cost 10); inserts row **with `tos_version_accepted = CURRENT_TOS_VERSION` and `tos_accepted_at = NOW()`** (new accounts auto-accept the current TOS; the signup form carries the agreement notice); **issues a `crypto.randomBytes(32).toString("hex")` verification token and stores it on the row**; **fires `sendWelcomeEmail` and `sendVerificationEmail` fire-and-forget** (failures logged, never thrown); returns 201. |
 | `POST` | `/login` | — | `{ username, password }` | The `username` field accepts **either a username or an email** (`WHERE username = $1 OR email = $1`). On success, stamps `last_login = CURRENT_TIMESTAMP` and returns a JWT (`{ id, username }`, signed with `JWT_SECRET`, **7-day expiry**). Login does **not** currently gate on `email_verified` — verification is informational until that policy is decided. |
 | `GET` | `/verify-email` | — | query: `?token=<hex>` | Looks up the user by `verification_token`. Missing or unknown token → 400 `{ success: false, message: "Invalid or expired verification token" }`. Found → sets `email_verified = true`, nulls `verification_token`, returns 200 `{ success: true, message: "Email verified successfully" }`. The token is single-use because it's cleared on success; re-clicking the link returns 400. |
 | `POST` | `/forgot-password` | — | `{ email }` | **Always returns 200 with `{ success: true, message: "If that email exists, you will receive a reset link" }`** — even when the email is missing, malformed, or unknown. This is account-enumeration defense; never special-case it back to a 404/400. When the email is registered, issues a 1-hour `reset_token`, persists it with `reset_token_expires_at = NOW() + 1h`, and fires `sendPasswordResetEmail` fire-and-forget. |
 | `POST` | `/reset-password` | — | `{ token, newPassword }` | Validates both fields (400 `Token and new password are required` if missing). Looks up the row by `reset_token = $1 AND reset_token_expires_at > NOW()` so expiry is enforced at the DB level. Invalid/expired token → 400 `{ success: false, message: "Invalid or expired reset token" }`. Valid → bcrypt-rehashes (cost 10), nulls both reset columns, returns 200 `{ success: true, message: "Password reset successfully" }`. Single-use by construction (token cleared on success). |
 | `GET` | `/protected` | ✅ | — | Smoke test. Returns `{ message: "Hello <username>" }`. |
-| `GET` | `/me` | ✅ | — | Returns the full user profile **excluding `password`, `stripe_customer_id`, and `verification_token`**. Shape: `{ success, user: { id, username, email, plan, plan_expires_at, member_since, last_login, beta_access, download_count, email_verified, is_active } }`. The frontend calls this on login and on every account-page load. |
+| `GET` | `/me` | ✅ | — | Returns the full user profile **excluding `password`, `stripe_customer_id`, `verification_token`, and `tos_accepted_at`**. Shape: `{ success, user: { id, username, email, plan, plan_expires_at, member_since, last_login, beta_access, download_count, email_verified, is_active, tos_version_accepted } }`. (`tos_version_accepted` is included so the client can reason about TOS state; `tos_accepted_at` is deliberately omitted.) The frontend calls this on login and on every account-page load. |
 | `POST` | `/download` | ✅ | — (empty body) | Increments `download_count` for the authenticated user. Fired by the shared `[data-download]` click handler in `script.js` (hero button + pricing Free card + per-page menu overlay link) for signed-in users only. Returns `{ success, message: "Download recorded" }`. The actual binary URL is **not** returned by this endpoint — the buttons download `/assets/downloads/Vector-Setup.exe` natively via the `download` attribute. |
 | `GET` | `/version` | — | — | Public, no auth. Reads `src/version.json` (imported at module load via `resolveJsonModule`) and returns `{ success: true, version: "<x.y.z>" }`. **Single source of truth for the latest Vector release** — to ship a new version, edit `src/version.json` and nothing else on the backend. The frontend and the desktop auto-update check should both consume this endpoint rather than hardcoding the version. |
+| `GET` | `/legal/status` | ✅ | — | Compares the user's `tos_version_accepted` against `CURRENT_TOS_VERSION` from `legalVersions.ts`. Returns `{ success: true, tos_accepted: boolean, current_tos_version: "<v>" }`. `tos_accepted` is `false` when the stored version is `NULL` or doesn't match the current version. User row not found → 401. The frontend's `checkLegalAcceptance()` (in `auth.js`) consumes this and **fails open** if the call errors. |
+| `POST` | `/legal/accept` | ✅ | `{ document: "tos" }` | Validates `document` is exactly `"tos"` (anything else → 400 `Invalid document`). Sets `tos_version_accepted = CURRENT_TOS_VERSION` and `tos_accepted_at = NOW()` for the authenticated user. Returns 200 `{ success: true, message: "Terms of Service accepted" }`. Fired by the "I Agree" button in the TOS modal (`legal-modal.js`). |
 
 There is **no** `/notes`, `/getnotes`, `/notes/:id` endpoint. Earlier docs referenced them; they have been removed.
+
+### Legal versioning (`src/legalVersions.ts`)
+
+`legalVersions.ts` exports `CURRENT_TOS_VERSION` (currently `"3.1"`): the single source of truth for the active Terms of Service version. `auth.ts` (signup auto-accept) and `legal.ts` (status comparison + accept stamping) both import it. **To re-prompt every signed-in user after a TOS change, bump this string and nothing else.** The next `GET /legal/status` they hit will report `tos_accepted: false` and the frontend modal will block them until they re-accept. There is currently only a TOS version here; if EULA/privacy acceptance gets tracked the same way, add sibling constants and extend the `document` allowlist in `POST /legal/accept`.
 
 ### Email (`src/email.ts` + `src/emailTemplates.ts`)
 
@@ -264,7 +279,7 @@ Three exported functions in `email.ts`, all using the **Resend** SDK and all fir
 **`sendWelcomeEmail(to, username)`**
 
 - Sender is `noreply@protonyxdata.com` (verified Resend domain), exported as `FROM_ADDRESS` at the top of `email.ts` and reused by all three functions — change in one place.
-- The HTML body is inline-styled (table-based layout for email-client compatibility), uses the brand palette (`#0b1020` background, `#e7ebf3` text, `#2dd4bf` CTA), and links to `https://protonyx.dev/download`. That URL is currently hardcoded and now points at a route that no longer exists in the frontend (the dedicated download page was removed; downloads happen via buttons on the landing page) — repoint it to the landing page or its `#plans` anchor before this email goes live.
+- The HTML body is inline-styled (table-based layout for email-client compatibility), uses the brand palette (`#0b1020` background, `#e7ebf3` text, `#2dd4bf` CTA), and its "Download Vector" CTA links to `https://protonyxdata.com/#plans` (the plans section of the landing page, where the download buttons live). The URL is hardcoded in `email.ts` (the `downloadUrl` local passed to `welcomeEmailHtml`); update it there if the domain or anchor changes.
 - The function logs `Resend key inside function: <bool>` before sending. That log line is debugging instrumentation; remove it before any meaningful production deployment.
 
 **`sendVerificationEmail(to, username, token)`**
@@ -340,7 +355,7 @@ Every page links a single stylesheet (`style.css`), which is now a thin shim tha
 | `base.css` | `*` reset, `:root` tokens, `html`/`body`, `h1`–`h3`/`p`, button primitives (`.btn-primary`, `.btn-ghost`, `.btn-grad`, `.btn-outline-gray`), the `h1` mobile size override |
 | `chrome.css` | Floating navbar, navbar profile/signup auth toggles, the `.navbar-plan-badge` Pro badge (white/black text swap under `.navbar--light`), full-screen menu overlay (incl. logout button + reveal animation), site footer |
 | `pages.css` | Legacy `.hero` (no longer used by `index.html`) and the account page, plus the `.access-card .btn-ghost` light-bg override. Also retains the products-listing-hero and full Vector-product-page rules (hero, sections, lens outputs, access pricing cards, flow stepper, closing CTA) even though those pages were removed; kept dormant for possible reintroduction. |
-| `auth.css` | `.auth-body` shell + auth card, tabs, form, inputs, submit button, message states, footer/forgot links — used by `auth/`, `verify-email/`, `forgot-password/`, `reset-password/` |
+| `auth.css` | `.auth-body` shell + auth card, tabs, form, inputs, submit button, message states, footer/forgot links, the `.auth-terms-note` signup TOS notice — used by `auth/`, `verify-email/`, `forgot-password/`, `reset-password/` |
 | `landing.css` | **Loaded only by `index.html` (alongside `style.css`).** Active selectors today: `.landing-hero` (dark two-column hero with pulsing radial gradient and a max-width of 1840 px scaled for 4K), `.landing-hero-actions` (hero CTA row, sized for the Windows-icon download button), `.demo-window` + `.demo-video` (macOS-frame video container, reused by both the hero and the discovery cards), `.lp-section` primitives (`.base` / `.surface` / `.dark`), `.lp-eyebrow`, `.lp-h2`, `.lp-lead`, the `.discovery-grid` family (`.discovery-card`, `.discovery-text`, `.discovery-step`, `.discovery-num`, `.discovery-title`, `.discovery-caption`: vertically-stacked numbered video walkthrough on a dark `.lp-section`, video on the left of each row, gradient step number + title + caption on the right), the `.trust-strip` family (`.trust-row`, `.trust-item`, `.trust-icon`, `.trust-label`, `.trust-sub`: narrow light divider between discovery and pricing with reduced vertical padding), the `.pricing-toggle` family (centered Monthly/Annually segmented control with an animated sliding `.pricing-toggle-thumb`), `.pricing-grid` + `.pricing-card`, and `.fade-in` (toggled by `IntersectionObserver` in `script.js`). The file also retains rules for the removed mid-page sections (`.value-grid`, `.lens-engine`, `.lens-cards`, `.feature-grid-6`, `.steps-grid`, `.final-cta`); those selectors don't match anything on the current page but are kept so the sections can be reintroduced cheaply. Reuses `:root` tokens and the teal/blue brand gradient. No new design system. |
 
 CSS custom properties are defined in `:root` at the top of `base.css`. The most-used tokens:
@@ -369,7 +384,7 @@ Five independent blocks, each guarded by `if (element)` so pages without the rel
 
 ### `auth/auth.js` (shared auth + session state)
 
-Globally exposes `getToken()`, `authHeaders()`, `login()`, `signup()`, `loadProfile()`, `logout()`, `checkAuth()`.
+Globally exposes `getToken()`, `authHeaders()`, `login()`, `signup()`, `loadProfile()`, `logout()`, `checkAuth()`, `checkLegalAcceptance()`.
 
 - `API_URL = "http://localhost:3000"` — **hardcoded at the top of the file**. Update here when the backend is deployed. There is no env-var injection.
 - JWT is stored in `localStorage.token`; **httpOnly cookies are not used.**
@@ -385,6 +400,17 @@ Globally exposes `getToken()`, `authHeaders()`, `login()`, `signup()`, `loadProf
   - Binds a click handler on `[data-logout]` elements that calls `logout()` (idempotent — uses `dataset.logoutBound` to avoid duplicate listeners).
 - A `storage` event listener re-runs `checkAuth()` when `token`, `username`, or `plan` changes in another tab, so logging out (or a plan change) in one tab updates all open tabs.
 - Some pages call `checkAuth()` explicitly in an inline script after loading `auth.js`. Both patterns coexist; do not remove one without checking the other still works.
+- `checkLegalAcceptance()` is **async** and gates on Terms of Service acceptance. It resolves immediately when logged out (no token). Otherwise it calls `GET /legal/status`; if `tos_accepted` is `false` it calls `showTosModal()` (from `legal-modal.js`, which must be loaded on the page) and awaits the user's acceptance. It **fails open**: any error on the status call is logged to the console and the user is let through, never blocked. Only protected pages that load `legal-modal.js` and call this (currently just the account page) prompt for TOS; do not wire it into the landing/auth/verify/forgot/reset pages.
+
+### TOS acceptance modal (`legal-modal.js`)
+
+`frontend/legal-modal.js` is an IIFE that attaches a single global, `window.showTosModal(onAccept?)`. It builds a fixed full-viewport overlay (dark translucent backdrop + centered light card styled with the `--bg-base`/`--text-primary`/`--border`/`--grad` tokens, no separate stylesheet) titled "Terms of Service", with a short re-acceptance message, a "Review the Terms of Service" link to `/tos` (opens in a new tab), and a single "I Agree" button. It returns a promise that resolves once acceptance succeeds.
+
+- **Blocking by design.** There is no close button; backdrop clicks are inert; a capture-phase `keydown` listener swallows `Escape` while the modal is open (so the menu-overlay Escape handler can't dismiss it). `body` overflow is locked while it is open. The only exit is a successful `POST /legal/accept`.
+- "I Agree" POSTs `{ document: "tos" }` to `/legal/accept` with `authHeaders()`. The button is disabled on click and re-enabled on error (guards against double-submit). On success it removes the overlay, fires the optional `onAccept` callback, and resolves the promise.
+- **401 during accept** (expired JWT) → calls `logout()` (falling back to a redirect to `/auth/index.html`) instead of trapping the user.
+- **Network failure / non-OK response** → shows the error in the modal and keeps it open so the user can retry.
+- Depends on `API_URL`, `authHeaders()`, and `logout()` from `auth/auth.js`, so it must be loaded **after** `auth.js`.
 
 ### Landing page (`index.html`)
 
@@ -428,6 +454,8 @@ A self-contained dashboard rendered inline at the bottom of the HTML. Renders si
 
 **Render flow:** on load, the page first paints from cached localStorage values (so there's no blank flicker), then calls `loadProfile()` and re-renders with the authoritative server response. If the user has no token, the page redirects immediately to `/auth/index.html`. The hero label (`#accountHeroTitle`) shows the cached username.
 
+**TOS gate.** The page loads `../legal-modal.js` (after `../auth/auth.js`) and, once the token check has confirmed the user is logged in, calls `checkLegalAcceptance()`. If the user hasn't accepted the current TOS version, the blocking modal appears and stays up until they accept. This is the **only** page wired to the legal check today; if you add another protected page that should enforce TOS, copy both the `legal-modal.js` script tag and the `checkLegalAcceptance()` call.
+
 ### Downloads (no dedicated page)
 
 There is **no** standalone download page. The Vector installer is served as a static asset at `/assets/downloads/Vector-Setup.exe` — currently a **placeholder file**; replace its contents with the real Nuitka build output (`Vector-v<version>.exe`) on each release, keeping the filename so the URL stays stable. The site downloads it directly from three places, all of which carry `href="/assets/downloads/Vector-Setup.exe" download data-download`:
@@ -448,8 +476,8 @@ Flow on load:
 2. Renders the **loading** state (`Verifying your email...`).
 3. `fetch("${API_URL}/verify-email?token=" + encodeURIComponent(token))` (GET, no body, no auth header — written as a template literal in the source).
 4. Renders one of two terminal states:
-   - **Success** — checkmark, large `Email verified.`, muted subline, and a button linking to `/auth/index.html`.
-   - **Error** — exclamation icon, `Verification failed.`, the API's `message` (or a network-fallback string), and a "Back to sign in" link.
+   - **Success**: checkmark, large `Email verified.`, and a muted subline ("You can now close this page and log in."). No button or link (the user is told to close the page rather than routed to sign in).
+   - **Error**: exclamation icon, `Verification failed.`, the API's `message` (or a network-fallback string), and a "Back to sign in" link.
 
 All three states are rendered into a single `#verifyState` container by inline `render*()` helpers — markup is intentionally local to this page rather than added to `style.css`, since nothing else uses these styles.
 
@@ -469,6 +497,8 @@ Like the verify-email page, the three render states are inline `render*()` helpe
 ### Auth-page link
 
 `auth/index.html` shows a small muted **"Forgot your password?"** link directly under the login form's submit button, styled by `.auth-forgot-link` in `style.css`. The link is in the login form only (not the signup form) and points at `../forgot-password/index.html`.
+
+The **signup form** carries a small muted notice under its submit button: "By creating an account, you agree to our Terms of Service." (the last words link to `/tos`, new tab), styled by `.auth-terms-note` in `auth.css`. There is **no** TOS checkbox; acceptance is recorded server-side automatically at signup (see the `/signup` row: it stamps `tos_version_accepted`/`tos_accepted_at`). The notice is what makes that auto-acceptance meaningful; keep it in lockstep with that behavior.
 
 ### Auth UX gotcha (was a real issue, now fixed — keep an eye on it)
 

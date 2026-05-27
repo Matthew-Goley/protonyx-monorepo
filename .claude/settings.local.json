@@ -9,7 +9,10 @@
       "Bash(python3 -c ' *)",
       "Bash(dir \"C:\\\\Users\\\\Matthew\\\\Documents\\\\_Dev_ALL\\\\_monorepo\" /s /b *.md)",
       "Bash(findstr /v node_modules)",
-      "Bash(findstr /v \"app\\\\\\\\.venv\")"
+      "Bash(findstr /v \"app\\\\\\\\.venv\")",
+      "Bash(echo \"---tsc exit: $?---\")",
+      "Bash(node -e \"process.env.RESEND_API_KEY; require\\('dotenv'\\).config\\(\\); console.log\\('RESEND_API_KEY set:', !!process.env.RESEND_API_KEY\\)\")",
+      "Bash(npx ts-node *)"
     ]
   }
 }
