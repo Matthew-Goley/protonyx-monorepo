@@ -12,7 +12,8 @@
       "Bash(findstr /v \"app\\\\\\\\.venv\")",
       "Bash(echo \"---tsc exit: $?---\")",
       "Bash(node -e \"process.env.RESEND_API_KEY; require\\('dotenv'\\).config\\(\\); console.log\\('RESEND_API_KEY set:', !!process.env.RESEND_API_KEY\\)\")",
-      "Bash(npx ts-node *)"
+      "Bash(npx ts-node *)",
+      "Bash(git mv *)"
     ]
   }
 }

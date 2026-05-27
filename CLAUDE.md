@@ -35,7 +35,7 @@ _monorepo/
 │   │   ├── email.ts               # Resend send logic (welcome + verify + password reset)
 │   │   ├── emailTemplates.ts      # Inline HTML strings for the three transactional emails
 │   │   ├── version.json           # Single source of truth for the latest Vector version (served by GET /version)
-│   │   ├── legalVersions.ts       # Single source of truth for the current TOS version (CURRENT_TOS_VERSION)
+│   │   ├── constants.ts           # Single source of truth for current TOS + EULA versions (CURRENT_TOS_VERSION, CURRENT_EULA_VERSION)
 │   │   ├── middleware/
 │   │   │   └── authenticate.ts    # JWT bearer preHandler
 │   │   └── routes/
@@ -187,6 +187,8 @@ CREATE TABLE IF NOT EXISTS users (
     download_count      INTEGER NOT NULL DEFAULT 0,
     tos_version_accepted TEXT DEFAULT NULL,
     tos_accepted_at     TIMESTAMP DEFAULT NULL,
+    eula_version_accepted TEXT DEFAULT NULL,
+    eula_accepted_at    TIMESTAMP DEFAULT NULL,
     member_since        TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -196,6 +198,8 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_token TEXT DEFAULT NULL;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_token_expires_at TIMESTAMP DEFAULT NULL;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS tos_version_accepted TEXT DEFAULT NULL;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS tos_accepted_at TIMESTAMP DEFAULT NULL;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS eula_version_accepted TEXT DEFAULT NULL;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS eula_accepted_at TIMESTAMP DEFAULT NULL;
 
 -- DEV ONLY: seed a known test account
 INSERT INTO users (username, email, password, plan, beta_access)
@@ -207,7 +211,9 @@ The `verification_token` column holds a 64-char hex string (`crypto.randomBytes(
 
 The `reset_token` / `reset_token_expires_at` pair is the same shape: a 64-char hex token issued by `POST /forgot-password` with a 1-hour `TIMESTAMP` expiry, both cleared the moment `POST /reset-password` succeeds. The DB-level expiry check uses `reset_token_expires_at > NOW()` so server clock skew between issuer and validator can never widen the window. Both columns are `NULL` whenever there is no active reset request.
 
-The `tos_version_accepted` / `tos_accepted_at` pair tracks Terms of Service acceptance. `tos_version_accepted` holds the version string (e.g. `"3.1"`) the user last accepted; `tos_accepted_at` is the `TIMESTAMP` of that acceptance. The current version lives in `src/legalVersions.ts` (`CURRENT_TOS_VERSION`); the user is considered "current" only when `tos_version_accepted` equals it. A `NULL` (or stale) value means the user must (re-)accept. Signup auto-accepts the current version; `POST /legal/accept` is what re-stamps both columns when the version is bumped. To re-prompt every user after a TOS change, bump `CURRENT_TOS_VERSION` and nothing else.
+The `tos_version_accepted` / `tos_accepted_at` pair tracks Terms of Service acceptance. `tos_version_accepted` holds the version string (e.g. `"3.1"`) the user last accepted; `tos_accepted_at` is the `TIMESTAMP` of that acceptance. The current version lives in `src/constants.ts` (`CURRENT_TOS_VERSION`); the user is considered "current" only when `tos_version_accepted` equals it. A `NULL` (or stale) value means the user must (re-)accept. Signup auto-accepts the current version; `POST /legal/accept` is what re-stamps both columns when the version is bumped. To re-prompt every user after a TOS change, bump `CURRENT_TOS_VERSION` and nothing else.
+
+The `eula_version_accepted` / `eula_accepted_at` pair tracks End User License Agreement acceptance and is the same shape as the TOS pair, gated against `CURRENT_EULA_VERSION` (currently `"3.1"`) in `src/constants.ts`. The key difference: **EULA is not auto-accepted at signup**. Acceptance happens in the Vector desktop app and is recorded via `POST /legal/accept` with `{ document: "eula" }`. A new account therefore has `eula_version_accepted = NULL` until the app stamps it. `GET /legal/status` reports `eula_accepted` the same way it reports `tos_accepted`.
 
 **Critical dev behavior:** when `NODE_ENV=development`, the users table is **dropped and recreated on every boot**. Every restart of `npm run dev` wipes all accounts and re-seeds `testuser` (password `password123`). This is intentional during early schema churn — there is no migration tooling, so dropping is the simplest way to apply schema changes. Do **not** run dev mode against a database that holds data you care about. In any other environment (`NODE_ENV !== "development"`), the `DROP` and seed are skipped and `CREATE TABLE IF NOT EXISTS` runs as normal.
 
@@ -260,17 +266,22 @@ The error field is always named `message`. The frontend (`auth.js`) reads `data.
 | `POST` | `/forgot-password` | — | `{ email }` | **Always returns 200 with `{ success: true, message: "If that email exists, you will receive a reset link" }`** — even when the email is missing, malformed, or unknown. This is account-enumeration defense; never special-case it back to a 404/400. When the email is registered, issues a 1-hour `reset_token`, persists it with `reset_token_expires_at = NOW() + 1h`, and fires `sendPasswordResetEmail` fire-and-forget. |
 | `POST` | `/reset-password` | — | `{ token, newPassword }` | Validates both fields (400 `Token and new password are required` if missing). Looks up the row by `reset_token = $1 AND reset_token_expires_at > NOW()` so expiry is enforced at the DB level. Invalid/expired token → 400 `{ success: false, message: "Invalid or expired reset token" }`. Valid → bcrypt-rehashes (cost 10), nulls both reset columns, returns 200 `{ success: true, message: "Password reset successfully" }`. Single-use by construction (token cleared on success). |
 | `GET` | `/protected` | ✅ | — | Smoke test. Returns `{ message: "Hello <username>" }`. |
-| `GET` | `/me` | ✅ | — | Returns the full user profile **excluding `password`, `stripe_customer_id`, `verification_token`, and `tos_accepted_at`**. Shape: `{ success, user: { id, username, email, plan, plan_expires_at, member_since, last_login, beta_access, download_count, email_verified, is_active, tos_version_accepted } }`. (`tos_version_accepted` is included so the client can reason about TOS state; `tos_accepted_at` is deliberately omitted.) The frontend calls this on login and on every account-page load. |
+| `GET` | `/me` | ✅ | — | Returns the full user profile **excluding `password`, `stripe_customer_id`, `verification_token`, `tos_accepted_at`, and `eula_accepted_at`**. Shape: `{ success, user: { id, username, email, plan, plan_expires_at, member_since, last_login, beta_access, download_count, email_verified, is_active, tos_version_accepted, eula_version_accepted } }`. (`tos_version_accepted` and `eula_version_accepted` are included so the client can reason about legal state; the `*_accepted_at` timestamps are deliberately omitted.) The frontend calls this on login and on every account-page load. |
 | `POST` | `/download` | ✅ | — (empty body) | Increments `download_count` for the authenticated user. Fired by the shared `[data-download]` click handler in `script.js` (hero button + pricing Free card + per-page menu overlay link) for signed-in users only. Returns `{ success, message: "Download recorded" }`. The actual binary URL is **not** returned by this endpoint — the buttons download `/assets/downloads/Vector-Setup.exe` natively via the `download` attribute. |
 | `GET` | `/version` | — | — | Public, no auth. Reads `src/version.json` (imported at module load via `resolveJsonModule`) and returns `{ success: true, version: "<x.y.z>" }`. **Single source of truth for the latest Vector release** — to ship a new version, edit `src/version.json` and nothing else on the backend. The frontend and the desktop auto-update check should both consume this endpoint rather than hardcoding the version. |
-| `GET` | `/legal/status` | ✅ | — | Compares the user's `tos_version_accepted` against `CURRENT_TOS_VERSION` from `legalVersions.ts`. Returns `{ success: true, tos_accepted: boolean, current_tos_version: "<v>" }`. `tos_accepted` is `false` when the stored version is `NULL` or doesn't match the current version. User row not found → 401. The frontend's `checkLegalAcceptance()` (in `auth.js`) consumes this and **fails open** if the call errors. |
-| `POST` | `/legal/accept` | ✅ | `{ document: "tos" }` | Validates `document` is exactly `"tos"` (anything else → 400 `Invalid document`). Sets `tos_version_accepted = CURRENT_TOS_VERSION` and `tos_accepted_at = NOW()` for the authenticated user. Returns 200 `{ success: true, message: "Terms of Service accepted" }`. Fired by the "I Agree" button in the TOS modal (`legal-modal.js`). |
+| `GET` | `/legal/status` | ✅ | — | Compares the user's `tos_version_accepted` against `CURRENT_TOS_VERSION` and `eula_version_accepted` against `CURRENT_EULA_VERSION` from `constants.ts`. Returns `{ success: true, tos_accepted: boolean, eula_accepted: boolean, current_tos_version: "<v>", current_eula_version: "<v>" }`. Each `*_accepted` flag is `false` when the stored version is `NULL` or doesn't match the current version. User row not found → 401. The frontend's `checkLegalAcceptance()` (in `auth.js`) consumes this and **fails open** if the call errors. |
+| `POST` | `/legal/accept` | ✅ | `{ document: "tos" \| "eula" }` | Validates `document` is exactly `"tos"` or `"eula"` (anything else → 400 `Invalid document`). For `"tos"`: sets `tos_version_accepted = CURRENT_TOS_VERSION` and `tos_accepted_at = NOW()`, returns 200 `{ success: true, message: "Terms of Service accepted" }`. For `"eula"`: sets `eula_version_accepted = CURRENT_EULA_VERSION` and `eula_accepted_at = NOW()`, returns 200 `{ success: true, message: "End User License Agreement accepted" }`. The TOS branch is fired by the "I Agree" button in the TOS modal (`legal-modal.js`); the EULA branch is fired by the Vector desktop app. |
 
 There is **no** `/notes`, `/getnotes`, `/notes/:id` endpoint. Earlier docs referenced them; they have been removed.
 
-### Legal versioning (`src/legalVersions.ts`)
+### Legal versioning (`src/constants.ts`)
 
-`legalVersions.ts` exports `CURRENT_TOS_VERSION` (currently `"3.1"`): the single source of truth for the active Terms of Service version. `auth.ts` (signup auto-accept) and `legal.ts` (status comparison + accept stamping) both import it. **To re-prompt every signed-in user after a TOS change, bump this string and nothing else.** The next `GET /legal/status` they hit will report `tos_accepted: false` and the frontend modal will block them until they re-accept. There is currently only a TOS version here; if EULA/privacy acceptance gets tracked the same way, add sibling constants and extend the `document` allowlist in `POST /legal/accept`.
+`constants.ts` exports two constants, the single source of truth for each active legal document version:
+
+- `CURRENT_TOS_VERSION` (currently `"3.1"`): the active Terms of Service version. `auth.ts` (signup auto-accept) and `legal.ts` (status comparison + accept stamping) both import it. **To re-prompt every signed-in user after a TOS change, bump this string and nothing else.** The next `GET /legal/status` they hit will report `tos_accepted: false` and the frontend modal will block them until they re-accept.
+- `CURRENT_EULA_VERSION` (currently `"3.1"`): the active End User License Agreement version, consumed only by `legal.ts` (status comparison + accept stamping). **EULA is not auto-accepted at signup**; acceptance happens in the Vector desktop app via `POST /legal/accept` with `{ document: "eula" }`. Bumping this string makes the next `GET /legal/status` report `eula_accepted: false`.
+
+If privacy-policy acceptance (or any further document) gets tracked the same way, add a sibling constant here and extend the `document` allowlist in `POST /legal/accept`.
 
 ### Email (`src/email.ts` + `src/emailTemplates.ts`)
 

@@ -28,6 +28,8 @@ const setup = async () => {
             download_count INTEGER NOT NULL DEFAULT 0,
             tos_version_accepted TEXT DEFAULT NULL,
             tos_accepted_at TIMESTAMP DEFAULT NULL,
+            eula_version_accepted TEXT DEFAULT NULL,
+            eula_accepted_at TIMESTAMP DEFAULT NULL,
             member_since TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
         )
     `);
@@ -62,6 +64,18 @@ const setup = async () => {
         await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS tos_accepted_at TIMESTAMP DEFAULT NULL");
     } catch (err) {
         console.error("Failed to add tos_accepted_at column:", err);
+    }
+
+    try {
+        await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS eula_version_accepted TEXT DEFAULT NULL");
+    } catch (err) {
+        console.error("Failed to add eula_version_accepted column:", err);
+    }
+
+    try {
+        await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS eula_accepted_at TIMESTAMP DEFAULT NULL");
+    } catch (err) {
+        console.error("Failed to add eula_accepted_at column:", err);
     }
 
     // Dev-only: seed a known test account (password = "password123").

@@ -4,7 +4,7 @@ import pool from "../db";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { sendWelcomeEmail, sendVerificationEmail, sendPasswordResetEmail } from "../email";
-import { CURRENT_TOS_VERSION } from "../legalVersions";
+import { CURRENT_TOS_VERSION } from "../constants";
 
 const JWT_SECRET = process.env.JWT_SECRET as string;
 
