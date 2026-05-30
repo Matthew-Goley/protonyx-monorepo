@@ -97,8 +97,11 @@
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      padding: 0.4rem 0.9rem;
-      font-size: 0.75rem;
+      /* Match the Logout button (.btn-outline-gray) height: same vertical
+         padding, font-size, and border so the two sit level on the row. */
+      padding: 0.65rem 1.4rem;
+      font-size: 0.85rem;
+      letter-spacing: 0.02em;
       font-family: 'IBM Plex Mono', monospace;
       font-weight: 600;
       border-radius: 8px;
@@ -106,6 +109,14 @@
       border: 1px solid rgba(179, 70, 63, 0.40);
       color: #b3463f;
       cursor: pointer;
+    }
+
+    /* Logout + Delete Account share one row: Delete on the left, Logout right. */
+    .account-actions-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-top: 1.5rem;
     }
     .btn-delete-account:hover {
       background: rgba(179, 70, 63, 0.16);
@@ -202,12 +213,9 @@
         <dd id="infoDownloadCount">-</dd>
       </dl>
 
-      <div class="account-logout-row">
-        <button type="button" class="btn-outline-gray" data-logout>Logout</button>
-      </div>
-
-      <div class="account-delete-row">
+      <div class="account-actions-row">
         <button type="button" id="deleteAccountBtn" class="btn-delete-account">Delete Account</button>
+        <button type="button" class="btn-outline-gray" data-logout>Logout</button>
       </div>
     </div>
   </section>
