@@ -1,4 +1,4 @@
-const API_URL = "http://localhost:3000";
+const API_URL = "https://protonyx-monorepo-production.up.railway.app";
 
 function getToken() {
   return localStorage.getItem("token");
