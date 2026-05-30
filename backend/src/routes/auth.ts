@@ -147,6 +147,25 @@ export default async function authRoutes(app: FastifyInstance) {
         });
     });
 
+    // Delete-account DELETE (protected): permanently removes the authenticated
+    // user's row. The JWT is discarded client-side by the caller's logout flow.
+    app.delete("/account", { preHandler: authenticate }, async (request: any, reply: any) => {
+        try {
+            await pool.query("DELETE FROM users WHERE id = $1", [request.user.id]);
+
+            return reply.status(200).send({
+                success: true,
+                message: "Account deleted"
+            });
+        } catch (err) {
+            console.error("Failed to delete account:", err);
+            return reply.status(500).send({
+                success: false,
+                message: "Failed to delete account"
+            });
+        }
+    });
+
     // Forgot-password POST: issues a 1-hour reset token and emails it.
     // Always returns the same generic envelope to avoid revealing whether an
     // email is registered (account-enumeration defense).
