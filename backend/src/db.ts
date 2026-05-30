@@ -90,6 +90,9 @@ const setup = async () => {
     }
 };
 
-setup();
+setup().catch((err) => {
+    console.error("Database setup failed:", err);
+    process.exit(1);
+});
 
 export default pool;
