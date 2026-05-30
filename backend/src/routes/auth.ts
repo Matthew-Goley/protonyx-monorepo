@@ -4,6 +4,7 @@ import pool from "../db";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { sendWelcomeEmail, sendVerificationEmail, sendPasswordResetEmail } from "../email";
+import { authenticate } from "../middleware/authenticate";
 import { CURRENT_TOS_VERSION } from "../constants";
 
 const JWT_SECRET = process.env.JWT_SECRET as string;
@@ -103,6 +104,46 @@ export default async function authRoutes(app: FastifyInstance) {
         return reply.status(200).send({
             success: true,
             message: "Email verified successfully"
+        });
+    });
+
+    // Resend-verification POST (protected): re-issues a verification token for
+    // the authenticated user and re-sends the verification email.
+    app.post("/resend-verification", { preHandler: authenticate }, async (request: any, reply: any) => {
+        const result = await pool.query(
+            "SELECT id, username, email, email_verified FROM users WHERE id = $1",
+            [request.user.id]
+        );
+        const user = result.rows[0] as
+            | { id: number; username: string; email: string; email_verified: boolean }
+            | undefined;
+
+        if (!user) {
+            return reply.status(401).send({
+                success: false,
+                message: "User not found"
+            });
+        }
+
+        if (user.email_verified) {
+            return reply.status(400).send({
+                success: false,
+                message: "Email already verified"
+            });
+        }
+
+        const verificationToken = crypto.randomBytes(32).toString("hex");
+        await pool.query(
+            "UPDATE users SET verification_token = $1 WHERE id = $2",
+            [verificationToken, user.id]
+        );
+
+        // Fire-and-forget (failures are logged inside, never thrown)
+        sendVerificationEmail(user.email, user.username, verificationToken);
+
+        return reply.status(200).send({
+            success: true,
+            message: "Verification email sent"
         });
     });
 
