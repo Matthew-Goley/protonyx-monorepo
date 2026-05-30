@@ -29,7 +29,7 @@ export async function sendVerificationEmail(to: string, username: string, token:
     const resend = new Resend(process.env.RESEND_API_KEY);
 
     // TODO: replace localhost with production domain
-    const verifyUrl = `http://localhost:5500/verify-email/index.html?token=${token}`;
+    const verifyUrl = `https://protonyxdata.com/verify-email/index.html?token=${token}`;
 
     try {
         await resend.emails.send({
@@ -47,7 +47,7 @@ export async function sendPasswordResetEmail(to: string, username: string, token
     const resend = new Resend(process.env.RESEND_API_KEY);
 
     // TODO: replace localhost with production domain
-    const resetUrl = `http://localhost:5500/reset-password/index.html?token=${token}`;
+    const resetUrl = `https://protonyxdata.com/reset-password/index.html?token=${token}`;
 
     try {
         await resend.emails.send({
