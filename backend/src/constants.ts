@@ -8,4 +8,4 @@ export const CURRENT_EULA_VERSION = "3.1";
 
 // Beta toggle. Flip to false and redeploy to deactivate the open beta.
 // Served by GET /beta-status. No database, no logic, just the constant.
-export const BETA_ACTIVE = true;
+export const BETA_ACTIVE = false;

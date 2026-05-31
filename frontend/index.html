@@ -47,8 +47,8 @@
         Open Beta · All Pro features free · No card required
       </span>
       <span class="beta-banner-status">
-        <span class="beta-dot" aria-hidden="true"></span>
-        Beta Active
+        <span class="beta-dot" id="betaStatusDot" aria-hidden="true" style="background: #ff6464; animation: none;"></span>
+        <span id="betaStatusText" style="color: rgba(255, 100, 100, 0.8);">Beta Offline</span>
       </span>
     </div>
     <div class="landing-hero-inner">
@@ -243,7 +243,7 @@
             <li>Custom Lens thresholds per ticker</li>
             <li>Priority email support</li>
           </ul>
-          <a href="/auth/index.html?mode=signup" class="btn-primary">Join Beta Free</a>
+          <a href="/assets/downloads/Vector-Setup.exe" download data-download class="btn-primary">Join Beta Free</a>
         </div>
       </div>
     </div>
@@ -300,5 +300,27 @@
   <script src="script.js"></script>
   <script src="auth/auth.js"></script>
   <script>checkAuth();</script>
+  <script>
+    // Beta banner status indicator. Defaults to the red/offline state in the
+    // markup; flips to green/active only on a confirmed beta_active response,
+    // so a failed fetch stays looking like offline.
+    (async () => {
+      const dot = document.getElementById("betaStatusDot");
+      const text = document.getElementById("betaStatusText");
+      if (!dot || !text) return;
+      try {
+        const res = await fetch(`${API_URL}/beta-status`);
+        const data = await res.json();
+        if (data && data.beta_active) {
+          dot.style.background = "#22c55e";
+          dot.style.animation = "";
+          text.style.color = "";
+          text.textContent = "Beta Active";
+        }
+      } catch (err) {
+        // Leave the default offline state on any failure.
+      }
+    })();
+  </script>
 </body>
 </html>
