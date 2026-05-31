@@ -50,8 +50,8 @@ export default async function authRoutes(app: FastifyInstance) {
         // Push to db. New accounts auto-accept the current TOS version at
         // creation time (the signup form carries the agreement notice).
         await pool.query(
-            `INSERT INTO users (username, email, password, tos_version_accepted, tos_accepted_at)
-             VALUES ($1, $2, $3, $4, NOW())`,
+            `INSERT INTO users (username, email, password, plan, beta_access, tos_version_accepted, tos_accepted_at)
+            VALUES ($1, $2, $3, 'pro', true, $4, NOW())`,
             [username, email, hashedPassword, CURRENT_TOS_VERSION]
         );
 
