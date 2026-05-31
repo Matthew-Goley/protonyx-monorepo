@@ -2,6 +2,7 @@ import { FastifyInstance } from "fastify";
 import pool from "../db";
 import { authenticate } from "../middleware/authenticate";
 import versionData from "../version.json";
+import { BETA_ACTIVE } from "../constants";
 
 export default async function debugRoutes(app: FastifyInstance) {
     // Public: latest Vector version
@@ -9,6 +10,14 @@ export default async function debugRoutes(app: FastifyInstance) {
         return {
             success: true,
             version: versionData.version
+        };
+    });
+
+    // Public: whether the open beta is active
+    app.get("/beta-status", async () => {
+        return {
+            success: true,
+            beta_active: BETA_ACTIVE
         };
     });
 
