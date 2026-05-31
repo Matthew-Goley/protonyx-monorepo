@@ -41,6 +41,16 @@
 
   <!-- ── Hero ── -->
   <section class="landing-hero">
+    <div class="beta-banner">
+      <span class="beta-banner-main">
+        <span class="beta-dot" aria-hidden="true"></span>
+        Open Beta · All Pro features free · No card required
+      </span>
+      <span class="beta-banner-status">
+        <span class="beta-dot" aria-hidden="true"></span>
+        Beta Active
+      </span>
+    </div>
     <div class="landing-hero-inner">
       <div class="landing-hero-left">
         <p class="landing-hero-eyebrow">Vector</p>
@@ -61,7 +71,7 @@
             </svg>
             Download for Windows
           </a>
-          <a href="#plans" class="btn-ghost">View plans</a>
+          <p class="landing-hero-beta-note">Join the beta</p>
         </div>
       </div>
 
@@ -216,35 +226,14 @@
   <section class="lp-section base" id="plans">
     <div class="lp-section-inner center">
       <p class="lp-eyebrow">Plans</p>
-      <h2 class="lp-h2">Start free.<br>Upgrade when you outgrow it.</h2>
-
-      <div class="pricing-toggle">
-        <div class="pricing-toggle-group" data-interval="monthly" role="group" aria-label="Billing interval">
-          <span class="pricing-toggle-thumb" aria-hidden="true"></span>
-          <button type="button" class="pricing-toggle-option" data-interval="monthly">Monthly</button>
-          <button type="button" class="pricing-toggle-option" data-interval="annual">Annually</button>
-          <span class="pricing-toggle-badge">Save 17%</span>
-        </div>
-      </div>
+      <h2 class="lp-h2">Open Beta.<br>Everything free until we launch.</h2>
+      <p class="lp-lead">Full Pro access during the beta. No card, no commitment. Converts after beta closes.</p>
 
       <div class="pricing-grid fade-in">
-        <div class="pricing-card">
-          <p class="pricing-tier">Vector Free</p>
-          <div class="pricing-price">$0<span> / forever</span></div>
-          <hr class="pricing-divider">
-          <ul class="pricing-features">
-            <li>Full dashboard with modular widgets</li>
-            <li>15 positions and tickers</li>
-            <li>Dark and light themes</li>
-            <li>Secure and local-only storage</li>
-          </ul>
-          <a href="/assets/downloads/Vector-Setup.exe" download data-download class="btn-ghost">Download Vector</a>
-        </div>
-
         <div class="pricing-card featured">
-          <span class="pricing-badge">Recommended</span>
           <p class="pricing-tier paid">Vector Professional</p>
-          <div class="pricing-price" data-monthly-amount="$10" data-monthly-period=" / month" data-annual-amount="$100" data-annual-period=" / year">$10<span> / month</span></div>
+          <div class="pricing-price">$0<span> / during beta</span></div>
+          <p class="pricing-subtext">Then $10 / month or $100 / year</p>
           <hr class="pricing-divider">
           <ul class="pricing-features">
             <li>Everything in Free</li>
@@ -254,8 +243,7 @@
             <li>Custom Lens thresholds per ticker</li>
             <li>Priority email support</li>
           </ul>
-          <!-- TODO: replace # with real Stripe checkout URL once provisioned -->
-          <a href="#" class="btn-primary">Get Professional</a>
+          <a href="/auth/index.html?mode=signup" class="btn-primary">Join Beta Free</a>
         </div>
       </div>
     </div>
