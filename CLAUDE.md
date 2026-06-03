@@ -66,7 +66,8 @@ _monorepo/
 │   │   └── index.html             # Standalone "request reset link" form
 │   ├── reset-password/
 │   │   └── index.html             # Standalone "set a new password" form (token in query string)
-│   ├── about/ contact/ privacy/ tos/   # Static pages
+│   ├── about/ contact/ privacy/ tos/ eula/   # Static pages (privacy/tos/eula reuse the .tos-content Times New Roman legal styling)
+│   ├── legal/                     # Source legal docs: tosmd.md, ppmd.md, eulamd.md + tos.pdf, pp.pdf, eula.pdf (each page's Download PDF button links /legal/*.pdf)
 │   ├── assets/
 │   │   ├── company/               # protonyx_full_white.png, _black.png
 │   │   ├── product/vector/        # Vector product artwork (logo, dashboard, lens preview)
