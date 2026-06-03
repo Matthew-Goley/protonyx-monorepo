@@ -609,6 +609,14 @@
   line-height: 1.4;
 }
 
+.pricing-beta-note {
+  margin: 2rem auto 0;
+  max-width: 480px;
+  font-size: clamp(0.85rem, 0.9vw, 1rem);
+  color: rgba(31, 34, 48, 0.55);
+  line-height: 1.5;
+}
+
 /* Single beta card: center it on the page */
 .pricing-grid {
   grid-template-columns: 1fr;
