@@ -6,12 +6,30 @@ import jwt from "jsonwebtoken";
 import { sendWelcomeEmail, sendVerificationEmail, sendPasswordResetEmail } from "../email";
 import { authenticate } from "../middleware/authenticate";
 import { CURRENT_TOS_VERSION } from "../constants";
+import { BETA_ACTIVE, MAX_BETA_USERS } from "../betaConfig";
 
 const JWT_SECRET = process.env.JWT_SECRET as string;
 
 export default async function authRoutes(app: FastifyInstance) {
     // Signup POST
     app.post("/signup", async (request, reply) => {
+        // Beta gate: signups can be closed manually or capped at MAX_BETA_USERS.
+        // Both are read from the environment so they can be toggled without a redeploy.
+        if (!BETA_ACTIVE) {
+            return reply.status(403).send({
+                success: false,
+                message: "The open beta is currently closed. Check back soon."
+            });
+        }
+
+        const betaCount = await pool.query("SELECT COUNT(*) FROM users");
+        if (parseInt(betaCount.rows[0].count, 10) >= MAX_BETA_USERS) {
+            return reply.status(403).send({
+                success: false,
+                message: "The open beta is currently full. Check back soon."
+            });
+        }
+
         const { username, email, password } = request.body as {
             username: string;
             email: string;

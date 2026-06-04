@@ -6,6 +6,7 @@ import cors from "@fastify/cors";
 import authRoutes from "./routes/auth";
 import debugRoutes from "./routes/debug";
 import legalRoutes from "./routes/legal";
+import betaRoutes from "./routes/beta";
 
 const app = Fastify();
 
@@ -28,6 +29,7 @@ app.register(cors, {
 app.register(authRoutes);
 app.register(debugRoutes);
 app.register(legalRoutes);
+app.register(betaRoutes);
 
 // Start server
 const start = async () => {

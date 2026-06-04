@@ -36,12 +36,14 @@ _monorepo/
 │   │   ├── emailTemplates.ts      # Inline HTML strings for the three transactional emails
 │   │   ├── version.json           # Single source of truth for the latest Vector version (served by GET /version)
 │   │   ├── constants.ts           # Single source of truth for current TOS + EULA versions (CURRENT_TOS_VERSION, CURRENT_EULA_VERSION)
+│   │   ├── betaConfig.ts          # BETA_ACTIVE kill switch + MAX_BETA_USERS cap, read from env (gates signup)
 │   │   ├── middleware/
 │   │   │   └── authenticate.ts    # JWT bearer preHandler
 │   │   └── routes/
 │   │       ├── auth.ts            # /signup, /login, /verify-email, /forgot-password, /reset-password
 │   │       ├── debug.ts           # /protected, /me, /download, /version
-│   │       └── legal.ts           # /legal/status, /legal/accept
+│   │       ├── legal.ts           # /legal/status, /legal/accept
+│   │       └── beta.ts            # /beta/status (public signup-availability check)
 │   ├── package.json
 │   ├── tsconfig.json
 │   └── .env                       # JWT_SECRET, DATABASE_URL, RESEND_API_KEY — gitignored
@@ -140,7 +142,11 @@ The backend expects a running Postgres reachable via `DATABASE_URL`. Schema is c
 JWT_SECRET=<any-string>
 DATABASE_URL=postgresql://<user>:<pass>@<host>:<port>/<db>
 RESEND_API_KEY=<resend-api-key>     # required only for welcome emails
+BETA_ACTIVE=<true|false>            # optional, defaults to true; "false" closes all signups
+MAX_BETA_USERS=<integer>            # optional, defaults to 50; hard cap on total user count
 ```
+
+`BETA_ACTIVE` and `MAX_BETA_USERS` gate `/signup` only (see §4). They are read from `process.env` in `src/betaConfig.ts` so they can be toggled from the Railway dashboard without a redeploy. `BETA_ACTIVE` defaults to `true` and is only off when set to the literal string `"false"`; `MAX_BETA_USERS` defaults to `50`.
 
 If `RESEND_API_KEY` is missing, signup still succeeds — `sendWelcomeEmail` is fire-and-forget and swallows errors so that email outages never break account creation.
 
@@ -159,7 +165,7 @@ If `RESEND_API_KEY` is missing, signup still succeeds — `sendWelcomeEmail` is 
    - `http://127.0.0.1:5501`
    - `http://localhost:5501`
    Methods: `GET, POST, DELETE, PATCH`. (Fastify handles preflight automatically; no explicit `OPTIONS`.) Adding any new origin (staging URL, deployed frontend) requires editing this list.
-3. **Route modules**: `authRoutes`, `debugRoutes`, `legalRoutes`. All are mounted at the **root path** with no prefix. The `/protected` and `/me` endpoints live under `debug.ts` for historical reasons even though they are not strictly debug, and the `/legal/*` endpoints live under `legal.ts`.
+3. **Route modules**: `authRoutes`, `debugRoutes`, `legalRoutes`, `betaRoutes`. All are mounted at the **root path** with no prefix. The `/protected` and `/me` endpoints live under `debug.ts` for historical reasons even though they are not strictly debug, the `/legal/*` endpoints live under `legal.ts`, and the public `/beta/status` endpoint lives under `beta.ts`.
 
 `db.ts` is imported transitively from the route modules. Its top-level `setup()` call fires on module load, which means **the server will not start cleanly without a reachable Postgres**.
 
@@ -261,7 +267,7 @@ The error field is always named `message`. The frontend (`auth.js`) reads `data.
 
 | Method | Path | Auth | Body | Behavior |
 |---|---|---|---|---|
-| `POST` | `/signup` | — | `{ username, email, password }` | Validates all three are present; rejects duplicate `username` or `email` (409); bcrypt-hashes (cost 10); inserts row **with `tos_version_accepted = CURRENT_TOS_VERSION` and `tos_accepted_at = NOW()`** (new accounts auto-accept the current TOS; the signup form carries the agreement notice); **issues a `crypto.randomBytes(32).toString("hex")` verification token and stores it on the row**; **fires `sendWelcomeEmail` and `sendVerificationEmail` fire-and-forget** (failures logged, never thrown); returns 201. |
+| `POST` | `/signup` | — | `{ username, email, password }` | **Beta-gated at the very top, before field validation** (see "Beta gating" below): returns 403 `{ success: false, message: "The open beta is currently closed. Check back soon." }` when `BETA_ACTIVE` is false, or 403 `{ success: false, message: "The open beta is currently full. Check back soon." }` when `SELECT COUNT(*) FROM users >= MAX_BETA_USERS`. If both gates pass: validates all three are present; rejects duplicate `username` or `email` (409); bcrypt-hashes (cost 10); inserts row **with `tos_version_accepted = CURRENT_TOS_VERSION` and `tos_accepted_at = NOW()`** (new accounts auto-accept the current TOS; the signup form carries the agreement notice); **issues a `crypto.randomBytes(32).toString("hex")` verification token and stores it on the row**; **fires `sendWelcomeEmail` and `sendVerificationEmail` fire-and-forget** (failures logged, never thrown); returns 201. |
 | `POST` | `/login` | — | `{ username, password }` | The `username` field accepts **either a username or an email** (`WHERE username = $1 OR email = $1`). On success, stamps `last_login = CURRENT_TIMESTAMP` and returns a JWT (`{ id, username }`, signed with `JWT_SECRET`, **7-day expiry**). Login does **not** currently gate on `email_verified` — verification is informational until that policy is decided. |
 | `GET` | `/verify-email` | — | query: `?token=<hex>` | Looks up the user by `verification_token`. Missing or unknown token → 400 `{ success: false, message: "Invalid or expired verification token" }`. Found → sets `email_verified = true`, nulls `verification_token`, returns 200 `{ success: true, message: "Email verified successfully" }`. The token is single-use because it's cleared on success; re-clicking the link returns 400. |
 | `POST` | `/resend-verification` | ✅ | — (empty body) | Looks up the authenticated user by `request.user.id`. User not found → 401. Already verified (`email_verified = true`) → 400 `{ success: false, message: "Email already verified" }`. Otherwise issues a fresh `crypto.randomBytes(32).toString("hex")` verification token, `UPDATE`s `verification_token`, fires `sendVerificationEmail` fire-and-forget, and returns 200 `{ success: true, message: "Verification email sent" }`. Fired by the "Send Verification Email" button on the account page. |
@@ -271,6 +277,7 @@ The error field is always named `message`. The frontend (`auth.js`) reads `data.
 | `GET` | `/me` | ✅ | — | Returns the full user profile **excluding `password`, `stripe_customer_id`, `verification_token`, `tos_accepted_at`, and `eula_accepted_at`**. Shape: `{ success, user: { id, username, email, plan, plan_expires_at, member_since, last_login, beta_access, download_count, email_verified, is_active, tos_version_accepted, eula_version_accepted } }`. (`tos_version_accepted` and `eula_version_accepted` are included so the client can reason about legal state; the `*_accepted_at` timestamps are deliberately omitted.) The frontend calls this on login and on every account-page load. |
 | `POST` | `/download` | ✅ | — (empty body) | Increments `download_count` for the authenticated user. Fired by the shared `[data-download]` click handler in `script.js` (hero button + pricing Free card + per-page menu overlay link) for signed-in users only. Returns `{ success, message: "Download recorded" }`. The actual binary URL is **not** returned by this endpoint — the buttons download `/assets/downloads/Vector-Setup.exe` natively via the `download` attribute. |
 | `GET` | `/version` | — | — | Public, no auth. Reads `src/version.json` (imported at module load via `resolveJsonModule`) and returns `{ success: true, version: "<x.y.z>" }`. **Single source of truth for the latest Vector release** — to ship a new version, edit `src/version.json` and nothing else on the backend. The frontend and the desktop auto-update check should both consume this endpoint rather than hardcoding the version. |
+| `GET` | `/beta/status` | — | — | Public, no auth. Runs `SELECT COUNT(*) FROM users` and returns `{ success: true, open: boolean, spots_remaining: number }`. `open` is true only when `BETA_ACTIVE` is true **and** the user count is below `MAX_BETA_USERS`. `spots_remaining` is `max(0, MAX_BETA_USERS - count)` when `BETA_ACTIVE` is true, otherwise `0`. Lives in `routes/beta.ts`; both constants come from `src/betaConfig.ts`. Lets the frontend reflect signup availability. |
 | `GET` | `/legal/status` | ✅ | — | Compares the user's `tos_version_accepted` against `CURRENT_TOS_VERSION` and `eula_version_accepted` against `CURRENT_EULA_VERSION` from `constants.ts`. Returns `{ success: true, tos_accepted: boolean, eula_accepted: boolean, current_tos_version: "<v>", current_eula_version: "<v>" }`. Each `*_accepted` flag is `false` when the stored version is `NULL` or doesn't match the current version. User row not found → 401. The frontend's `checkLegalAcceptance()` (in `auth.js`) consumes this and **fails open** if the call errors. |
 | `POST` | `/legal/accept` | ✅ | `{ document: "tos" \| "eula" }` | Validates `document` is exactly `"tos"` or `"eula"` (anything else → 400 `Invalid document`). For `"tos"`: sets `tos_version_accepted = CURRENT_TOS_VERSION` and `tos_accepted_at = NOW()`, returns 200 `{ success: true, message: "Terms of Service accepted" }`. For `"eula"`: sets `eula_version_accepted = CURRENT_EULA_VERSION` and `eula_accepted_at = NOW()`, returns 200 `{ success: true, message: "End User License Agreement accepted" }`. The TOS branch is fired by the "I Agree" button in the TOS modal (`legal-modal.js`); the EULA branch is fired by the Vector desktop app. |
 
@@ -284,6 +291,15 @@ There is **no** `/notes`, `/getnotes`, `/notes/:id` endpoint. Earlier docs refer
 - `CURRENT_EULA_VERSION` (currently `"3.1"`): the active End User License Agreement version, consumed only by `legal.ts` (status comparison + accept stamping). **EULA is not auto-accepted at signup**; acceptance happens in the Vector desktop app via `POST /legal/accept` with `{ document: "eula" }`. Bumping this string makes the next `GET /legal/status` report `eula_accepted: false`.
 
 If privacy-policy acceptance (or any further document) gets tracked the same way, add a sibling constant here and extend the `document` allowlist in `POST /legal/accept`.
+
+### Beta gating (`src/betaConfig.ts`)
+
+`betaConfig.ts` exports two env-driven values that gate account creation:
+
+- `BETA_ACTIVE` = `process.env.BETA_ACTIVE !== "false"`: a manual kill switch. Defaults to `true` when unset; only `BETA_ACTIVE=false` (the literal string) closes signups.
+- `MAX_BETA_USERS` = `parseInt(process.env.MAX_BETA_USERS || "50", 10)`: a hard cap on total user count. Defaults to `50`.
+
+Both are read from the environment so they can be toggled from the Railway dashboard without a redeploy. They gate **only `POST /signup`**: the check sits at the very top of the handler, before field validation. If `BETA_ACTIVE` is false it returns 403 "The open beta is currently closed. Check back soon."; otherwise it runs `SELECT COUNT(*) FROM users` and, if the count is at or above `MAX_BETA_USERS`, returns 403 "The open beta is currently full. Check back soon." Login, forgot-password, reset-password, legal acceptance, `/me`, `/version`, and every other endpoint are **not** gated. The public `GET /beta/status` (in `routes/beta.ts`) reports the same open/spots-remaining state to the frontend. The count query is intentionally a plain `SELECT COUNT(*)`, fine at this scale.
 
 ### Email (`src/email.ts` + `src/emailTemplates.ts`)
 
