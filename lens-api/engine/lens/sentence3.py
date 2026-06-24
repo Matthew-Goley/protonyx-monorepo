@@ -1,0 +1,150 @@
+"""Sentence 3 — CTA composer (picks highest-priority action)."""
+
+from __future__ import annotations
+
+import hashlib
+import logging
+from typing import Any
+
+from engine.lens._templates import load_templates as _load_templates
+
+_log = logging.getLogger(__name__)
+
+
+def _pick(templates: list[str], hash_key: str) -> str:
+    if not templates:
+        return ''
+    h = int(hashlib.sha256(hash_key.encode()).hexdigest(), 16)
+    return templates[h % len(templates)]
+
+
+def _build_ctx(cta: dict, pool_results: dict) -> dict[str, Any]:
+    """Build the variable context dict for template formatting."""
+    details = cta.get('details', {})
+    summary = pool_results.get('_positions_summary', {})
+    suggested = details.get('suggested_tickers', [])
+
+    return {
+        'ticker': cta.get('ticker', ''),
+        'dollars': cta.get('dollars', 0),
+        'weight': details.get('current_weight', details.get('weight_pct', details.get('weight', 0))),
+        'slope': details.get('slope_pct', 0),
+        'vol': details.get('vol_pct', 0),
+        'sector': details.get('target_sector', details.get('heavy_sector', '')),
+        'sector_weight': details.get('sector_weight', 0),
+        'heavy_ticker': details.get('heavy_ticker', cta.get('ticker', '')),
+        'target_weight': details.get('target_weight', 30),
+        'entry_weight': details.get('entry_weight', 0),
+        'value': pool_results.get('beta', {}).get('portfolio_result', {}).get('details', {}).get('beta', 1.0),
+        'unrealized_pct': abs(details.get('unrealized_pct', 0)),
+        'unrealized_dollar': abs(details.get('unrealized_dollar', 0)),
+        'count': len(summary.get('ticker_weights', {})),
+        'total': len(summary.get('ticker_weights', {})),
+    }
+
+
+def _render_cta(cta: dict, pool_results: dict, hash_key: str) -> str:
+    """Render a single CTA into a sentence."""
+    templates = _load_templates().get('sentence3', {})
+    action = cta.get('action', 'hold')
+    reason = cta.get('reason', 'portfolio_healthy')
+    severity = cta.get('severity', 'none')
+
+    action_tmpls = templates.get(action, {})
+    reason_tmpls = action_tmpls.get(reason, {})
+
+    # Try severity-specific, then 'default'
+    tmpls = reason_tmpls.get(severity, reason_tmpls.get('default', []))
+    if not tmpls:
+        # Fallback: try hold > portfolio_healthy
+        tmpls = templates.get('hold', {}).get('portfolio_healthy', {}).get('default', [])
+
+    tmpl = _pick(tmpls, hash_key)
+    if not tmpl:
+        return 'No specific action is indicated at this time.'
+
+    ctx = _build_ctx(cta, pool_results)
+    try:
+        return tmpl.format(**ctx)
+    except (KeyError, ValueError) as exc:
+        _log.debug('sentence3 format failed: %s', exc)
+        return tmpl
+
+
+_DIVERSIFICATION_REASONS = frozenset({
+    'reduce_concentration', 'sector_underweight',
+})
+
+# Above this caution level a "no action" posture is NOT "all healthy" — the tier
+# has merely suppressed trades on a genuinely risky book, so the brief must say
+# so instead of claiming everything is within normal bounds.
+_ELEVATED_CAUTION = 45
+
+
+def _healthy_sentence(caution_score: int) -> str:
+    """Pick the closing 'no action' sentence — risk-acknowledging when the
+    caution score is elevated, otherwise the plain healthy line."""
+    templates = _load_templates().get('sentence3', {})
+    if caution_score >= _ELEVATED_CAUTION:
+        tmpls = templates.get('hold', {}).get('portfolio_caution', {}).get('default', [])
+        picked = _pick(tmpls, f'caution|{caution_score}')
+        if picked:
+            return picked
+    tmpls = templates.get('hold', {}).get('portfolio_healthy', {}).get('default', [])
+    return _pick(tmpls, 'empty') or 'No action signals detected.'
+
+
+def compose(cta_list: list[dict], pool_results: dict, caution_score: int = 0) -> str:
+    """
+    Take the CTA list (already sorted by priority) and return one sentence.
+
+    A trim (rebalance) is the most material action on the book, so the largest
+    one headlines the brief. Otherwise diversification CTAs (reduce_concentration,
+    sector_underweight) are preferred because they're the most actionable and
+    approachable recommendation for casual investors, then the highest-priority
+    CTA.
+    """
+    if not cta_list:
+        return _healthy_sentence(caution_score)
+
+    # A trim is the headline action — surface the largest one ahead of the
+    # approachable diversification buys so a dominant winner-drift / concentration
+    # rebalance is never buried behind a small sector deposit (e.g. a $7,610 AAPL
+    # trim must not lose the brief to a $370 JPM buy).
+    rebalances = [c for c in cta_list if c.get('action') == 'rebalance']
+    if rebalances:
+        top = max(rebalances, key=lambda c: abs(float(c.get('dollars', 0.0) or 0.0)))
+    else:
+        # Prefer diversification CTAs — pick the first (highest priority)
+        top = None
+        for cta in cta_list:
+            if cta.get('reason') in _DIVERSIFICATION_REASONS:
+                top = cta
+                break
+
+        # Fall back to highest-priority CTA
+        if top is None:
+            top = cta_list[0]
+
+    # A lone "portfolio_healthy" CTA with elevated caution means the tier
+    # suppressed every trade — acknowledge the risk rather than claim health.
+    if top.get('reason') == 'portfolio_healthy':
+        return _healthy_sentence(caution_score)
+
+    sorted_tickers = sorted(
+        pool_results.get('_positions_summary', {}).get('ticker_weights', {}).keys()
+    )
+    hash_key = f"s3|{top.get('reason', '')}|{'|'.join(sorted_tickers)}"
+
+    return _render_cta(top, pool_results, hash_key)
+
+
+def compose_full_report(cta_list: list[dict], pool_results: dict) -> list[str]:
+    """Return one sentence per CTA in the list (all of them)."""
+    results: list[str] = []
+    for i, cta in enumerate(cta_list):
+        hash_key = f"s3_full|{i}|{cta.get('reason', '')}"
+        sentence = _render_cta(cta, pool_results, hash_key)
+        if sentence:
+            results.append(sentence)
+    return results

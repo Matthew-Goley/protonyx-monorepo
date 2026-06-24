@@ -1,0 +1,52 @@
+{
+  "positions": [
+    {
+      "ticker": "AAPL",
+      "shares": 15,
+      "equity": 2625.00,
+      "price": 175.00,
+      "sector": "Technology",
+      "name": "Apple Inc.",
+      "added_at": "2024-03-01T00:00:00"
+    },
+    {
+      "ticker": "MSFT",
+      "shares": 8,
+      "equity": 3040.00,
+      "price": 380.00,
+      "sector": "Technology",
+      "name": "Microsoft Corporation",
+      "added_at": "2024-03-01T00:00:00"
+    },
+    {
+      "ticker": "JNJ",
+      "shares": 12,
+      "equity": 1740.00,
+      "price": 145.00,
+      "sector": "Healthcare",
+      "name": "Johnson & Johnson",
+      "added_at": "2024-06-15T00:00:00"
+    },
+    {
+      "ticker": "JPM",
+      "shares": 10,
+      "equity": 1950.00,
+      "price": 195.00,
+      "sector": "Financial Services",
+      "name": "JPMorgan Chase & Co.",
+      "added_at": "2024-06-15T00:00:00"
+    },
+    {
+      "ticker": "XOM",
+      "shares": 20,
+      "equity": 1960.00,
+      "price": 98.00,
+      "sector": "Energy",
+      "name": "Exxon Mobil Corporation",
+      "added_at": "2024-09-01T00:00:00"
+    }
+  ],
+  "settings": {
+    "risk_tier": "regular"
+  }
+}
