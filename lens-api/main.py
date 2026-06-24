@@ -2,16 +2,19 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import os
 from typing import Any
 
+import pandas as pd
+import yfinance as yf
 from dotenv import load_dotenv
 
 load_dotenv()
 
-from fastapi import FastAPI, HTTPException, Security
+from fastapi import FastAPI, HTTPException, Query, Security
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.security.api_key import APIKeyHeader
@@ -24,6 +27,8 @@ from engine.store import DataStore
 
 logging.basicConfig(level=logging.INFO)
 _log = logging.getLogger(__name__)
+
+_VALID_PERIODS = {"1mo", "3mo", "6mo", "1y", "2y", "5y"}
 
 app = FastAPI(title="Lens API", version="1.0.0")
 
@@ -106,3 +111,147 @@ async def analyze(
     # appear in pool_results. Serialise via stdlib json with a str fallback so
     # unknown types become their repr rather than blowing up the response.
     return JSONResponse(content=json.loads(json.dumps(result, default=str)))
+
+
+@app.get("/ticker/{symbol}/history")
+async def ticker_history(
+    symbol: str,
+    period: str = Query(default="1y"),
+    _: None = Security(_require_api_key),
+) -> JSONResponse:
+    """OHLCV price history for a single ticker.
+
+    period — one of: 1mo, 3mo, 6mo, 1y, 2y, 5y (default: 1y)
+    """
+    if period not in _VALID_PERIODS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid period '{period}'. Must be one of: {', '.join(sorted(_VALID_PERIODS))}",
+        )
+
+    sym = symbol.upper()
+
+    try:
+        df: pd.DataFrame = await run_in_threadpool(
+            lambda: yf.Ticker(sym).history(period=period)
+        )
+    except Exception as exc:
+        _log.exception("yfinance history failed for %s", sym)
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+    if df.empty:
+        raise HTTPException(status_code=404, detail=f"No data found for ticker '{sym}'")
+
+    rows = [
+        {
+            "date": date.strftime("%Y-%m-%d"),
+            "open": round(float(row["Open"]), 4),
+            "high": round(float(row["High"]), 4),
+            "low": round(float(row["Low"]), 4),
+            "close": round(float(row["Close"]), 4),
+            "volume": int(row["Volume"]),
+        }
+        for date, row in df.iterrows()
+    ]
+    return JSONResponse(content=rows)
+
+
+@app.get("/ticker/{symbol}/info")
+async def ticker_info(
+    symbol: str,
+    _: None = Security(_require_api_key),
+) -> JSONResponse:
+    """Company snapshot: name, sector, market cap, valuation, price range."""
+    sym = symbol.upper()
+
+    try:
+        info: dict = await run_in_threadpool(lambda: yf.Ticker(sym).info)
+    except Exception as exc:
+        _log.exception("yfinance info failed for %s", sym)
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+    # yfinance returns a minimal stub dict for unknown tickers; treat as 404
+    # when no recognisable market price field is present.
+    if not info or (info.get("currentPrice") is None and info.get("regularMarketPrice") is None):
+        raise HTTPException(status_code=404, detail=f"No data found for ticker '{sym}'")
+
+    return JSONResponse(
+        content={
+            "name": info.get("longName") or info.get("shortName"),
+            "sector": info.get("sector"),
+            "market_cap": info.get("marketCap"),
+            "pe_ratio": info.get("trailingPE"),
+            "dividend_yield": info.get("dividendYield"),
+            "52_week_high": info.get("fiftyTwoWeekHigh"),
+            "52_week_low": info.get("fiftyTwoWeekLow"),
+            "current_price": info.get("currentPrice") or info.get("regularMarketPrice"),
+        }
+    )
+
+
+@app.get("/ticker/{symbol}/compare")
+async def ticker_compare(
+    symbol: str,
+    symbols: str = Query(default=""),
+    period: str = Query(default="1y"),
+    _: None = Security(_require_api_key),
+) -> JSONResponse:
+    """Normalized price history for {symbol} plus comparison tickers.
+
+    symbols — comma-separated list of additional tickers, e.g. NVDA,SPY
+    period  — same options as /history (default: 1y)
+
+    Each series is normalized to 100 at its first trading day so all tickers
+    are directly comparable on a single chart.
+    Returns a list of {date, TICKER: value, ...} objects.
+    """
+    if period not in _VALID_PERIODS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid period '{period}'. Must be one of: {', '.join(sorted(_VALID_PERIODS))}",
+        )
+
+    sym = symbol.upper()
+    comparison = [s.strip().upper() for s in symbols.split(",") if s.strip()] if symbols else []
+    all_syms = [sym] + comparison
+
+    async def _fetch_close(ticker: str) -> tuple[str, pd.Series | None]:
+        try:
+            df: pd.DataFrame = await run_in_threadpool(
+                lambda t=ticker: yf.Ticker(t).history(period=period)
+            )
+            if df.empty:
+                return ticker, None
+            return ticker, df["Close"]
+        except Exception:
+            _log.warning("yfinance history failed for %s (compare)", ticker)
+            return ticker, None
+
+    fetched = await asyncio.gather(*[_fetch_close(t) for t in all_syms])
+    series_map: dict[str, pd.Series] = {t: s for t, s in fetched if s is not None}
+
+    if sym not in series_map:
+        raise HTTPException(status_code=404, detail=f"No data found for ticker '{sym}'")
+
+    # Align on a shared date index, forward-fill gaps (e.g. different holidays),
+    # then normalize each series to 100 at its own first valid price.
+    combined = pd.DataFrame(series_map)
+    combined.index = combined.index.tz_localize(None) if combined.index.tz is not None else combined.index
+    combined = combined.sort_index()
+    combined = combined.ffill()
+
+    for col in combined.columns:
+        first_idx = combined[col].first_valid_index()
+        if first_idx is not None:
+            base = combined.loc[first_idx, col]
+            if base and base != 0:
+                combined[col] = (combined[col] / base * 100).round(4)
+
+    result = []
+    for date, row in combined.iterrows():
+        entry: dict[str, Any] = {"date": pd.Timestamp(date).strftime("%Y-%m-%d")}
+        for col in combined.columns:
+            entry[col] = None if pd.isna(row[col]) else float(row[col])
+        result.append(entry)
+
+    return JSONResponse(content=result)
