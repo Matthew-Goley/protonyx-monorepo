@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import logging
 import os
 from typing import Any
@@ -12,6 +13,7 @@ load_dotenv()
 
 from fastapi import FastAPI, HTTPException, Security
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from fastapi.security.api_key import APIKeyHeader
 from pydantic import BaseModel
 from starlette.concurrency import run_in_threadpool
@@ -78,7 +80,7 @@ async def health() -> dict[str, str]:
 async def analyze(
     request: AnalyzeRequest,
     _: None = Security(_require_api_key),
-) -> dict[str, Any]:
+) -> JSONResponse:
     """Run the full Lens pipeline on the supplied portfolio.
 
     Request body:
@@ -100,4 +102,7 @@ async def analyze(
         _log.exception("Lens pipeline failed")
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 
-    return result
+    # Pydantic cannot serialize engine-internal types (e.g. DataStore) that may
+    # appear in pool_results. Serialise via stdlib json with a str fallback so
+    # unknown types become their repr rather than blowing up the response.
+    return JSONResponse(content=json.loads(json.dumps(result, default=str)))
