@@ -108,7 +108,7 @@ export default async function stripeRoutes(app: FastifyInstance) {
                 const customerId = session.customer as string;
                 if (userId) {
                     await pool.query(
-                        "UPDATE users SET subscription_status = 'active', stripe_customer_id = $1 WHERE id = $2",
+                        "UPDATE users SET plan = 'pro', subscription_status = 'active', stripe_customer_id = $1 WHERE id = $2",
                         [customerId, parseInt(userId, 10)]
                     );
                 }
@@ -118,7 +118,7 @@ export default async function stripeRoutes(app: FastifyInstance) {
                 const subscription = event.data.object as Stripe.Subscription;
                 const customerId = subscription.customer as string;
                 await pool.query(
-                    "UPDATE users SET subscription_status = 'cancelled' WHERE stripe_customer_id = $1",
+                    "UPDATE users SET plan = 'free', subscription_status = 'cancelled' WHERE stripe_customer_id = $1",
                     [customerId]
                 );
                 break;
@@ -127,7 +127,7 @@ export default async function stripeRoutes(app: FastifyInstance) {
                 const invoice = event.data.object as Stripe.Invoice;
                 const customerId = invoice.customer as string;
                 await pool.query(
-                    "UPDATE users SET subscription_status = 'inactive' WHERE stripe_customer_id = $1",
+                    "UPDATE users SET plan = 'free', subscription_status = 'inactive' WHERE stripe_customer_id = $1",
                     [customerId]
                 );
                 break;

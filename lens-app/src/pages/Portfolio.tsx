@@ -105,7 +105,7 @@ export function Portfolio() {
     },
   })
 
-  if (user?.subscription_status !== 'active') {
+  if (user?.plan !== 'pro') {
     return <UpgradePrompt />
   }
 

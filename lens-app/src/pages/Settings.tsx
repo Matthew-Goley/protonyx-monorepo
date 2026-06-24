@@ -7,25 +7,13 @@ import { Badge } from '@/components/ui/badge'
 
 const BACKEND_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3000'
 
-const STATUS_LABEL: Record<string, string> = {
-  active: 'Active',
-  inactive: 'Inactive',
-  cancelled: 'Cancelled',
-}
-
-const STATUS_VARIANT: Record<string, 'default' | 'secondary' | 'destructive'> = {
-  active: 'default',
-  inactive: 'secondary',
-  cancelled: 'destructive',
-}
-
 export function Settings() {
   const navigate = useNavigate()
   const { user } = useAuth()
   const [portalLoading, setPortalLoading] = useState(false)
   const [portalError, setPortalError] = useState<string | null>(null)
 
-  const status = user?.subscription_status ?? 'inactive'
+  const isPro = user?.plan === 'pro'
 
   async function handleManageBilling() {
     setPortalLoading(true)
@@ -63,12 +51,12 @@ export function Settings() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between">
-              <span className="text-sm font-medium">Status</span>
-              <Badge variant={STATUS_VARIANT[status] ?? 'secondary'}>
-                {STATUS_LABEL[status] ?? status}
+              <span className="text-sm font-medium">Plan</span>
+              <Badge variant={isPro ? 'default' : 'secondary'}>
+                {isPro ? 'Pro' : 'Free'}
               </Badge>
             </div>
-            {status === 'active' && (
+            {isPro && (
               <>
                 {portalError && <p className="text-sm text-destructive">{portalError}</p>}
                 <Button
@@ -81,7 +69,7 @@ export function Settings() {
                 </Button>
               </>
             )}
-            {status !== 'active' && (
+            {!isPro && (
               <Button onClick={() => navigate('/portfolio')} className="w-full">
                 Upgrade to Lens Pro
               </Button>
