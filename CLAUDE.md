@@ -17,7 +17,7 @@ There are four deliverables:
 | **Vector** (`app/`) | Python 3.12 + PyQt6, packaged with Nuitka | Downloadable Windows desktop app. Tracks positions, fetches market data via `yfinance`, and renders an analytics dashboard powered by a proprietary engine called **Lens**. Currently version **0.5.0**. The `app/` folder in this repo is a **stale, rarely-synced copy** — the canonical source of truth is `Vector-Main/` one level above the monorepo. |
 | **Web frontend** (`frontend/`) | Plain static HTML/CSS/JS, served by VS Code Live Server | Marketing site, signup/login, account dashboard, direct app download. No framework, no bundler. |
 | **Backend API** (`backend/`) | Fastify + TypeScript on Node, PostgreSQL | Authentication, account profile, download counter, and (eventually) the API the desktop app talks to. |
-| **Lens API** (`lens-api/`) | Python FastAPI, deployed on Railway | Standalone analytics microservice. Accepts a portfolio over HTTP, runs the Lens engine, returns the full result dict. Called server-to-server by the Fastify backend. |
+| **Lens API** (`lens-api/`) | Python FastAPI, deployed on Railway | Standalone analytics microservice. Live at `https://lens-api-production-b0ab.up.railway.app`. Accepts a portfolio over HTTP, runs the Lens engine, returns the full result dict. Currently called directly from `lens-app` in the browser (dev); intended to be proxied server-to-server via Fastify in production. |
 | **Lens App** (`lens-app/`) | Vite + React + TypeScript | Web app for Lens analytics at `app.use-lens.com`. Calls lens-api directly (dev only) or via Fastify (prod). Stack: React Router, Tailwind CSS, shadcn/ui, Recharts, TanStack Query. |
 
 The three components share **one user database** but **no build system** — each subdirectory is developed independently. There is no root `package.json`, no monorepo tooling (Turbo/Nx/Lerna), no Docker, no CI pipeline. Treat each top-level folder as a self-contained project.
@@ -180,6 +180,8 @@ Run from `lens-app/`:
 The dev server on port 5173 is the only origin the lens-api currently allows besides `https://app.use-lens.com`. Adding any other local origin requires editing the `allow_origins` list in `lens-api/main.py`.
 
 Auth in the current build is a stub: any non-empty username/password signs you in and the session is `localStorage`-backed (`lens_authed`). Real auth against the Fastify backend (`/login`, JWT) is the next step.
+
+The end-to-end analyze flow is **working**: enter positions as JSON on `/portfolio`, hit Analyze, and `/results` renders the brief, caution score, and CTA list returned by the live Railway API. The first request after a Railway cold start is slow (yfinance fetches for each ticker); subsequent requests for the same tickers hit the in-memory cache and are fast.
 
 ### Vector desktop app
 

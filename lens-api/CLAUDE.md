@@ -238,6 +238,7 @@ Each CTA in `ctas`:
 2. `generate_lens_full(positions, store, merged_settings)` is called via `run_in_threadpool` (the pipeline is synchronous and makes network calls to yfinance; running it in a thread keeps the async event loop free).
 3. `generate_lens_full` calls `build_lens_output` in `engine/lens/lens_output.py`, which runs the full pipeline: analyzers → CTA engine → sentence composers → caution score → result dict.
 4. The DataStore (`_store`) is a module-level singleton — one instance per worker process. It maintains an in-memory market data cache (`_market_cache`) backed by `market_data.json` on disk. This means repeated calls for the same tickers will hit the in-memory cache after the first fetch.
+5. The result is serialized via `json.dumps(result, default=str)` and returned as a `JSONResponse`, bypassing Pydantic. This is necessary because `pool_results` contains engine-internal types (specifically `DataStore`) that Pydantic cannot serialize — it would throw `PydanticSerializationError` and cause a 500 before the response is sent. The `default=str` fallback converts any non-serializable object to its repr string. If a future refactor cleans those types out of the result dict, the `JSONResponse` approach can stay (it is not harmful) or be replaced with a typed Pydantic response model.
 
 ---
 
@@ -367,15 +368,17 @@ curl -X POST http://localhost:8000/analyze \
 
 ## 10. Railway Deployment
 
-This service has not yet been deployed to Railway. When you are ready:
+This service is **deployed and live** at `https://lens-api-production-b0ab.up.railway.app`. The service was set up as:
 
-1. Add a new Railway service pointing at the `_monorepo/lens-api/` directory (not the repo root).
-2. Set environment variables in Railway:
-   - `LENS_API_KEY` — any long random secret string. The Fastify backend will need this same value.
-   - `LENS_DATA_DIR` — `/tmp/lens_data` (ephemeral) or a mounted volume path (persistent cache).
-   - `PORT` — Railway sets this automatically; the `Procfile` reads it.
+1. Railway service pointing at the `_monorepo/lens-api/` directory (not the repo root).
+2. Environment variables set in the Railway dashboard:
+   - `LENS_API_KEY` — shared secret used by all callers (`X-API-Key` header). The Fastify backend will need this same value when it starts proxying requests.
+   - `LENS_DATA_DIR` — `/tmp/lens_data` (ephemeral; resets on deploy/restart).
+   - `PORT` — set automatically by Railway; the `Procfile` reads it.
 3. The `Procfile` starts the server: `uvicorn main:app --host 0.0.0.0 --port $PORT`
 4. Health check endpoint: `GET /health` → `{"status": "ok"}`
+
+To redeploy after a code change: commit the change, then run `railway up` from `lens-api/`.
 
 **CORS:** `main.py` uses `CORSMiddleware` allowing origins `http://localhost:5173` (Lens App dev server) and `https://app.use-lens.com` (production). This is a temporary accommodation while the browser calls lens-api directly during development. Once Fastify proxies all `/analyze` calls server-to-server, the CORS origins can be removed. If you add another dev origin, edit the `allow_origins` list in `main.py`.
 
@@ -428,9 +431,8 @@ When the Lens engine is updated in `Vector-Main/` (new analyzer behavior, CTA lo
 
 The following work is still ahead:
 
-- **Railway deployment:** the service exists but has not been deployed yet. See section 10.
-- **Fastify integration:** the Fastify backend (`_monorepo/backend/`) does not yet call this service. When the web frontend needs Lens results, Fastify should accept the user's portfolio, call `POST /analyze` with the stored API key, and return the result to the browser.
-- **Portfolio storage:** the web frontend has no portfolio management yet. The Fastify backend does not store positions. When the web frontend is built, Fastify will need a `positions` table (or equivalent) so it can pass holdings to this service.
+- **Fastify integration:** the Fastify backend (`_monorepo/backend/`) does not yet call this service. Currently `lens-app` calls `POST /analyze` directly from the browser using a hardcoded API key (DEV ONLY — see `lens-app/src/api/lens.ts`). Before launch, Fastify must proxy all analyze calls server-to-server so the key is never exposed in client code.
+- **Portfolio storage:** the Fastify backend does not store positions. When Fastify starts proxying, it will need a `positions` table (or equivalent) so it can pass the user's holdings to this service on their behalf.
 - **Rate limiting / per-user throttling:** not implemented. yfinance has rate limits; concurrent requests for different portfolios will all hit yfinance. Consider a request queue or per-user rate limit before high traffic.
 - **Monte Carlo in the response:** `build_lens_output` does not include Monte Carlo projections in its return value (it produces `projected_positions` which is the CTAs-applied portfolio, not GBM projections). The Monte Carlo graphs in the desktop app are generated separately by `engine/monte_carlo.py`. If the web frontend needs Monte Carlo charts, a second endpoint `POST /project` would call `run_projection` and `build_historical_curve` directly.
 - **`lens_history.json` saving:** `build_lens_output` by default writes a snapshot to `LENS_DATA_DIR/lens_history.json` (rolling 50 entries). On the server this is ephemeral and per-worker (so history is fragmented across workers). If history should be persistent and unified, either use a database or disable it (`save_history=False` in the call).
