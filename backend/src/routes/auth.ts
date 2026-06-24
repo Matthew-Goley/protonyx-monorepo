@@ -260,8 +260,10 @@ export default async function authRoutes(app: FastifyInstance) {
         });
     });
 
-    // Login POST: accepts either username or email in the `username` field
-    app.post("/login", async (request, reply) => {
+    // Login POST: accepts either username or email in the `username` field.
+    // Sets an httpOnly session cookie for browser clients and also returns the
+    // token in the body for non-browser clients (desktop app, static frontend).
+    app.post("/login", async (request: any, reply: any) => {
         const { username, password } = request.body as {
             username: string,
             password: string
@@ -292,17 +294,31 @@ export default async function authRoutes(app: FastifyInstance) {
         // Stamp last_login
         await pool.query("UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = $1", [user.id]);
 
-        // Token
         const token = jwt.sign(
             { id: user.id, username: user.username },
             JWT_SECRET,
             { expiresIn: "7d" }
         );
 
-        return {
+        const isProd = process.env.NODE_ENV === "production";
+        reply.setCookie("session", token, {
+            httpOnly: true,
+            secure: isProd,
+            sameSite: isProd ? "none" : "lax",
+            path: "/",
+            maxAge: 7 * 24 * 60 * 60 // 7 days in seconds
+        });
+
+        return reply.send({
             success: true,
             message: "Login Successful",
             token: token
-        };
+        });
+    });
+
+    // Logout POST: clears the session cookie.
+    app.post("/logout", async (request: any, reply: any) => {
+        reply.clearCookie("session", { path: "/" });
+        return reply.send({ success: true, message: "Logged out" });
     });
 }

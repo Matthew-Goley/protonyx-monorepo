@@ -40,9 +40,9 @@ _monorepo/
 │   │   ├── constants.ts           # Single source of truth for current TOS + EULA versions (CURRENT_TOS_VERSION, CURRENT_EULA_VERSION)
 │   │   ├── betaConfig.ts          # BETA_ACTIVE kill switch + MAX_BETA_USERS cap, read from env (gates signup)
 │   │   ├── middleware/
-│   │   │   └── authenticate.ts    # JWT bearer preHandler
+│   │   │   └── authenticate.ts    # JWT preHandler — checks Authorization: Bearer header first, falls back to session cookie
 │   │   └── routes/
-│   │       ├── auth.ts            # /signup, /login, /verify-email, /forgot-password, /reset-password
+│   │       ├── auth.ts            # /signup, /login (sets httpOnly cookie + returns token), /logout, /verify-email, /forgot-password, /reset-password
 │   │       ├── debug.ts           # /protected, /me, /download, /version
 │   │       ├── legal.ts           # /legal/status, /legal/accept
 │   │       └── beta.ts            # /beta/status (public signup-availability check)
@@ -97,7 +97,7 @@ _monorepo/
 ├── lens-app/                      # Vite + React + TS web app for Lens at app.use-lens.com
 │   ├── src/
 │   │   ├── api/lens.ts            # Typed API client (lensApi.analyze, lensApi.getTickerHistory)
-│   │   ├── contexts/AuthContext.tsx  # isAuthenticated, login(), logout() — localStorage-backed
+│   │   ├── contexts/AuthContext.tsx  # isAuthenticated, loading, user, login(u,p), logout() — real Fastify auth, httpOnly session cookie
 │   │   ├── components/
 │   │   │   ├── ProtectedRoute.tsx # Redirects to /login if not authenticated
 │   │   │   └── ui/               # shadcn/ui components: button, card, label, input, textarea, badge
@@ -179,7 +179,7 @@ Run from `lens-app/`:
 
 The dev server on port 5173 is the only origin the lens-api currently allows besides `https://app.use-lens.com`. Adding any other local origin requires editing the `allow_origins` list in `lens-api/main.py`.
 
-Auth in the current build is a stub: any non-empty username/password signs you in and the session is `localStorage`-backed (`lens_authed`). Real auth against the Fastify backend (`/login`, JWT) is the next step.
+Auth uses the real Fastify backend: `POST /login` is called with credentials, and the response sets an httpOnly `session` cookie. On mount, `AuthContext` validates the session via `GET /me` (cookie sent automatically). `POST /logout` clears the cookie. No token is stored in localStorage or JS-accessible state.
 
 The end-to-end analyze flow is **working**: enter positions as JSON on `/portfolio`, hit Analyze, and `/results` renders the brief, caution score, and CTA list returned by the live Railway API. The first request after a Railway cold start is slow (yfinance fetches for each ticker); subsequent requests for the same tickers hit the in-memory cache and are fast.
 
@@ -224,12 +224,13 @@ If `RESEND_API_KEY` is missing, signup still succeeds — `sendWelcomeEmail` is 
 `src/server.ts` builds a Fastify instance and registers, in order:
 
 1. **`@fastify/rate-limit`** — global, **20 requests / 60 seconds per IP**. This is low; you will hit it during frontend testing if you mash buttons. Don't bump it without a reason.
-2. **`@fastify/cors`** — allowlists exactly four origins:
-   - `http://127.0.0.1:5500`
-   - `http://localhost:5500`
-   - `http://127.0.0.1:5501`
-   - `http://localhost:5501`
-   Methods: `GET, POST, DELETE, PATCH`. (Fastify handles preflight automatically; no explicit `OPTIONS`.) Adding any new origin (staging URL, deployed frontend) requires editing this list.
+2. **`@fastify/cors`** — allowlists these origins:
+   - `http://127.0.0.1:5500` / `http://localhost:5500`
+   - `http://127.0.0.1:5501` / `http://localhost:5501` (static frontend Live Server)
+   - `http://localhost:5173` / `http://127.0.0.1:5173` (lens-app Vite dev server)
+   - `https://protonyxdata.com`
+   - `https://app.use-lens.com`
+   Methods: `GET, POST, DELETE, PATCH`. `credentials: true` is set so the lens-app can send the httpOnly session cookie. Adding any new origin (staging URL, another deployed frontend) requires editing this list in `server.ts`.
 3. **Route modules**: `authRoutes`, `debugRoutes`, `legalRoutes`, `betaRoutes`. All are mounted at the **root path** with no prefix. The `/protected` and `/me` endpoints live under `debug.ts` for historical reasons even though they are not strictly debug, the `/legal/*` endpoints live under `legal.ts`, and the public `/beta/status` endpoint lives under `beta.ts`.
 
 `db.ts` is imported transitively from the route modules. Its top-level `setup()` call fires on module load, which means **the server will not start cleanly without a reachable Postgres**.
@@ -333,7 +334,7 @@ The error field is always named `message`. The frontend (`auth.js`) reads `data.
 | Method | Path | Auth | Body | Behavior |
 |---|---|---|---|---|
 | `POST` | `/signup` | — | `{ username, email, password }` | **Beta-gated at the very top, before field validation** (see "Beta gating" below): returns 403 `{ success: false, message: "The open beta is currently closed. Check back soon." }` when `BETA_ACTIVE` is false, or 403 `{ success: false, message: "The open beta is currently full. Check back soon." }` when `SELECT COUNT(*) FROM users >= MAX_BETA_USERS`. If both gates pass: validates all three are present; rejects duplicate `username` or `email` (409); bcrypt-hashes (cost 10); inserts row **with `tos_version_accepted = CURRENT_TOS_VERSION` and `tos_accepted_at = NOW()`** (new accounts auto-accept the current TOS; the signup form carries the agreement notice); **issues a `crypto.randomBytes(32).toString("hex")` verification token and stores it on the row**; **fires `sendWelcomeEmail` and `sendVerificationEmail` fire-and-forget** (failures logged, never thrown); returns 201. |
-| `POST` | `/login` | — | `{ username, password }` | The `username` field accepts **either a username or an email** (`WHERE username = $1 OR email = $1`). On success, stamps `last_login = CURRENT_TIMESTAMP` and returns a JWT (`{ id, username }`, signed with `JWT_SECRET`, **7-day expiry**). Login does **not** currently gate on `email_verified` — verification is informational until that policy is decided. |
+| `POST` | `/login` | — | `{ username, password }` | The `username` field accepts **either a username or an email** (`WHERE username = $1 OR email = $1`). On success, stamps `last_login = CURRENT_TIMESTAMP`, signs a 7-day JWT (`{ id, username }`), **sets an httpOnly `session` cookie** (7-day `maxAge`, `sameSite: lax` in dev, `sameSite: none + secure` in prod), and returns `{ success, message, token }`. The token is also returned in the body for non-browser callers (desktop app, static frontend) that read it directly; browser clients should rely on the cookie. Login does **not** currently gate on `email_verified`. |
 | `GET` | `/verify-email` | — | query: `?token=<hex>` | Looks up the user by `verification_token`. Missing or unknown token → 400 `{ success: false, message: "Invalid or expired verification token" }`. Found → sets `email_verified = true`, nulls `verification_token`, returns 200 `{ success: true, message: "Email verified successfully" }`. The token is single-use because it's cleared on success; re-clicking the link returns 400. |
 | `POST` | `/resend-verification` | ✅ | — (empty body) | Looks up the authenticated user by `request.user.id`. User not found → 401. Already verified (`email_verified = true`) → 400 `{ success: false, message: "Email already verified" }`. Otherwise issues a fresh `crypto.randomBytes(32).toString("hex")` verification token, `UPDATE`s `verification_token`, fires `sendVerificationEmail` fire-and-forget, and returns 200 `{ success: true, message: "Verification email sent" }`. Fired by the "Send Verification Email" button on the account page. |
 | `POST` | `/forgot-password` | — | `{ email }` | **Always returns 200 with `{ success: true, message: "If that email exists, you will receive a reset link" }`** — even when the email is missing, malformed, or unknown. This is account-enumeration defense; never special-case it back to a 404/400. When the email is registered, issues a 1-hour `reset_token`, persists it with `reset_token_expires_at = NOW() + 1h`, and fires `sendPasswordResetEmail` fire-and-forget. |
@@ -343,6 +344,7 @@ The error field is always named `message`. The frontend (`auth.js`) reads `data.
 | `POST` | `/download` | ✅ | — (empty body) | Increments `download_count` for the authenticated user. Fired by the shared `[data-download]` click handler in `script.js` (hero button + pricing Free card + per-page menu overlay link) for signed-in users only. Returns `{ success, message: "Download recorded" }`. The actual binary URL is **not** returned by this endpoint — the buttons download `/assets/downloads/Vector-Setup.exe` natively via the `download` attribute. |
 | `GET` | `/version` | — | — | Public, no auth. Reads `src/version.json` (imported at module load via `resolveJsonModule`) and returns `{ success: true, version: "<x.y.z>" }`. **Single source of truth for the latest Vector release** — to ship a new version, edit `src/version.json` and nothing else on the backend. The frontend and the desktop auto-update check should both consume this endpoint rather than hardcoding the version. |
 | `GET` | `/beta/status` | — | — | Public, no auth. Runs `SELECT COUNT(*) FROM users` and returns `{ success: true, open: boolean, spots_remaining: number }`. `open` is true only when `BETA_ACTIVE` is true **and** the user count is below `MAX_BETA_USERS`. `spots_remaining` is `max(0, MAX_BETA_USERS - count)` when `BETA_ACTIVE` is true, otherwise `0`. Lives in `routes/beta.ts`; both constants come from `src/betaConfig.ts`. Lets the frontend reflect signup availability. |
+| `POST` | `/logout` | — | — | Clears the `session` httpOnly cookie. Returns `{ success: true, message: "Logged out" }`. Used by lens-app to end cookie-based sessions; the static frontend doesn't call this (it clears `localStorage` directly). |
 | `GET` | `/legal/status` | ✅ | — | Compares the user's `tos_version_accepted` against `CURRENT_TOS_VERSION` and `eula_version_accepted` against `CURRENT_EULA_VERSION` from `constants.ts`. Returns `{ success: true, tos_accepted: boolean, eula_accepted: boolean, current_tos_version: "<v>", current_eula_version: "<v>" }`. Each `*_accepted` flag is `false` when the stored version is `NULL` or doesn't match the current version. User row not found → 401. The frontend's `checkLegalAcceptance()` (in `auth.js`) consumes this and **fails open** if the call errors. |
 | `POST` | `/legal/accept` | ✅ | `{ document: "tos" \| "eula" }` | Validates `document` is exactly `"tos"` or `"eula"` (anything else → 400 `Invalid document`). For `"tos"`: sets `tos_version_accepted = CURRENT_TOS_VERSION` and `tos_accepted_at = NOW()`, returns 200 `{ success: true, message: "Terms of Service accepted" }`. For `"eula"`: sets `eula_version_accepted = CURRENT_EULA_VERSION` and `eula_accepted_at = NOW()`, returns 200 `{ success: true, message: "End User License Agreement accepted" }`. The TOS branch is fired by the "I Agree" button in the TOS modal (`legal-modal.js`); the EULA branch is fired by the Vector desktop app. |
 
@@ -395,7 +397,8 @@ Three exported functions in `email.ts`, all using the **Resend** SDK and all fir
 | Dep | Used for |
 |---|---|
 | `fastify` | HTTP server |
-| `@fastify/cors` | CORS middleware (origin allowlist) |
+| `@fastify/cors` | CORS middleware (origin allowlist, credentials) |
+| `@fastify/cookie` | httpOnly session cookie (set on login, cleared on logout, read by authenticate middleware) |
 | `@fastify/rate-limit` | Global rate limit (20/60s) |
 | `pg` | PostgreSQL pool |
 | `bcrypt` | Password hashing (cost 10) |
@@ -704,9 +707,10 @@ Anything more specific than the map above — exact widget struct, accordion mea
 
 - **Dev mode wipes the users table on every boot.** Do not run `npm run dev` against a database that holds real accounts. The seeded test user is `testuser` / `password123`.
 - **Rate limit is 20 / 60 s per IP, global.** Expect `429`s during frontend testing. This is a deliberate brake during early dev — don't loosen it casually.
-- **CORS allowlist is strict.** Adding a new frontend origin (staging, production) means editing `server.ts`. Every preflight failure during testing is almost always a wrong port or origin.
+- **CORS allowlist is strict, and `credentials: true` is required.** The current allowlist covers ports 5500/5501 (static frontend), 5173 (lens-app Vite), `protonyxdata.com`, and `app.use-lens.com`. Adding any new origin means editing `server.ts`. Every preflight failure during testing is almost always a wrong port or a missing origin. `credentials: true` must stay set — without it the browser will not send the session cookie.
 - **Passwords are bcrypt cost 10.** Do not lower it. Do not log `user.password` anywhere — `/me` deliberately omits it from its `SELECT`.
-- **JWT expiry is 7 days.** No refresh-token flow. When a token expires, the user is bounced to `/auth/index.html` (frontend handles 401s by clearing localStorage on logout, but expired tokens currently surface only as failed `/me` calls — be aware).
+- **JWT expiry is 7 days.** No refresh-token flow. For the static frontend (bearer-token path), an expired token surfaces as a failed `/me` call and the user is bounced to `/auth/index.html`. For lens-app (cookie path), an expired cookie causes `GET /me` on mount to return 401, leaving `isAuthenticated: false` and redirecting to `/login`.
+- **`session` cookie flags.** `httpOnly: true` (no JS access). `secure` and `sameSite` are environment-gated: `sameSite: lax, secure: false` in dev (localhost cross-port); `sameSite: none, secure: true` in production (cross-domain). Do not flatten this to a single value — `sameSite: none` without `secure` is rejected by Chrome.
 - **`JWT_SECRET`, `DATABASE_URL`, and `RESEND_API_KEY` live in `.env`.** `.env` is gitignored. Never commit it; never paste real values into code or chat. `JWT_SECRET=your-secret-here` style placeholders in docs are placeholders — do not preserve them as if they were real.
 - **The error field on the wire is `message`.** New endpoints should keep it that way. The frontend's `data.message || data.error` fallback exists for historical reasons but should not be relied on.
 - **`better-sqlite3`** is still in `package.json` but no runtime code imports it. Removing it (and `@types/better-sqlite3`) is safe cleanup if you are touching `package.json` anyway. Do not re-introduce SQLite code paths.

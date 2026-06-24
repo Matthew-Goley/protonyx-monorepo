@@ -2,6 +2,7 @@ import "dotenv/config"
 import Fastify from "fastify";
 import rateLimit from "@fastify/rate-limit";
 import cors from "@fastify/cors";
+import cookie from "@fastify/cookie";
 
 import authRoutes from "./routes/auth";
 import debugRoutes from "./routes/debug";
@@ -11,7 +12,7 @@ import betaRoutes from "./routes/beta";
 const app = Fastify();
 
 app.register(rateLimit, {
-    max: 20, 
+    max: 20,
     timeWindow: 60000  // per 60 seconds (in milliseconds)
 });
 
@@ -21,10 +22,16 @@ app.register(cors, {
         "http://localhost:5500",
         "http://127.0.0.1:5501",
         "http://localhost:5501",
-        "https://protonyxdata.com"
+        "https://protonyxdata.com",
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "https://app.use-lens.com"
     ],
-    methods: ["GET", "POST", "DELETE", "PATCH"]
+    methods: ["GET", "POST", "DELETE", "PATCH"],
+    credentials: true
 });
+
+app.register(cookie);
 
 app.register(authRoutes);
 app.register(debugRoutes);

@@ -41,7 +41,8 @@ MAX_BETA_USERS=50          # hard cap on total user count
 | Method | Path | Auth | Description |
 |---|---|---|---|
 | POST | `/signup` | - | Create account (beta-gated) |
-| POST | `/login` | - | Login, returns 7-day JWT |
+| POST | `/login` | - | Login — sets httpOnly `session` cookie (7 days) AND returns `token` in body for non-browser callers |
+| POST | `/logout` | - | Clears the `session` cookie |
 | GET | `/verify-email?token=` | - | Verify email address |
 | POST | `/resend-verification` | JWT | Re-send verification email |
 | POST | `/forgot-password` | - | Request password reset link |
@@ -54,7 +55,7 @@ MAX_BETA_USERS=50          # hard cap on total user count
 | GET | `/legal/status` | JWT | TOS + EULA acceptance status |
 | POST | `/legal/accept` | JWT | Accept TOS or EULA |
 
-Auth is a JWT bearer token (`Authorization: Bearer <token>`). Protected routes use `{ preHandler: authenticate }` from `src/middleware/authenticate.ts`.
+Auth is resolved by `src/middleware/authenticate.ts`, which checks `Authorization: Bearer <token>` first, then falls back to the `session` httpOnly cookie. Both paths work — the static frontend and desktop app use bearer tokens; lens-app uses the cookie.
 
 ## Key files
 
@@ -74,7 +75,9 @@ Auth is a JWT bearer token (`Authorization: Bearer <token>`). Protected routes u
 ## Critical behaviors to preserve
 
 - **Dev mode wipes the DB on every boot** (`NODE_ENV=development` triggers `DROP TABLE users`). Never run dev against a database with real accounts.
-- **CORS allowlist** is hardcoded in `server.ts` for ports 5500 and 5501. Adding any new origin (staging/prod frontend) requires editing that list.
+- **CORS allowlist** is hardcoded in `server.ts`. Current origins: 5500/5501 (static frontend), 5173 (lens-app Vite), `protonyxdata.com`, `app.use-lens.com`. `credentials: true` must stay set — without it browsers will not send the session cookie. Adding any new origin requires editing `server.ts`.
+- **Session cookie flags** are environment-gated: `sameSite: lax, secure: false` in dev (localhost cross-port); `sameSite: none, secure: true` in prod (cross-domain). Do not flatten to one value.
+- **`@fastify/cookie`** must be registered before any route that reads or sets the cookie. Registration is in `server.ts` after the CORS plugin.
 - **Rate limit:** 20 req / 60 s per IP globally. Expect 429s during fast frontend testing.
 - **`/forgot-password` always returns 200** regardless of whether the email exists — account-enumeration defense. Never change this.
 - **`better-sqlite3`** is still in `package.json` but nothing imports it. Safe to remove.

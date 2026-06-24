@@ -1,30 +1,75 @@
-import { createContext, useContext, useState, type ReactNode } from 'react'
+import { createContext, useContext, useState, useEffect, type ReactNode } from 'react'
+
+const BACKEND_URL = 'http://localhost:3000'
+
+interface User {
+  id: number
+  username: string
+  email: string
+  plan: string
+}
 
 interface AuthContextValue {
   isAuthenticated: boolean
-  login: () => void
-  logout: () => void
+  loading: boolean
+  user: User | null
+  login: (username: string, password: string) => Promise<void>
+  logout: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(
-    () => localStorage.getItem('lens_authed') === 'true',
-  )
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [user, setUser] = useState<User | null>(null)
 
-  function login() {
-    localStorage.setItem('lens_authed', 'true')
+  useEffect(() => {
+    fetch(`${BACKEND_URL}/me`, { credentials: 'include' })
+      .then(async (res) => {
+        if (res.ok) {
+          const data = await res.json()
+          setUser(data.user)
+          setIsAuthenticated(true)
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }, [])
+
+  async function login(username: string, password: string) {
+    const res = await fetch(`${BACKEND_URL}/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ username, password }),
+    })
+
+    const data = await res.json().catch(() => ({})) as { message?: string; success?: boolean }
+
+    if (!res.ok) {
+      throw new Error(data.message ?? 'Login failed')
+    }
+
+    const meRes = await fetch(`${BACKEND_URL}/me`, { credentials: 'include' })
+    if (meRes.ok) {
+      const meData = await meRes.json()
+      setUser(meData.user)
+    }
     setIsAuthenticated(true)
   }
 
-  function logout() {
-    localStorage.removeItem('lens_authed')
+  async function logout() {
+    await fetch(`${BACKEND_URL}/logout`, {
+      method: 'POST',
+      credentials: 'include',
+    }).catch(() => {})
+    setUser(null)
     setIsAuthenticated(false)
   }
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, login, logout }}>
+    <AuthContext.Provider value={{ isAuthenticated, loading, user, login, logout }}>
       {children}
     </AuthContext.Provider>
   )

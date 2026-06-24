@@ -11,12 +11,20 @@ export function Login() {
   const navigate = useNavigate()
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  const [submitting, setSubmitting] = useState(false)
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (username && password) {
-      login()
+    setError(null)
+    setSubmitting(true)
+    try {
+      await login(username, password)
       navigate('/dashboard')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Login failed')
+    } finally {
+      setSubmitting(false)
     }
   }
 
@@ -30,14 +38,15 @@ export function Login() {
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="username">Username</Label>
+              <Label htmlFor="username">Username or Email</Label>
               <Input
                 id="username"
                 type="text"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                placeholder="username"
+                placeholder="username or email"
                 required
+                disabled={submitting}
               />
             </div>
             <div className="space-y-2">
@@ -49,10 +58,14 @@ export function Login() {
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
                 required
+                disabled={submitting}
               />
             </div>
-            <Button type="submit" className="w-full">
-              Sign in
+            {error && (
+              <p className="text-sm text-destructive">{error}</p>
+            )}
+            <Button type="submit" className="w-full" disabled={submitting}>
+              {submitting ? 'Signing in...' : 'Sign in'}
             </Button>
           </form>
         </CardContent>
