@@ -3,13 +3,20 @@ import Stripe from "stripe";
 import pool from "../db";
 import { authenticate } from "../middleware/authenticate";
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string);
-const WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET as string;
-const LENS_APP_URL = process.env.LENS_APP_URL ?? "http://localhost:5173";
-
 export default async function stripeRoutes(app: FastifyInstance) {
-    // Keep raw body as Buffer in this plugin scope - required for Stripe webhook
-    // signature verification. Non-webhook routes parse body manually.
+    const stripeKey = process.env.STRIPE_SECRET_KEY;
+    if (!stripeKey) {
+        console.warn("STRIPE_SECRET_KEY not set - Stripe routes will not be registered");
+        return;
+    }
+
+    const stripe = new Stripe(stripeKey);
+    const WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET ?? "";
+    const LENS_APP_URL = process.env.LENS_APP_URL ?? "http://localhost:5173";
+
+    // Fastify v5 requires removing the built-in JSON parser before overriding it.
+    // This scope only affects routes registered in this plugin.
+    app.removeContentTypeParser("application/json");
     app.addContentTypeParser("application/json", { parseAs: "buffer" }, (_, body, done) => {
         done(null, body);
     });
