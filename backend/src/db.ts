@@ -30,6 +30,7 @@ const setup = async () => {
             tos_accepted_at TIMESTAMP DEFAULT NULL,
             eula_version_accepted TEXT DEFAULT NULL,
             eula_accepted_at TIMESTAMP DEFAULT NULL,
+            subscription_status TEXT NOT NULL DEFAULT 'inactive',
             member_since TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
         )
     `);
@@ -78,14 +79,21 @@ const setup = async () => {
         console.error("Failed to add eula_accepted_at column:", err);
     }
 
+    try {
+        await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_status TEXT NOT NULL DEFAULT 'inactive'");
+    } catch (err) {
+        console.error("Failed to add subscription_status column:", err);
+    }
+
     // Dev-only: seed a known test account (password = "password123").
+    // subscription_status is seeded as 'active' so the app is immediately usable in dev.
     if (process.env.NODE_ENV === "development") {
         const hashedPassword = await bcrypt.hash("password123", 10);
         await pool.query(
-            `INSERT INTO users (username, email, password, plan, beta_access)
-             VALUES ($1, $2, $3, $4, $5)
+            `INSERT INTO users (username, email, password, plan, beta_access, subscription_status)
+             VALUES ($1, $2, $3, $4, $5, $6)
              ON CONFLICT DO NOTHING`,
-            ["testuser", "test@protonyx.dev", hashedPassword, "free", true]
+            ["testuser", "test@protonyx.dev", hashedPassword, "free", true, "active"]
         );
     }
 };

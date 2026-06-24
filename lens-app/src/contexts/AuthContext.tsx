@@ -1,12 +1,13 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react'
 
-const BACKEND_URL = 'http://localhost:3000'
+const BACKEND_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3000'
 
 interface User {
   id: number
   username: string
   email: string
   plan: string
+  subscription_status: 'inactive' | 'active' | 'cancelled'
 }
 
 interface AuthContextValue {

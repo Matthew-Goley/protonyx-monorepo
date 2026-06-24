@@ -102,7 +102,7 @@ _monorepo/
 │   │   │   ├── ProtectedRoute.tsx # Redirects to /login if not authenticated
 │   │   │   └── ui/               # shadcn/ui components: button, card, label, input, textarea, badge
 │   │   ├── lib/utils.ts           # cn() tailwind merge utility
-│   │   └── pages/                # Login, Dashboard, Portfolio (form), Results, Settings
+│   │   └── pages/                # Login, Dashboard, Portfolio (form + paywall), Results, Settings (subscription), Success
 │   ├── package.json
 │   ├── vite.config.ts             # Path alias @/ → src/
 │   ├── tailwind.config.js         # shadcn CSS variable theme
@@ -179,9 +179,11 @@ Run from `lens-app/`:
 
 The dev server on port 5173 is the only origin the lens-api currently allows besides `https://app.use-lens.com`. Adding any other local origin requires editing the `allow_origins` list in `lens-api/main.py`.
 
-Auth uses the real Fastify backend: `POST /login` is called with credentials, and the response sets an httpOnly `session` cookie. On mount, `AuthContext` validates the session via `GET /me` (cookie sent automatically). `POST /logout` clears the cookie. No token is stored in localStorage or JS-accessible state.
+Auth uses the real Fastify backend: `POST /login` is called with credentials, and the response sets an httpOnly `session` cookie. On mount, `AuthContext` validates the session via `GET /me` (cookie sent automatically). `POST /logout` clears the cookie. No token is stored in localStorage or JS-accessible state. `AuthContext` exposes `user.subscription_status` (`'inactive' | 'active' | 'cancelled'`), populated from the `/me` response.
 
 The end-to-end analyze flow is **working**: enter positions as JSON on `/portfolio`, hit Analyze, and `/results` renders the brief, caution score, and CTA list returned by the live Railway API. The first request after a Railway cold start is slow (yfinance fetches for each ticker); subsequent requests for the same tickers hit the in-memory cache and are fast.
+
+**Stripe paywall:** `/portfolio` checks `user.subscription_status !== 'active'` and renders an upgrade prompt instead of the form when not subscribed. The upgrade button hits `POST /stripe/create-checkout-session` and redirects to the returned Stripe Checkout URL. After successful payment, Stripe redirects to `/success`, which shows a confirmation message and redirects to `/dashboard` after 3 seconds. `/settings` shows the current subscription status and a "Manage Billing" button that hits `POST /stripe/portal` (only shown when status is active). The dev test user (`testuser`) is seeded with `subscription_status = 'active'` so the app is fully usable without going through Stripe in local dev.
 
 ### Vector desktop app
 
@@ -209,7 +211,12 @@ DATABASE_URL=postgresql://<user>:<pass>@<host>:<port>/<db>
 RESEND_API_KEY=<resend-api-key>     # required only for welcome emails
 BETA_ACTIVE=<true|false>            # optional, defaults to true; "false" closes all signups
 MAX_BETA_USERS=<integer>            # optional, defaults to 50; hard cap on total user count
+STRIPE_SECRET_KEY=sk_test_...       # Stripe secret key (test mode keys from dashboard)
+STRIPE_WEBHOOK_SECRET=whsec_...     # Stripe webhook signing secret (from Stripe CLI or dashboard)
+LENS_APP_URL=http://localhost:5173  # Frontend URL for Stripe redirect URLs; defaults to localhost:5173
 ```
+
+A `backend/.env.example` documents all of these with placeholder values.
 
 `BETA_ACTIVE` and `MAX_BETA_USERS` gate `/signup` only (see §4). They are read from `process.env` in `src/betaConfig.ts` so they can be toggled from the Railway dashboard without a redeploy. `BETA_ACTIVE` defaults to `true` and is only off when set to the literal string `"false"`; `MAX_BETA_USERS` defaults to `50`.
 
@@ -231,7 +238,9 @@ If `RESEND_API_KEY` is missing, signup still succeeds — `sendWelcomeEmail` is 
    - `https://protonyxdata.com`
    - `https://app.use-lens.com`
    Methods: `GET, POST, DELETE, PATCH`. `credentials: true` is set so the lens-app can send the httpOnly session cookie. Adding any new origin (staging URL, another deployed frontend) requires editing this list in `server.ts`.
-3. **Route modules**: `authRoutes`, `debugRoutes`, `legalRoutes`, `betaRoutes`. All are mounted at the **root path** with no prefix. The `/protected` and `/me` endpoints live under `debug.ts` for historical reasons even though they are not strictly debug, the `/legal/*` endpoints live under `legal.ts`, and the public `/beta/status` endpoint lives under `beta.ts`.
+3. **Route modules**: `authRoutes`, `debugRoutes`, `legalRoutes`, `betaRoutes`, `stripeRoutes`, `subscriptionRoutes`. All are mounted at the **root path** with no prefix. The `/protected` and `/me` endpoints live under `debug.ts` for historical reasons even though they are not strictly debug, the `/legal/*` endpoints live under `legal.ts`, the public `/beta/status` endpoint lives under `beta.ts`, the Stripe checkout/portal/webhook endpoints live under `stripe.ts`, and `GET /subscription/status` lives under `subscription.ts`.
+
+   `stripeRoutes` overrides the `application/json` content-type parser in its plugin scope to receive raw `Buffer` bodies - required for Stripe webhook signature verification. Non-webhook routes in that scope parse the buffer manually with `JSON.parse((request.body as Buffer).toString())`. The webhook route also sets `config: { rateLimit: false }` to skip the global rate limiter so Stripe can deliver events freely.
 
 `db.ts` is imported transitively from the route modules. Its top-level `setup()` call fires on module load, which means **the server will not start cleanly without a reachable Postgres**.
 
@@ -262,6 +271,7 @@ CREATE TABLE IF NOT EXISTS users (
     tos_accepted_at     TIMESTAMP DEFAULT NULL,
     eula_version_accepted TEXT DEFAULT NULL,
     eula_accepted_at    TIMESTAMP DEFAULT NULL,
+    subscription_status TEXT NOT NULL DEFAULT 'inactive',
     member_since        TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -273,6 +283,7 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS tos_version_accepted TEXT DEFAULT NUL
 ALTER TABLE users ADD COLUMN IF NOT EXISTS tos_accepted_at TIMESTAMP DEFAULT NULL;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS eula_version_accepted TEXT DEFAULT NULL;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS eula_accepted_at TIMESTAMP DEFAULT NULL;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_status TEXT NOT NULL DEFAULT 'inactive';
 
 -- DEV ONLY: seed a known test account
 INSERT INTO users (username, email, password, plan, beta_access)
@@ -340,13 +351,17 @@ The error field is always named `message`. The frontend (`auth.js`) reads `data.
 | `POST` | `/forgot-password` | — | `{ email }` | **Always returns 200 with `{ success: true, message: "If that email exists, you will receive a reset link" }`** — even when the email is missing, malformed, or unknown. This is account-enumeration defense; never special-case it back to a 404/400. When the email is registered, issues a 1-hour `reset_token`, persists it with `reset_token_expires_at = NOW() + 1h`, and fires `sendPasswordResetEmail` fire-and-forget. |
 | `POST` | `/reset-password` | — | `{ token, newPassword }` | Validates both fields (400 `Token and new password are required` if missing). Looks up the row by `reset_token = $1 AND reset_token_expires_at > NOW()` so expiry is enforced at the DB level. Invalid/expired token → 400 `{ success: false, message: "Invalid or expired reset token" }`. Valid → bcrypt-rehashes (cost 10), nulls both reset columns, returns 200 `{ success: true, message: "Password reset successfully" }`. Single-use by construction (token cleared on success). |
 | `GET` | `/protected` | ✅ | — | Smoke test. Returns `{ message: "Hello <username>" }`. |
-| `GET` | `/me` | ✅ | — | Returns the full user profile **excluding `password`, `stripe_customer_id`, `verification_token`, `tos_accepted_at`, and `eula_accepted_at`**. Shape: `{ success, user: { id, username, email, plan, plan_expires_at, member_since, last_login, beta_access, download_count, email_verified, is_active, tos_version_accepted, eula_version_accepted } }`. (`tos_version_accepted` and `eula_version_accepted` are included so the client can reason about legal state; the `*_accepted_at` timestamps are deliberately omitted.) The frontend calls this on login and on every account-page load. |
+| `GET` | `/me` | ✅ | — | Returns the full user profile **excluding `password`, `stripe_customer_id`, `verification_token`, `tos_accepted_at`, and `eula_accepted_at`**. Shape: `{ success, user: { id, username, email, plan, plan_expires_at, member_since, last_login, beta_access, download_count, email_verified, is_active, tos_version_accepted, eula_version_accepted, subscription_status } }`. (`tos_version_accepted` and `eula_version_accepted` are included so the client can reason about legal state; the `*_accepted_at` timestamps are deliberately omitted.) The frontend calls this on login and on every account-page load. |
 | `POST` | `/download` | ✅ | — (empty body) | Increments `download_count` for the authenticated user. Fired by the shared `[data-download]` click handler in `script.js` (hero button + pricing Free card + per-page menu overlay link) for signed-in users only. Returns `{ success, message: "Download recorded" }`. The actual binary URL is **not** returned by this endpoint — the buttons download `/assets/downloads/Vector-Setup.exe` natively via the `download` attribute. |
 | `GET` | `/version` | — | — | Public, no auth. Reads `src/version.json` (imported at module load via `resolveJsonModule`) and returns `{ success: true, version: "<x.y.z>" }`. **Single source of truth for the latest Vector release** — to ship a new version, edit `src/version.json` and nothing else on the backend. The frontend and the desktop auto-update check should both consume this endpoint rather than hardcoding the version. |
 | `GET` | `/beta/status` | — | — | Public, no auth. Runs `SELECT COUNT(*) FROM users` and returns `{ success: true, open: boolean, spots_remaining: number }`. `open` is true only when `BETA_ACTIVE` is true **and** the user count is below `MAX_BETA_USERS`. `spots_remaining` is `max(0, MAX_BETA_USERS - count)` when `BETA_ACTIVE` is true, otherwise `0`. Lives in `routes/beta.ts`; both constants come from `src/betaConfig.ts`. Lets the frontend reflect signup availability. |
 | `POST` | `/logout` | — | — | Clears the `session` httpOnly cookie. Returns `{ success: true, message: "Logged out" }`. Used by lens-app to end cookie-based sessions; the static frontend doesn't call this (it clears `localStorage` directly). |
 | `GET` | `/legal/status` | ✅ | — | Compares the user's `tos_version_accepted` against `CURRENT_TOS_VERSION` and `eula_version_accepted` against `CURRENT_EULA_VERSION` from `constants.ts`. Returns `{ success: true, tos_accepted: boolean, eula_accepted: boolean, current_tos_version: "<v>", current_eula_version: "<v>" }`. Each `*_accepted` flag is `false` when the stored version is `NULL` or doesn't match the current version. User row not found → 401. The frontend's `checkLegalAcceptance()` (in `auth.js`) consumes this and **fails open** if the call errors. |
 | `POST` | `/legal/accept` | ✅ | `{ document: "tos" \| "eula" }` | Validates `document` is exactly `"tos"` or `"eula"` (anything else → 400 `Invalid document`). For `"tos"`: sets `tos_version_accepted = CURRENT_TOS_VERSION` and `tos_accepted_at = NOW()`, returns 200 `{ success: true, message: "Terms of Service accepted" }`. For `"eula"`: sets `eula_version_accepted = CURRENT_EULA_VERSION` and `eula_accepted_at = NOW()`, returns 200 `{ success: true, message: "End User License Agreement accepted" }`. The TOS branch is fired by the "I Agree" button in the TOS modal (`legal-modal.js`); the EULA branch is fired by the Vector desktop app. |
+| `POST` | `/stripe/create-checkout-session` | ✅ | — | Creates a Stripe Checkout session for the $10/month Lens Pro subscription. Uses inline `price_data` (no pre-created Price ID needed). Reuses `stripe_customer_id` if one is already on the user row; otherwise passes `customer_email` and Stripe creates the customer. Returns `{ success: true, url: "<stripe-checkout-url>" }`. Client should redirect to the URL. `success_url` points to `${LENS_APP_URL}/success`, `cancel_url` to `${LENS_APP_URL}/portfolio`. |
+| `POST` | `/stripe/portal` | ✅ | — | Creates a Stripe Customer Portal session so the user can manage their subscription. Requires `stripe_customer_id` to be set on the row (only happens after first checkout). Returns `{ success: true, url: "<portal-url>" }` or 400 if no billing account exists. |
+| `POST` | `/stripe/webhook` | — | Stripe event payload | Stripe webhook handler. Signature-verified with `STRIPE_WEBHOOK_SECRET`. Rate limiting skipped (`config: { rateLimit: false }`). Handles: `checkout.session.completed` (sets `subscription_status = 'active'`, stores `stripe_customer_id`), `customer.subscription.deleted` (sets `'cancelled'`), `invoice.payment_failed` (sets `'inactive'`). Matched to user rows via `metadata.userId` (checkout) or `stripe_customer_id` (subscription/invoice events). |
+| `GET` | `/subscription/status` | ✅ | — | Returns `{ success: true, subscription_status: "inactive" \| "active" \| "cancelled" }` for the authenticated user. Thin alternative to `/me` for components that only need billing state. |
 
 There is **no** `/notes`, `/getnotes`, `/notes/:id` endpoint. Earlier docs referenced them; they have been removed.
 
@@ -405,6 +420,7 @@ Three exported functions in `email.ts`, all using the **Resend** SDK and all fir
 | `jsonwebtoken` | JWT signing/verification |
 | `dotenv` | Loads `.env` (imported via `import "dotenv/config"` in `server.ts`) |
 | `resend` | Transactional email (welcome only, for now) |
+| `stripe` | Stripe SDK — Checkout sessions, billing portal, webhook signature verification |
 | `better-sqlite3` + `@types/better-sqlite3` | **Dead.** Leftover from the SQLite era before the Postgres migration. Nothing in `src/` imports it. Safe to remove from `package.json`. |
 
 `ts-node-dev` and the `@types/*` packages are devDeps. `typescript` is a devDep but there is no compile step in the npm scripts.

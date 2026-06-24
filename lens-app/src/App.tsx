@@ -7,6 +7,7 @@ import { Dashboard } from '@/pages/Dashboard'
 import { Portfolio } from '@/pages/Portfolio'
 import { Results } from '@/pages/Results'
 import { Settings } from '@/pages/Settings'
+import { Success } from '@/pages/Success'
 
 const queryClient = new QueryClient()
 
@@ -46,6 +47,14 @@ export default function App() {
               element={
                 <ProtectedRoute>
                   <Settings />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/success"
+              element={
+                <ProtectedRoute>
+                  <Success />
                 </ProtectedRoute>
               }
             />
