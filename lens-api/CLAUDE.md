@@ -377,7 +377,7 @@ This service has not yet been deployed to Railway. When you are ready:
 3. The `Procfile` starts the server: `uvicorn main:app --host 0.0.0.0 --port $PORT`
 4. Health check endpoint: `GET /health` → `{"status": "ok"}`
 
-**CORS:** This service has no CORS middleware. It is intended to be called server-to-server (Fastify backend → lens-api), not directly from a browser. Do not add CORS headers unless the architecture changes to allow direct browser calls.
+**CORS:** `main.py` uses `CORSMiddleware` allowing origins `http://localhost:5173` (Lens App dev server) and `https://app.use-lens.com` (production). This is a temporary accommodation while the browser calls lens-api directly during development. Once Fastify proxies all `/analyze` calls server-to-server, the CORS origins can be removed. If you add another dev origin, edit the `allow_origins` list in `main.py`.
 
 **Rate limiting:** Not yet implemented. If the service is exposed publicly (even with API key auth), add `slowapi` or similar. For server-to-server use it is less critical.
 

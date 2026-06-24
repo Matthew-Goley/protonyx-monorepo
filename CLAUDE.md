@@ -18,6 +18,7 @@ There are four deliverables:
 | **Web frontend** (`frontend/`) | Plain static HTML/CSS/JS, served by VS Code Live Server | Marketing site, signup/login, account dashboard, direct app download. No framework, no bundler. |
 | **Backend API** (`backend/`) | Fastify + TypeScript on Node, PostgreSQL | Authentication, account profile, download counter, and (eventually) the API the desktop app talks to. |
 | **Lens API** (`lens-api/`) | Python FastAPI, deployed on Railway | Standalone analytics microservice. Accepts a portfolio over HTTP, runs the Lens engine, returns the full result dict. Called server-to-server by the Fastify backend. |
+| **Lens App** (`lens-app/`) | Vite + React + TypeScript | Web app for Lens analytics at `app.use-lens.com`. Calls lens-api directly (dev only) or via Fastify (prod). Stack: React Router, Tailwind CSS, shadcn/ui, Recharts, TanStack Query. |
 
 The three components share **one user database** but **no build system** — each subdirectory is developed independently. There is no root `package.json`, no monorepo tooling (Turbo/Nx/Lerna), no Docker, no CI pipeline. Treat each top-level folder as a self-contained project.
 
@@ -93,6 +94,20 @@ _monorepo/
 │   │   └── downloads/             # Vector-Setup.exe (placeholder installer served by the site Download buttons)
 │   └── .vscode/settings.json      # Live Server pinned to port 5501
 │
+├── lens-app/                      # Vite + React + TS web app for Lens at app.use-lens.com
+│   ├── src/
+│   │   ├── api/lens.ts            # Typed API client (lensApi.analyze, lensApi.getTickerHistory)
+│   │   ├── contexts/AuthContext.tsx  # isAuthenticated, login(), logout() — localStorage-backed
+│   │   ├── components/
+│   │   │   ├── ProtectedRoute.tsx # Redirects to /login if not authenticated
+│   │   │   └── ui/               # shadcn/ui components: button, card, label, input, textarea, badge
+│   │   ├── lib/utils.ts           # cn() tailwind merge utility
+│   │   └── pages/                # Login, Dashboard, Portfolio (form), Results, Settings
+│   ├── package.json
+│   ├── vite.config.ts             # Path alias @/ → src/
+│   ├── tailwind.config.js         # shadcn CSS variable theme
+│   └── components.json            # shadcn/ui config
+│
 ├── app/                           # STALE copy of Vector desktop app — NOT the source of truth
 │   │                              # Canonical desktop app code is in Vector-Main/ (one level above _monorepo/)
 │   │                              # Do not use app/ as a reference; use Vector-Main/ instead
@@ -150,6 +165,21 @@ uvicorn main:app --reload
 ```
 
 See `lens-api/CLAUDE.md` for full detail including the `POST /analyze` request/response shape and Railway deployment.
+
+### Lens App (React frontend)
+
+Run from `lens-app/`:
+
+| Task | Command | Notes |
+|---|---|---|
+| Install deps | `npm install` | |
+| Dev server | `npm run dev` | Vite HMR, serves on `http://localhost:5173` |
+| Type check | `npx tsc --noEmit` | No build step needed in dev |
+| Build | `npm run build` | Outputs to `lens-app/dist/` |
+
+The dev server on port 5173 is the only origin the lens-api currently allows besides `https://app.use-lens.com`. Adding any other local origin requires editing the `allow_origins` list in `lens-api/main.py`.
+
+Auth in the current build is a stub: any non-empty username/password signs you in and the session is `localStorage`-backed (`lens_authed`). Real auth against the Fastify backend (`/login`, JWT) is the next step.
 
 ### Vector desktop app
 

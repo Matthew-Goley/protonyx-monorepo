@@ -11,6 +11,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from fastapi import FastAPI, HTTPException, Security
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security.api_key import APIKeyHeader
 from pydantic import BaseModel
 from starlette.concurrency import run_in_threadpool
@@ -23,6 +24,14 @@ logging.basicConfig(level=logging.INFO)
 _log = logging.getLogger(__name__)
 
 app = FastAPI(title="Lens API", version="1.0.0")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173", "https://app.use-lens.com"],
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # ------------------------------------------------------------------
 # Auth: shared-secret API key
