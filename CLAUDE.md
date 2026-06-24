@@ -10,13 +10,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **Protonyx** is an early-stage fintech building institutional-grade portfolio analytics for retail investors. This is the monorepo for the entire platform — backend API, web frontend, and the desktop app — held together by a single Postgres user database.
 
-There are three deliverables:
+There are four deliverables:
 
 | Product | Stack | Purpose |
 |---|---|---|
-| **Vector** (`app/`) | Python 3.12 + PyQt6, packaged with Nuitka | Downloadable Windows desktop app. Tracks positions, fetches market data via `yfinance`, and renders an analytics dashboard powered by a proprietary engine called **Lens**. Currently version **0.5.0**. |
+| **Vector** (`app/`) | Python 3.12 + PyQt6, packaged with Nuitka | Downloadable Windows desktop app. Tracks positions, fetches market data via `yfinance`, and renders an analytics dashboard powered by a proprietary engine called **Lens**. Currently version **0.5.0**. The `app/` folder in this repo is a **stale, rarely-synced copy** — the canonical source of truth is `Vector-Main/` one level above the monorepo. |
 | **Web frontend** (`frontend/`) | Plain static HTML/CSS/JS, served by VS Code Live Server | Marketing site, signup/login, account dashboard, direct app download. No framework, no bundler. |
 | **Backend API** (`backend/`) | Fastify + TypeScript on Node, PostgreSQL | Authentication, account profile, download counter, and (eventually) the API the desktop app talks to. |
+| **Lens API** (`lens-api/`) | Python FastAPI, deployed on Railway | Standalone analytics microservice. Accepts a portfolio over HTTP, runs the Lens engine, returns the full result dict. Called server-to-server by the Fastify backend. |
 
 The three components share **one user database** but **no build system** — each subdirectory is developed independently. There is no root `package.json`, no monorepo tooling (Turbo/Nx/Lerna), no Docker, no CI pipeline. Treat each top-level folder as a self-contained project.
 
@@ -46,7 +47,22 @@ _monorepo/
 │   │       └── beta.ts            # /beta/status (public signup-availability check)
 │   ├── package.json
 │   ├── tsconfig.json
+│   ├── CLAUDE.md                  # Backend quick-start reference
 │   └── .env                       # JWT_SECRET, DATABASE_URL, RESEND_API_KEY — gitignored
+│
+├── lens-api/                      # Python FastAPI analytics microservice (Railway)
+│   ├── main.py                    # FastAPI app — POST /analyze, GET /health
+│   ├── requirements.txt
+│   ├── Procfile                   # uvicorn main:app --host 0.0.0.0 --port $PORT
+│   ├── .env.example               # LENS_API_KEY, LENS_DATA_DIR
+│   ├── parity_check.py            # Regression verification vs Vector-Main
+│   ├── CLAUDE.md                  # Full service reference — read this before working in lens-api/
+│   └── engine/                    # Lens computation package (extracted from Vector-Main/vector/)
+│       ├── analytics.py / constants.py / lens_engine.py / monte_carlo.py
+│       ├── paths.py               # MODIFIED: reads LENS_DATA_DIR env var for writable path
+│       ├── store.py               # DataStore — yfinance wrapper with TTL JSON caching
+│       └── lens/                  # 8 analyzers, CTA engine, sentence composers, assembler
+│           └── templates/sentences.json
 │
 ├── frontend/                      # Static site, one index.html per route
 │   ├── index.html                 # Landing page (hero 2-col + discovery 3-video strip + trust strip + pricing section)
@@ -77,13 +93,11 @@ _monorepo/
 │   │   └── downloads/             # Vector-Setup.exe (placeholder installer served by the site Download buttons)
 │   └── .vscode/settings.json      # Live Server pinned to port 5501
 │
-├── app/                           # Vector desktop app (PyQt6) — see app/CLAUDE.md
-│   ├── main.py                    # Entry point — calls vector.app.main()
-│   ├── requirements.txt
-│   ├── build.bat / build-debug.bat # Nuitka standalone builds
-│   ├── debug_test.json            # Synthetic positions for offline Lens testing
-│   ├── assets/                    # vector_full.png, vector.ico, splashboard.png
-│   └── vector/                    # All app code, see §6
+├── app/                           # STALE copy of Vector desktop app — NOT the source of truth
+│   │                              # Canonical desktop app code is in Vector-Main/ (one level above _monorepo/)
+│   │                              # Do not use app/ as a reference; use Vector-Main/ instead
+│   ├── main.py
+│   └── vector/
 │
 ├── scripts/                       # Admin / DB utility scripts — currently empty
 ├── database/                      # Legacy SQLite dir — gitignored, empty, no longer used
@@ -119,18 +133,37 @@ Served by **VS Code Live Server** — there is no npm/Vite/Webpack step.
 - Open any `index.html` via the Live Server extension. Navigation uses **root-absolute paths** like `/auth/index.html`, so Live Server **must be rooted at `frontend/`** (not at the repo root) for links to resolve. If links 404, that is almost always the cause.
 - Ports **5500** and **5501** (both `127.0.0.1` and `localhost`) are allowlisted by the backend CORS config. If Live Server picks a different port, every request to the API will fail CORS.
 
-### Vector desktop app
+### Lens API
 
-Run from `app/`:
+Run from `lens-api/`:
 
 ```bash
+python -m venv .venv
+.venv\Scripts\activate
+pip install -r requirements.txt
+
+# Set required env vars, then:
+set LENS_API_KEY=dev-secret-key
+set LENS_DATA_DIR=C:/Users/Matthew/AppData/Local/Protonyx/Vector
+uvicorn main:app --reload
+# API at http://localhost:8000, docs at http://localhost:8000/docs
+```
+
+See `lens-api/CLAUDE.md` for full detail including the `POST /analyze` request/response shape and Railway deployment.
+
+### Vector desktop app
+
+**The `app/` folder in this repo is stale.** Run the real desktop app from `Vector-Main/` (one level above `_monorepo/`):
+
+```bash
+cd Vector-Main
 python -m venv .venv
 .venv\Scripts\activate
 pip install -r requirements.txt
 python main.py
 ```
 
-For Nuitka standalone builds, use `build.bat` (release, console disabled) or `build-debug.bat` (console enabled for tracebacks). Both wipe `app/.dist/` first. See `app/CLAUDE.md` for the full Nuitka invocation and the data/package includes that are required to ship.
+For Nuitka standalone builds, use `build.bat` (release, console disabled) or `build-debug.bat` (console enabled for tracebacks). Both wipe `.dist/` first.
 
 ### PostgreSQL (local dev)
 
@@ -535,9 +568,11 @@ The backend always names its error field `message`. Earlier versions of the fron
 
 ---
 
-## 6. Vector Desktop App (`app/`)
+## 6. Vector Desktop App
 
-The Vector desktop app is fully developed and self-documenting. Its own `app/CLAUDE.md` (~410 lines) is the authoritative reference — read it before making changes. This section is a **map**, not a duplicate.
+**The `app/` folder in this repo is a stale, rarely-synced copy of the desktop app. Do not use it as a reference or run code from it.** The canonical source of truth for all desktop app and Lens engine code is `Vector-Main/` one level above this monorepo. `Vector-Main/CLAUDE.md` is the authoritative reference for that code.
+
+This section is a **map** of what the Vector app does (for context), not a substitute for `Vector-Main/CLAUDE.md`.
 
 ### High-level
 
@@ -617,9 +652,9 @@ Market data TTLs (in `store.py`): quote/intraday matches `refresh_interval`, dai
 
 `R` refresh, `L` Lens page, `D` Dashboard, `S` Settings, `A` Add Position (onboarding only), `?` Shortcuts modal, `Esc` close any modal, `Space` advance onboarding step (widget-scoped, ignored when focus is a `QLineEdit`).
 
-### When to consult `app/CLAUDE.md`
+### When to consult `Vector-Main/CLAUDE.md`
 
-Anything more specific than the map above — exact widget struct, accordion measure logic, Nuitka include flags, splash-screen sequence, page-by-page layout arithmetic, sentence-template selection — is documented there. Do not duplicate it here; update both files when behaviors change.
+Anything more specific than the map above — exact widget struct, accordion measure logic, Nuitka include flags, splash-screen sequence, page-by-page layout arithmetic, sentence-template selection — is documented there. That file is the authoritative reference; this section is a summary only.
 
 ---
 
@@ -655,11 +690,11 @@ Anything more specific than the map above — exact widget struct, accordion mea
 
 ### Vector desktop app
 
-- See `app/CLAUDE.md` for the exhaustive list. The most painful regressions to avoid: re-inflating Sharpe to 22pt, removing the QTimer defensive pattern in `LensDisplay`, hardcoding `_CTAReportCard` heights, dropping graph margin `bottom` below 0.22, and forgetting to include `vector/lens/templates` or the yfinance package list in the Nuitka build.
+- See `Vector-Main/CLAUDE.md` for the exhaustive list. The most painful regressions to avoid: re-inflating Sharpe to 22pt, removing the QTimer defensive pattern in `LensDisplay`, hardcoding `_CTAReportCard` heights, dropping graph margin `bottom` below 0.22, and forgetting to include `vector/lens/templates` or the yfinance package list in the Nuitka build.
 
 ### Always do this
 
-- **Update `CLAUDE.md` in the same change that makes its claims stale.** New routes, columns, pages, env vars, version bumps, removed features, renamed files, changed conventions — all require touching the relevant section here. If the desktop app is affected, update `app/CLAUDE.md` too. The doc is a code artifact: it lives or dies with the diff that introduced the change. Do not defer this; do not "open a follow-up." Fix it now.
+- **Update `CLAUDE.md` in the same change that makes its claims stale.** New routes, columns, pages, env vars, version bumps, removed features, renamed files, changed conventions — all require touching the relevant section here. If the Lens engine is affected, update `lens-api/CLAUDE.md` too. If the desktop app is affected, update `Vector-Main/CLAUDE.md`. The doc is a code artifact: it lives or dies with the diff that introduced the change. Do not defer this; do not "open a follow-up." Fix it now.
 
 ### Don't do this
 
