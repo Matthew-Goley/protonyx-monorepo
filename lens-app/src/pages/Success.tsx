@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { Check } from 'lucide-react'
 
 export function Success() {
   const navigate = useNavigate()
@@ -10,11 +11,13 @@ export function Success() {
   }, [navigate])
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-8">
-      <div className="text-center space-y-4 max-w-sm">
-        <div className="text-5xl">ok</div>
-        <h1 className="text-2xl font-bold">Subscription active</h1>
-        <p className="text-muted-foreground">
+    <div className="flex min-h-screen items-center justify-center bg-base p-8">
+      <div className="max-w-sm space-y-4 text-center">
+        <div className="bg-gradient-brand mx-auto flex h-16 w-16 items-center justify-center rounded-full">
+          <Check size={32} className="text-base" />
+        </div>
+        <h1 className="text-2xl font-bold text-primary">Subscription active</h1>
+        <p className="text-secondary">
           Welcome to Lens Pro. Redirecting to your dashboard in a moment.
         </p>
       </div>

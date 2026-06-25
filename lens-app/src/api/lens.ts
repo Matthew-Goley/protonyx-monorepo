@@ -62,6 +62,15 @@ export interface TickerHistoryPoint {
   volume?: number
 }
 
+export interface TickerInfo {
+  name: string | null
+  sector: string | null
+  market_cap: number | null
+  pe_ratio: number | null
+  dividend_yield: number | null
+  current_price: number | null
+}
+
 function apiHeaders(): HeadersInit {
   return {
     'Content-Type': 'application/json',
@@ -78,7 +87,7 @@ async function handleResponse<T>(res: Response): Promise<T> {
 }
 
 export const lensApi = {
-  /** POST /analyze — run the full Lens pipeline on a portfolio. */
+  /** POST /analyze - run the full Lens pipeline on a portfolio. */
   analyze(req: AnalyzeRequest): Promise<LensResult> {
     return fetch(`${LENS_API_URL}/analyze`, {
       method: 'POST',
@@ -87,13 +96,21 @@ export const lensApi = {
     }).then((r) => handleResponse<LensResult>(r))
   },
 
-  /** GET /ticker/{symbol}/history — stub, endpoint not yet implemented on server. */
+  /** GET /ticker/{symbol}/info - company snapshot. Used to validate a ticker and
+   *  pull price/sector/name when adding a position. Throws on unknown ticker (404). */
+  getTickerInfo(symbol: string): Promise<TickerInfo> {
+    return fetch(`${LENS_API_URL}/ticker/${encodeURIComponent(symbol)}/info`, {
+      headers: apiHeaders(),
+    }).then((r) => handleResponse<TickerInfo>(r))
+  },
+
+  /** GET /ticker/{symbol}/history - stub, endpoint not yet implemented on server. */
   getTickerHistory(_symbol: string): Promise<TickerHistoryPoint[]> {
     // TODO: implement GET /ticker/{symbol}/history on lens-api and wire this up.
     return Promise.reject(new Error('Not implemented'))
   },
 
-  /** GET /health — check service availability (no auth required). */
+  /** GET /health - check service availability (no auth required). */
   health(): Promise<{ status: string }> {
     return fetch(`${LENS_API_URL}/health`).then((r) =>
       handleResponse<{ status: string }>(r),

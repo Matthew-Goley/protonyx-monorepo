@@ -1,58 +1,92 @@
 @import "tailwindcss";
 
-@layer base {
-  :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
-    --radius: 0.5rem;
-  }
+/*
+  Tailwind v4 uses CSS-based config via @theme (there is no tailwind.config.js
+  in this project). Every token below generates the matching utility classes,
+  e.g. --color-accent-teal => bg-accent-teal / text-accent-teal / border-accent-teal.
+*/
+@theme {
+  /* Surfaces */
+  --color-base: #0a0d14;
+  --color-card: #111827;
+  --color-card-hover: #1a2236;
+  --color-sidebar: #0d1117;
+  --color-subtle: #1f2937;
 
-  .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
-  }
+  /* Text */
+  --color-primary: #f9fafb;
+  --color-secondary: #9ca3af;
+  --color-muted: #4b5563;
+
+  /* Accents */
+  --color-accent-teal: #2dd4bf;
+  --color-accent-blue: #3b82f6;
+  --color-accent-green: #10b981;
+  --color-accent-red: #ef4444;
+  --color-accent-yellow: #f59e0b;
+  --color-accent-orange: #f97316;
+
+  /* Semantic aliases kept so the leftover shadcn primitives still render in
+     dark mode if used. They map onto the same dark palette. */
+  --color-background: #0a0d14;
+  --color-foreground: #f9fafb;
+  --color-card-foreground: #f9fafb;
+  --color-border: #1f2937;
+  --color-input: #1f2937;
+  --color-ring: #2dd4bf;
+  --color-destructive: #ef4444;
+  --color-destructive-foreground: #f9fafb;
+  --color-muted-foreground: #9ca3af;
+  --color-secondary-foreground: #f9fafb;
+  --color-accent: #1a2236;
+  --color-accent-foreground: #f9fafb;
+  --color-primary-foreground: #0a0d14;
+
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
 }
 
 @layer base {
   * {
-    border-color: var(--border);
+    border-color: var(--color-subtle);
+  }
+  html {
+    background-color: var(--color-base);
   }
   body {
-    background-color: var(--background);
-    color: var(--foreground);
+    background-color: var(--color-base);
+    color: var(--color-primary);
+    font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
   }
+}
+
+/* Brand gradient helpers (background-clip needs real CSS, not a utility). */
+.text-gradient {
+  background: linear-gradient(135deg, #2dd4bf 0%, #3b82f6 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.bg-gradient-brand {
+  background-image: linear-gradient(135deg, #2dd4bf 0%, #3b82f6 100%);
+}
+
+/* Dark scrollbars so the chrome matches the theme. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #1f2937 transparent;
+}
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+*::-webkit-scrollbar-thumb {
+  background-color: #1f2937;
+  border-radius: 9999px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
 }

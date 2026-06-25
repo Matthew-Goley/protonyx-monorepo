@@ -96,17 +96,22 @@ _monorepo/
 │
 ├── lens-app/                      # Vite + React + TS web app for Lens at app.use-lens.com
 │   ├── src/
-│   │   ├── api/lens.ts            # Typed API client (lensApi.analyze, lensApi.getTickerHistory)
-│   │   ├── contexts/AuthContext.tsx  # isAuthenticated, loading, user, login(u,p), logout() — real Fastify auth, httpOnly session cookie
+│   │   ├── api/lens.ts            # Typed API client (lensApi.analyze, getTickerInfo, getTickerHistory, health)
+│   │   ├── contexts/AuthContext.tsx  # isAuthenticated, loading, user, login(u,p), signup(u,e,p), logout() — real Fastify auth, httpOnly session cookie
+│   │   ├── hooks/useLensAnalysis.ts  # react-query hook: POST /analyze from the positions+risk cookies (shared cache)
 │   │   ├── components/
 │   │   │   ├── ProtectedRoute.tsx # Redirects to /login if not authenticated
-│   │   │   └── ui/               # shadcn/ui components: button, card, label, input, textarea, badge
-│   │   ├── lib/utils.ts           # cn() tailwind merge utility
-│   │   └── pages/                # Login, Dashboard, Portfolio (form + paywall), Results, Settings (subscription), Success
+│   │   │   ├── layout/           # Sidebar, AppShell (sidebar + main), PageHeader
+│   │   │   ├── common/           # Panel, BriefText (rich-colored brief), SectorPie, RiskProfileCards, AddPositionModal, UpgradePrompt
+│   │   │   ├── widgets/DashboardWidgets.tsx  # Portfolio Vector, Positions, Total Equity, Sharpe, Diversification, Beta, Dividend Calendar
+│   │   │   ├── analysis/         # CautionGauge (SVG), CtaList, MonteCarloChart
+│   │   │   └── ui/               # button + input (restyled dark); card/label/textarea/badge are now unused leftovers
+│   │   ├── lib/                  # utils.ts (cn), cookies.ts (positions/settings cookies), lensData.ts (derivations), subscription.ts (isSubscribed)
+│   │   └── pages/                # Login (sign in/up tabs), Onboard, Dashboard, Analysis, Profile, Settings, Success
+│   ├── src/index.css              # Tailwind v4 @theme dark design tokens (no tailwind.config.js in this project)
 │   ├── package.json
 │   ├── vite.config.ts             # Path alias @/ → src/
-│   ├── tailwind.config.js         # shadcn CSS variable theme
-│   └── components.json            # shadcn/ui config
+│   └── components.json            # shadcn/ui config (legacy)
 │
 ├── app/                           # STALE copy of Vector desktop app — NOT the source of truth
 │   │                              # Canonical desktop app code is in Vector-Main/ (one level above _monorepo/)
@@ -174,16 +179,20 @@ Run from `lens-app/`:
 |---|---|---|
 | Install deps | `npm install` | |
 | Dev server | `npm run dev` | Vite HMR, serves on `http://localhost:5173` |
-| Type check | `npx tsc --noEmit` | No build step needed in dev |
-| Build | `npm run build` | Outputs to `lens-app/dist/` |
+| Type check | `npx tsc -b` (or `tsc -p tsconfig.app.json --noEmit`) | Root `tsconfig.json` is a solution file (`files: []` + references), so a bare `tsc --noEmit` checks nothing. Use `tsc -b`. |
+| Build | `npm run build` | `tsc -b && vite build`, outputs to `lens-app/dist/` |
 
 The dev server on port 5173 is the only origin the lens-api currently allows besides `https://app.use-lens.com`. Adding any other local origin requires editing the `allow_origins` list in `lens-api/main.py`.
 
-Auth uses the real Fastify backend: `POST /login` is called with credentials, and the response sets an httpOnly `session` cookie. On mount, `AuthContext` validates the session via `GET /me` (cookie sent automatically). `POST /logout` clears the cookie. No token is stored in localStorage or JS-accessible state. `AuthContext` exposes `user.subscription_status` (`'inactive' | 'active' | 'cancelled'`), populated from the `/me` response.
+Auth uses the real Fastify backend: `POST /login` is called with credentials, and the response sets an httpOnly `session` cookie. `AuthContext` also exposes `signup(username, email, password)` which `POST /signup`s then logs in (signup does not set a cookie). On mount, `AuthContext` validates the session via `GET /me` (cookie sent automatically). `POST /logout` clears the cookie. No token is stored in localStorage or JS-accessible state. `AuthContext.user` carries `subscription_status` (`'inactive' | 'active' | 'cancelled'`), `plan`, `member_since`, `beta_access`, populated from the `/me` response.
 
-The end-to-end analyze flow is **working**: enter positions as JSON on `/portfolio`, hit Analyze, and `/results` renders the brief, caution score, and CTA list returned by the live Railway API. The first request after a Railway cold start is slow (yfinance fetches for each ticker); subsequent requests for the same tickers hit the in-memory cache and are fast.
+**UI / screens.** The app is a dark, sidebar-driven dashboard (Tailwind v4 `@theme` tokens in `src/index.css`; Inter font; recharts + lucide-react). Screens: `/login` (sign in / sign up tabs), `/onboard` (2-step risk-profile + position-setup wizard), `/dashboard` (Lens Brief card + widget grid), `/analysis` (brief, caution gauge, CTA list, Monte Carlo, allocation pies), `/profile`, `/settings`, `/success`.
 
-**Stripe paywall:** `/portfolio` checks `user.subscription_status !== 'active'` and renders an upgrade prompt instead of the form when not subscribed. The upgrade button hits `POST /stripe/create-checkout-session` and redirects to the returned Stripe Checkout URL. After successful payment, Stripe redirects to `/success`, which shows a confirmation message and redirects to `/dashboard` after 3 seconds. `/settings` shows the current subscription status and a "Manage Billing" button that hits `POST /stripe/portal` (only shown when status is active). The dev test user (`testuser`) is seeded with `subscription_status = 'active'` so the app is fully usable without going through Stripe in local dev.
+**Client-side state.** Onboarding writes the portfolio to a `lens_positions` cookie and the risk tier to a `lens_settings` cookie (30-day, `SameSite=Lax`); there is no positions table on the backend yet. `useLensAnalysis` (react-query) reads those cookies and runs `POST /analyze`; Dashboard and Analysis share the cached result. Adding a position validates the ticker via lens-api `GET /ticker/{symbol}/info` (browser-direct, X-API-Key) to pull live price/sector/name. `Dashboard` redirects to `/onboard` when the positions cookie is empty.
+
+**Derived vs. real data.** The brief, ctas, caution_score, action_type, recommended_tickers, net_cta_delta, full_report, projected_positions and the per-analyzer pool_results are read straight from `/analyze`. A few design surfaces the engine does **not** return (see `lens-api/CLAUDE.md` §13) are derived deterministically from the real analyzer outputs and labelled as estimates in the UI: the **Sharpe ratio** ((slope − 4.5%) / volatility), the **Monte Carlo** projection fan (analytic GBM quantile bands from portfolio drift + volatility), and the equity sparkline / 5-day change. See `src/lib/lensData.ts`.
+
+**Stripe paywall.** Gating is on `subscription_status === 'active'` (via `isSubscribed()` in `src/lib/subscription.ts`), **not** `plan` — the seeded `testuser` is `plan='free'` but `subscription_status='active'`, so gating on plan would wrongly block it. Dashboard and Analysis render an `UpgradePrompt` (which hits `POST /stripe/create-checkout-session` and redirects to Stripe Checkout) when not subscribed. After payment Stripe redirects to `/success`, which redirects to `/dashboard` after 3 seconds. `/settings` shows the plan and a "Manage Billing" button (`POST /stripe/portal`, shown when active) or an upgrade button otherwise. The Pro/Free badge shown in Profile/Settings follows `isSubscribed()`.
 
 ### Vector desktop app
 

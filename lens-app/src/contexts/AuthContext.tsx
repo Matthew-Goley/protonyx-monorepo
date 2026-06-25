@@ -8,6 +8,9 @@ interface User {
   email: string
   plan: string
   subscription_status: 'inactive' | 'active' | 'cancelled'
+  member_since?: string
+  beta_access?: boolean
+  email_verified?: boolean
 }
 
 interface AuthContextValue {
@@ -15,6 +18,7 @@ interface AuthContextValue {
   loading: boolean
   user: User | null
   login: (username: string, password: string) => Promise<void>
+  signup: (username: string, email: string, password: string) => Promise<void>
   logout: () => Promise<void>
 }
 
@@ -60,6 +64,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsAuthenticated(true)
   }
 
+  async function signup(username: string, email: string, password: string) {
+    const res = await fetch(`${BACKEND_URL}/signup`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ username, email, password }),
+    })
+
+    const data = (await res.json().catch(() => ({}))) as { message?: string }
+
+    if (!res.ok) {
+      throw new Error(data.message ?? 'Sign up failed')
+    }
+
+    // Signup does not set a session cookie (only /login does), so log in to
+    // establish the session and populate the user.
+    await login(username, password)
+  }
+
   async function logout() {
     await fetch(`${BACKEND_URL}/logout`, {
       method: 'POST',
@@ -70,7 +93,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, loading, user, login, logout }}>
+    <AuthContext.Provider value={{ isAuthenticated, loading, user, login, signup, logout }}>
       {children}
     </AuthContext.Provider>
   )

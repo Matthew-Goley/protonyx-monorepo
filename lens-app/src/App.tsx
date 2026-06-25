@@ -3,9 +3,10 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AuthProvider } from '@/contexts/AuthContext'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
 import { Login } from '@/pages/Login'
+import { Onboard } from '@/pages/Onboard'
 import { Dashboard } from '@/pages/Dashboard'
-import { Portfolio } from '@/pages/Portfolio'
-import { Results } from '@/pages/Results'
+import { Analysis } from '@/pages/Analysis'
+import { Profile } from '@/pages/Profile'
 import { Settings } from '@/pages/Settings'
 import { Success } from '@/pages/Success'
 
@@ -19,6 +20,14 @@ export default function App() {
           <Routes>
             <Route path="/login" element={<Login />} />
             <Route
+              path="/onboard"
+              element={
+                <ProtectedRoute>
+                  <Onboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/dashboard"
               element={
                 <ProtectedRoute>
@@ -27,18 +36,18 @@ export default function App() {
               }
             />
             <Route
-              path="/portfolio"
+              path="/analysis"
               element={
                 <ProtectedRoute>
-                  <Portfolio />
+                  <Analysis />
                 </ProtectedRoute>
               }
             />
             <Route
-              path="/results"
+              path="/profile"
               element={
                 <ProtectedRoute>
-                  <Results />
+                  <Profile />
                 </ProtectedRoute>
               }
             />

@@ -1,92 +1,268 @@
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useEffect, useState, type ReactNode } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
+import { ChevronRight } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
+import { isSubscribed } from '@/lib/subscription'
+import { lensApi, type Position } from '@/api/lens'
+import {
+  getPositions,
+  setPositions,
+  getSettings,
+  setSettings,
+  type RiskTier,
+} from '@/lib/cookies'
+import { AppShell } from '@/components/layout/AppShell'
+import { PageHeader } from '@/components/layout/PageHeader'
+import { Panel } from '@/components/common/Panel'
+import { RiskProfileCards } from '@/components/common/RiskProfileCards'
+import { AddPositionModal } from '@/components/common/AddPositionModal'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
+import { cn } from '@/lib/utils'
 
 const BACKEND_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3000'
 
-export function Settings() {
-  const navigate = useNavigate()
-  const { user } = useAuth()
-  const [portalLoading, setPortalLoading] = useState(false)
-  const [portalError, setPortalError] = useState<string | null>(null)
+function Section({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <Panel className="p-6">
+      <h3 className="mb-4 font-semibold text-primary">{title}</h3>
+      {children}
+    </Panel>
+  )
+}
 
-  const isPro = user?.plan === 'pro'
+function Collapsible({ title, children }: { title: string; children?: ReactNode }) {
+  const [open, setOpen] = useState(false)
+  return (
+    <Panel className="p-0">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="flex w-full items-center justify-between p-5 text-left"
+      >
+        <span className="font-semibold text-primary">{title}</span>
+        <ChevronRight
+          size={18}
+          className={cn('text-muted transition-transform', open && 'rotate-90')}
+        />
+      </button>
+      {open && (
+        <div className="border-t border-subtle p-5 text-sm text-muted">
+          {children ?? 'Configuration for this section is coming soon.'}
+        </div>
+      )}
+    </Panel>
+  )
+}
+
+function Dropdown({
+  label,
+  options,
+}: {
+  label: string
+  options: string[]
+}) {
+  return (
+    <div className="flex items-center justify-between">
+      <span className="text-sm text-secondary">{label}</span>
+      <select className="rounded-lg border border-subtle bg-base px-4 py-2.5 text-sm text-primary focus:border-accent-teal focus:outline-none">
+        {options.map((o) => (
+          <option key={o}>{o}</option>
+        ))}
+      </select>
+    </div>
+  )
+}
+
+export function Settings() {
+  const queryClient = useQueryClient()
+  const { user } = useAuth()
+  const pro = isSubscribed(user)
+
+  const [risk, setRisk] = useState<RiskTier>(getSettings().risk_tier)
+  const [positions, setPositionsState] = useState<Position[]>(getPositions())
+  const [selected, setSelected] = useState<string | null>(null)
+  const [modalOpen, setModalOpen] = useState(false)
+
+  const [portalLoading, setPortalLoading] = useState(false)
+  const [billingError, setBillingError] = useState<string | null>(null)
+  const [apiStatus, setApiStatus] = useState<string>('checking...')
+
+  useEffect(() => {
+    lensApi
+      .health()
+      .then((h) => setApiStatus(h.status))
+      .catch(() => setApiStatus('unavailable'))
+  }, [])
+
+  function changeRisk(tier: RiskTier) {
+    setRisk(tier)
+    setSettings({ risk_tier: tier })
+    queryClient.invalidateQueries({ queryKey: ['lens-analysis'] })
+  }
+
+  function persistPositions(next: Position[]) {
+    setPositionsState(next)
+    setPositions(next)
+    queryClient.invalidateQueries({ queryKey: ['lens-analysis'] })
+  }
+
+  function addPosition(p: Position) {
+    persistPositions([...positions.filter((x) => x.ticker !== p.ticker), p])
+    setModalOpen(false)
+  }
+
+  function removeSelected() {
+    if (!selected) return
+    persistPositions(positions.filter((p) => p.ticker !== selected))
+    setSelected(null)
+  }
 
   async function handleManageBilling() {
     setPortalLoading(true)
-    setPortalError(null)
+    setBillingError(null)
     try {
       const res = await fetch(`${BACKEND_URL}/stripe/portal`, {
         method: 'POST',
         credentials: 'include',
       })
-      const data = await res.json() as { success: boolean; url?: string; message?: string }
+      const data = (await res.json()) as { success: boolean; url?: string; message?: string }
       if (!res.ok || !data.url) {
         throw new Error(data.message ?? 'Failed to open billing portal')
       }
       window.location.href = data.url
     } catch (err) {
-      setPortalError(err instanceof Error ? err.message : 'Something went wrong')
+      setBillingError(err instanceof Error ? err.message : 'Something went wrong')
+      setPortalLoading(false)
+    }
+  }
+
+  async function handleUpgrade() {
+    setPortalLoading(true)
+    setBillingError(null)
+    try {
+      const res = await fetch(`${BACKEND_URL}/stripe/create-checkout-session`, {
+        method: 'POST',
+        credentials: 'include',
+      })
+      const data = (await res.json()) as { success: boolean; url?: string; message?: string }
+      if (!res.ok || !data.url) {
+        throw new Error(data.message ?? 'Failed to start checkout')
+      }
+      window.location.href = data.url
+    } catch (err) {
+      setBillingError(err instanceof Error ? err.message : 'Something went wrong')
       setPortalLoading(false)
     }
   }
 
   return (
-    <div className="min-h-screen bg-background p-8">
-      <div className="max-w-2xl mx-auto space-y-6">
-        <div className="flex items-center gap-4">
-          <Button variant="outline" size="sm" onClick={() => navigate(-1)}>
-            Back
-          </Button>
-          <h1 className="text-3xl font-bold">Settings</h1>
-        </div>
+    <AppShell>
+      <PageHeader title="Settings" breadcrumb="Lens / Settings" />
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Subscription</CardTitle>
-            <CardDescription>Your current Lens Pro subscription status.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium">Plan</span>
-              <Badge variant={isPro ? 'default' : 'secondary'}>
-                {isPro ? 'Pro' : 'Free'}
-              </Badge>
-            </div>
-            {isPro && (
-              <>
-                {portalError && <p className="text-sm text-destructive">{portalError}</p>}
-                <Button
-                  variant="outline"
-                  onClick={handleManageBilling}
-                  disabled={portalLoading}
-                  className="w-full"
-                >
-                  {portalLoading ? 'Opening billing portal...' : 'Manage Billing'}
-                </Button>
-              </>
+      <div className="space-y-5">
+        <Section title="General">
+          <div className="space-y-4">
+            <Dropdown label="Theme" options={['Dark', 'Light']} />
+            <Dropdown label="Date Format" options={['MM/DD/YYYY', 'DD/MM/YYYY', 'YYYY-MM-DD']} />
+          </div>
+        </Section>
+
+        <Section title="Investment Style">
+          <RiskProfileCards value={risk} onChange={changeRisk} />
+        </Section>
+
+        <Section title="Subscription">
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-secondary">Plan</span>
+            {pro ? (
+              <span className="rounded-full border border-accent-teal/30 bg-accent-teal/10 px-3 py-1 text-xs font-medium text-accent-teal">
+                Pro
+              </span>
+            ) : (
+              <span className="rounded-full border border-subtle px-3 py-1 text-xs font-medium text-muted">
+                Free
+              </span>
             )}
-            {!isPro && (
-              <Button onClick={() => navigate('/portfolio')} className="w-full">
-                Upgrade to Lens Pro
+          </div>
+          {billingError && <p className="mt-3 text-sm text-accent-red">{billingError}</p>}
+          <div className="mt-4">
+            {pro ? (
+              <Button variant="outline" onClick={handleManageBilling} disabled={portalLoading}>
+                {portalLoading ? 'Opening billing portal...' : 'Manage Billing'}
+              </Button>
+            ) : (
+              <Button variant="gradient" onClick={handleUpgrade} disabled={portalLoading}>
+                {portalLoading ? 'Redirecting...' : 'Upgrade to Lens Pro'}
               </Button>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </Section>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Analysis Settings</CardTitle>
-            <CardDescription>Risk tier and analysis preferences - coming soon.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground">No settings implemented yet.</p>
-          </CardContent>
-        </Card>
+        <Collapsible title="Data & Refresh" />
+        <Collapsible title="Portfolio Direction Thresholds" />
+        <Collapsible title="Volatility" />
+        <Collapsible title="Lens Signal Thresholds" />
+        <Collapsible title="Monte Carlo" />
+        <Collapsible title="Developer" />
+
+        <Section title="Positions">
+          {positions.length === 0 ? (
+            <p className="text-sm text-muted">No positions stored.</p>
+          ) : (
+            <div className="space-y-2">
+              {positions.map((p) => (
+                <button
+                  key={p.ticker}
+                  type="button"
+                  onClick={() => setSelected((s) => (s === p.ticker ? null : p.ticker))}
+                  className={cn(
+                    'flex w-full items-center rounded-lg border px-4 py-3 text-left text-sm transition-colors',
+                    selected === p.ticker
+                      ? 'border-accent-teal bg-accent-teal/5'
+                      : 'border-subtle hover:border-accent-teal/40',
+                  )}
+                >
+                  <span className="text-secondary">
+                    {p.ticker} · {p.shares} shares
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
+          <div className="mt-4 flex flex-wrap gap-3">
+            <Button variant="teal" onClick={() => setModalOpen(true)}>
+              Add New Position
+            </Button>
+            <Button variant="red" onClick={removeSelected} disabled={!selected}>
+              Remove Selected Position
+            </Button>
+            <Button variant="ghost" disabled>
+              Edit Selected Holding
+            </Button>
+          </div>
+        </Section>
+
+        <Section title="About">
+          <div className="space-y-3 text-sm">
+            <div className="flex items-center justify-between">
+              <span className="text-secondary">App Version</span>
+              <span className="text-primary">Lens 1.0 · API {apiStatus}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-secondary">Brand</span>
+              <span className="text-primary">Lens by Protonyx</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-secondary">Credits</span>
+              <span className="text-primary">FastAPI, yfinance, React</span>
+            </div>
+          </div>
+        </Section>
       </div>
-    </div>
+
+      {modalOpen && (
+        <AddPositionModal onClose={() => setModalOpen(false)} onAdd={addPosition} />
+      )}
+    </AppShell>
   )
 }
