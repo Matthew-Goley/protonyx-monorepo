@@ -111,7 +111,9 @@ _monorepo/
 │   ├── src/index.css              # Tailwind v4 @theme dark design tokens (no tailwind.config.js in this project)
 │   ├── package.json
 │   ├── vite.config.ts             # Path alias @/ → src/
-│   └── components.json            # shadcn/ui config (legacy)
+│   ├── components.json            # shadcn/ui config (legacy)
+│   ├── tailwind.config.js         # DEAD - legacy v3/shadcn config, ignored under Tailwind v4 (tokens live in src/index.css @theme)
+│   └── CLAUDE.md                  # Full lens-app reference - read this before working in lens-app/
 │
 ├── app/                           # STALE copy of Vector desktop app — NOT the source of truth
 │   │                              # Canonical desktop app code is in Vector-Main/ (one level above _monorepo/)
