@@ -75,8 +75,7 @@ export function Login() {
     <div className="min-h-screen bg-base px-4">
       <div className="mx-auto mt-24 w-full max-w-md">
         <div className="flex flex-col items-center text-center">
-          <Logo variant="icon" className="h-14 w-14" />
-          <Logo variant="full" className="mt-4 h-8 w-auto" />
+          <Logo variant="full" className="h-10 w-auto" />
           <p className="mt-3 text-secondary">Portfolio intelligence, clearly explained.</p>
         </div>
 

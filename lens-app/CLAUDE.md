@@ -151,7 +151,7 @@ Other helpers in this file: classification bands (`sharpeClass`, `betaClass`, `c
 
 Tailwind v4. **All tokens live in the `@theme` block in `src/index.css`** — there is no JS Tailwind config in effect. A token like `--color-accent-teal` auto-generates `bg-accent-teal`, `text-accent-teal`, `border-accent-teal`, and supports opacity (`bg-accent-teal/10`).
 
-Palette (dark theme, Inter font):
+Palette (dark theme, Sora font):
 
 | Group | Tokens |
 |---|---|
@@ -162,10 +162,12 @@ Palette (dark theme, Inter font):
 There is also a set of **semantic aliases** (`background`, `foreground`, `border`, `input`, `ring`, `destructive`, etc.) kept so the leftover shadcn primitives still render in dark mode.
 
 Two CSS helper classes (because `background-clip:text` needs real CSS, not a utility):
-- `.text-gradient` — teal->blue gradient clipped to text (the "Lens" wordmark, page titles).
-- `.bg-gradient-brand` — the same gradient as a background (gradient buttons, badges).
+- `.text-gradient` — brand blue gradient clipped to text (page titles, accent text).
+- `.bg-gradient-brand` — the same gradient as a background (gradient buttons, badges, progress fills).
 
-The `@layer base` block sets the default border color to `--color-subtle`, paints `html`/`body` with the base bg + Inter, and there are custom dark scrollbar styles. Use the tokens; do not hardcode hex values in components (the one acceptable exception is recharts `stroke`/`fill`/`stopColor` props, which take literal colors — match the existing hexes like `#2dd4bf`, `#3b82f6`, `#10b981`, `#ef4444`, `#4b5563`).
+**Canonical brand blue gradient:** `linear-gradient(135deg, #14b8a6 0%, #38bdf8 100%)`. Any blue gradient anywhere in the app — these two helpers or anything new — must use these exact stops (teal `#14b8a6` -> sky `#38bdf8`, 135deg). Both helpers are defined in `src/index.css`; if you add a new gradient surface, reuse a helper rather than hand-rolling new stops.
+
+The `@layer base` block sets the default border color to `--color-subtle`, paints `html`/`body` with the base bg + Sora (loaded from Google Fonts in `index.html`; `--font-sans` in `@theme` and the `body` rule both name it), and there are custom dark scrollbar styles. Use the tokens; do not hardcode hex values in components (the one acceptable exception is recharts `stroke`/`fill`/`stopColor` props, which take literal colors — match the existing hexes like `#2dd4bf`, `#3b82f6`, `#10b981`, `#ef4444`, `#4b5563`).
 
 ### Brand / logo assets
 
@@ -173,7 +175,7 @@ The product's full name is **Lens Arc**. Anywhere a brand mark is shown, render 
 
 - **Source artwork** lives in `assets/lens-arc/` (PNG, repo-tracked source of truth) and is mirrored into `src/assets/lens-arc/` so Vite can hash-bundle it via `import`. Keep the two in sync if you add/replace files. `public/lens-arc-icon.png` (a copy of `icon-rounded.png`) is the favicon, referenced from `index.html`.
 - **Files:** `lens-arc-{white,dark}.png` (full icon + "Lens Arc" wordmark, ~4.5:1), `arc-{white,dark}.png` (icon + "Arc" only, for tight lockups), `icon-nobg.png` (1:1 transparent mark), `icon-square.png` / `icon-rounded.png` (1:1 mark on dark navy, rounded is the app-icon style). White variants are for the app's dark surfaces; dark variants are for light backgrounds (none in-app yet).
-- **Use the `Logo` component** (`src/components/common/Logo.tsx`), never raw `<img>`. It exposes `variant: 'full' | 'full-dark' | 'icon' | 'icon-rounded'` (default `full` = white wordmark) and takes a `className` for sizing (e.g. `h-7 w-auto`); the image keeps its own aspect ratio. Current usages: Sidebar header (`full`), Login (`icon` + `full` stacked), Success page (`full`).
+- **Use the `Logo` component** (`src/components/common/Logo.tsx`), never raw `<img>`. It exposes `variant: 'full' | 'full-dark' | 'icon' | 'icon-rounded'` (default `full` = white wordmark) and takes a `className` for sizing (e.g. `h-7 w-auto`); the image keeps its own aspect ratio. Current usages: Sidebar header (`full`), Login (`full`), Success page (`full`). The `full` wordmark already contains the icon, so don't pair `icon` next to it.
 - The old `.text-gradient` "Lens" wordmarks in the Sidebar and Login have been replaced by the logo. `.text-gradient` is still used for page titles / accent text, just not as the brand mark.
 
 ---
