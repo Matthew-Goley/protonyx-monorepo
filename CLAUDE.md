@@ -18,7 +18,7 @@ There are four deliverables:
 | **Web frontend** (`frontend/`) | Plain static HTML/CSS/JS, served by VS Code Live Server | Marketing site, signup/login, account dashboard, direct app download. No framework, no bundler. |
 | **Backend API** (`backend/`) | Fastify + TypeScript on Node, PostgreSQL | Authentication, account profile, download counter, and (eventually) the API the desktop app talks to. |
 | **Lens API** (`lens-api/`) | Python FastAPI, deployed on Railway | Standalone analytics microservice. Live at `https://lens-api-production-b0ab.up.railway.app`. Accepts a portfolio over HTTP, runs the Lens engine, returns the full result dict. Currently called directly from `lens-app` in the browser (dev); intended to be proxied server-to-server via Fastify in production. |
-| **Lens App** (`lens-app/`) | Vite + React + TypeScript | Web app for Lens analytics at `app.use-lens.com`. Calls lens-api directly (dev only) or via Fastify (prod). Stack: React Router, Tailwind CSS, shadcn/ui, Recharts, TanStack Query. |
+| **Lens App** (`lens-app/`) | Vite + React + TypeScript | Web app for Lens analytics at `app.use-lens.com`, branded **Lens Arc** (the product's full name; logo assets in `lens-app/assets/lens-arc/`). Calls lens-api directly (dev only) or via Fastify (prod). Stack: React Router, Tailwind CSS, shadcn/ui, Recharts, TanStack Query. |
 
 The three components share **one user database** but **no build system** — each subdirectory is developed independently. There is no root `package.json`, no monorepo tooling (Turbo/Nx/Lerna), no Docker, no CI pipeline. Treat each top-level folder as a self-contained project.
 
@@ -102,12 +102,15 @@ _monorepo/
 │   │   ├── components/
 │   │   │   ├── ProtectedRoute.tsx # Redirects to /login if not authenticated
 │   │   │   ├── layout/           # Sidebar, AppShell (sidebar + main), PageHeader
-│   │   │   ├── common/           # Panel, BriefText (rich-colored brief), SectorPie, RiskProfileCards, AddPositionModal, UpgradePrompt
+│   │   │   ├── common/           # Logo (Lens Arc brand mark), Panel, BriefText (rich-colored brief), SectorPie, RiskProfileCards, AddPositionModal, UpgradePrompt
 │   │   │   ├── widgets/DashboardWidgets.tsx  # Portfolio Vector, Positions, Total Equity, Sharpe, Diversification, Beta, Dividend Calendar
 │   │   │   ├── analysis/         # CautionGauge (SVG), CtaList, MonteCarloChart
 │   │   │   └── ui/               # button + input (restyled dark); card/label/textarea/badge are now unused leftovers
+│   │   ├── assets/lens-arc/      # Lens Arc logo PNGs, bundled via import (mirror of ../assets/lens-arc)
 │   │   ├── lib/                  # utils.ts (cn), cookies.ts (positions/settings cookies), lensData.ts (derivations), subscription.ts (isSubscribed)
 │   │   └── pages/                # Login (sign in/up tabs), Onboard, Dashboard, Analysis, Profile, Settings, Success
+│   ├── assets/lens-arc/           # Lens Arc brand artwork (source of truth): lens-arc-{white,dark}, arc-{white,dark}, icon-{nobg,square,rounded}
+│   ├── public/lens-arc-icon.png   # Favicon (copy of icon-rounded), referenced from index.html
 │   ├── src/index.css              # Tailwind v4 @theme dark design tokens (no tailwind.config.js in this project)
 │   ├── package.json
 │   ├── vite.config.ts             # Path alias @/ → src/

@@ -167,6 +167,15 @@ Two CSS helper classes (because `background-clip:text` needs real CSS, not a uti
 
 The `@layer base` block sets the default border color to `--color-subtle`, paints `html`/`body` with the base bg + Inter, and there are custom dark scrollbar styles. Use the tokens; do not hardcode hex values in components (the one acceptable exception is recharts `stroke`/`fill`/`stopColor` props, which take literal colors — match the existing hexes like `#2dd4bf`, `#3b82f6`, `#10b981`, `#ef4444`, `#4b5563`).
 
+### Brand / logo assets
+
+The product's full name is **Lens Arc**. Anywhere a brand mark is shown, render the real logo, **never** the bare text "Lens" or "Lens Arc".
+
+- **Source artwork** lives in `assets/lens-arc/` (PNG, repo-tracked source of truth) and is mirrored into `src/assets/lens-arc/` so Vite can hash-bundle it via `import`. Keep the two in sync if you add/replace files. `public/lens-arc-icon.png` (a copy of `icon-rounded.png`) is the favicon, referenced from `index.html`.
+- **Files:** `lens-arc-{white,dark}.png` (full icon + "Lens Arc" wordmark, ~4.5:1), `arc-{white,dark}.png` (icon + "Arc" only, for tight lockups), `icon-nobg.png` (1:1 transparent mark), `icon-square.png` / `icon-rounded.png` (1:1 mark on dark navy, rounded is the app-icon style). White variants are for the app's dark surfaces; dark variants are for light backgrounds (none in-app yet).
+- **Use the `Logo` component** (`src/components/common/Logo.tsx`), never raw `<img>`. It exposes `variant: 'full' | 'full-dark' | 'icon' | 'icon-rounded'` (default `full` = white wordmark) and takes a `className` for sizing (e.g. `h-7 w-auto`); the image keeps its own aspect ratio. Current usages: Sidebar header (`full`), Login (`icon` + `full` stacked), Success page (`full`).
+- The old `.text-gradient` "Lens" wordmarks in the Sidebar and Login have been replaced by the logo. `.text-gradient` is still used for page titles / accent text, just not as the brand mark.
+
 ---
 
 ## 7. Screen-by-screen map
@@ -185,7 +194,7 @@ All authed screens render inside `AppShell` (`src/components/layout/AppShell.tsx
 
 ### Components
 
-- `components/common/` — `Panel` + `CardLabel` (the standard dark card + 11px uppercase label, used everywhere), `BriefText` (renders `tokenizeBrief` output with per-kind colors), `RiskProfileCards`, `AddPositionModal` (validates the ticker via `lensApi.getTickerInfo` and builds the `Position` from the live price/sector/name; rejects unknown tickers), `SectorPie` (recharts pie), `UpgradePrompt` (the paywall card; hits Stripe checkout).
+- `components/common/` — `Logo` (the Lens Arc brand mark, see §6), `Panel` + `CardLabel` (the standard dark card + 11px uppercase label, used everywhere), `BriefText` (renders `tokenizeBrief` output with per-kind colors), `RiskProfileCards`, `AddPositionModal` (validates the ticker via `lensApi.getTickerInfo` and builds the `Position` from the live price/sector/name; rejects unknown tickers), `SectorPie` (recharts pie), `UpgradePrompt` (the paywall card; hits Stripe checkout).
 - `components/widgets/DashboardWidgets.tsx` — the seven dashboard widgets, each takes `{ result: LensResult }`. Portfolio Vector and Total Equity synthesize their charts from the slope; Positions reads live per-ticker price/trend from the result; Diversification/Beta/Sharpe/Dividend Calendar read their respective analyzer outputs.
 - `components/analysis/` — `CautionGauge` (SVG arc), `CtaList`, `MonteCarloChart` (recharts area fan).
 - `components/ui/` — `button.tsx` (CVA variants: `gradient`, `default`, `outline`, `teal`, `red`, `ghost`, `destructive`, `link`; sizes `default`/`sm`/`lg`/`icon`; `asChild` via radix `Slot`) and `input.tsx`. The rest are unused.

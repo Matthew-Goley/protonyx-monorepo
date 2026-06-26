@@ -7,6 +7,7 @@ import {
   LogOut,
 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
+import { Logo } from '@/components/common/Logo'
 import { cn } from '@/lib/utils'
 
 const NAV = [
@@ -28,7 +29,7 @@ export function Sidebar() {
   return (
     <aside className="fixed inset-y-0 left-0 flex w-[220px] flex-col border-r border-subtle bg-sidebar">
       <div className="px-6 pt-6 pb-8">
-        <span className="text-gradient text-2xl font-bold">Lens</span>
+        <Logo variant="full" className="h-7 w-auto" />
       </div>
 
       <nav className="flex flex-1 flex-col gap-1 px-3">

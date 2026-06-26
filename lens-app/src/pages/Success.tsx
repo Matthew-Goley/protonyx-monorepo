@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Check } from 'lucide-react'
+import { Logo } from '@/components/common/Logo'
 
 export function Success() {
   const navigate = useNavigate()
@@ -12,7 +13,8 @@ export function Success() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-base p-8">
-      <div className="max-w-sm space-y-4 text-center">
+      <div className="flex max-w-sm flex-col items-center space-y-4 text-center">
+        <Logo variant="full" className="mb-2 h-7 w-auto" />
         <div className="bg-gradient-brand mx-auto flex h-16 w-16 items-center justify-center rounded-full">
           <Check size={32} className="text-base" />
         </div>

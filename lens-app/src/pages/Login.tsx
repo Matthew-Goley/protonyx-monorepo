@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Logo } from '@/components/common/Logo'
 import { cn } from '@/lib/utils'
 
 type Tab = 'signin' | 'signup'
@@ -73,9 +74,10 @@ export function Login() {
   return (
     <div className="min-h-screen bg-base px-4">
       <div className="mx-auto mt-24 w-full max-w-md">
-        <div className="text-center">
-          <h1 className="text-gradient text-4xl font-extrabold">Lens</h1>
-          <p className="mt-2 text-secondary">Portfolio intelligence, clearly explained.</p>
+        <div className="flex flex-col items-center text-center">
+          <Logo variant="icon" className="h-14 w-14" />
+          <Logo variant="full" className="mt-4 h-8 w-auto" />
+          <p className="mt-3 text-secondary">Portfolio intelligence, clearly explained.</p>
         </div>
 
         <div className="mt-10 flex border-b border-subtle">
