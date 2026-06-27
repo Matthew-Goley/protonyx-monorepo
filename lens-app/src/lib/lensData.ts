@@ -84,6 +84,59 @@ export function sectorWeights(result: LensResult): SectorSlice[] {
 export function sectorCount(result: LensResult): number {
   return sectorWeights(result).length
 }
+
+// Equity weight (percentage) per ticker, for the by-ticker diversification view.
+// Uses the live per-ticker price from the result when available, else the stored
+// cookie price.
+export function tickerWeights(result: LensResult, positions: Position[]): SectorSlice[] {
+  const totals: Record<string, number> = {}
+  let grand = 0
+  for (const p of positions) {
+    const price = tickerCurrentPrice(result, p.ticker) || p.price
+    const value = price > 0 ? price * p.shares : p.equity || 0
+    totals[p.ticker] = (totals[p.ticker] ?? 0) + value
+    grand += value
+  }
+  if (grand <= 0) return []
+  return Object.entries(totals)
+    .map(([name, v]) => ({ name, value: (v / grand) * 100 }))
+    .filter((s) => s.value > 0)
+    .sort((a, b) => b.value - a.value)
+}
+
+// Best-effort asset-type classification from the data on a Position. The lens-api
+// does not expose yfinance `quoteType` yet, so this is a heuristic: ETFs are
+// detected via the resolved sector ('ETF', set by the engine's _resolve_sector),
+// mutual funds via the 5-letter-ending-in-X ticker convention, everything else is
+// a stock. Swap to a real `quote_type` field once the API exposes it.
+export type AssetType = 'Stock' | 'ETF' | 'Mutual Fund' | 'Bond'
+
+const BOND_ETFS = new Set(['BND', 'AGG', 'TLT', 'IEF', 'SHY', 'LQD', 'HYG', 'BNDX', 'TIP', 'VCIT', 'VCSH', 'MUB'])
+
+export function classifyAssetType(p: Position): AssetType {
+  const ticker = p.ticker.toUpperCase()
+  if (BOND_ETFS.has(ticker)) return 'Bond'
+  if (p.sector === 'ETF') return 'ETF'
+  if (/^[A-Z]{5}X$/.test(ticker)) return 'Mutual Fund'
+  return 'Stock'
+}
+
+// Equity weight (percentage) per asset type, for the by-type diversification view.
+export function assetTypeWeights(positions: Position[]): SectorSlice[] {
+  const totals: Record<string, number> = {}
+  let grand = 0
+  for (const p of positions) {
+    const value = p.equity || p.shares * p.price || 0
+    const type = classifyAssetType(p)
+    totals[type] = (totals[type] ?? 0) + value
+    grand += value
+  }
+  if (grand <= 0) return []
+  return Object.entries(totals)
+    .map(([name, v]) => ({ name, value: (v / grand) * 100 }))
+    .filter((s) => s.value > 0)
+    .sort((a, b) => b.value - a.value)
+}
 export function concentrationSeverity(result: LensResult): string {
   return str(portfolioResult(result, 'concentration').severity, 'none')
 }

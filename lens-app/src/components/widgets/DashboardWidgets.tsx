@@ -1,8 +1,13 @@
-import { TrendingUp, TrendingDown, AlertTriangle } from 'lucide-react'
+import { AlertTriangle } from 'lucide-react'
 import { type LensResult } from '@/api/lens'
 import { Panel } from '@/components/common/Panel'
-import { SectorPie } from '@/components/common/SectorPie'
-import { LensLineChart, LensAreaChart, CHART_COLORS } from '@/components/charts'
+import {
+  LensAreaChart,
+  CyclablePieChart,
+  CHART_COLORS,
+  PIE_COLORS,
+  type PieView,
+} from '@/components/charts'
 import {
   portfolioSlopePct,
   portfolioBeta,
@@ -11,6 +16,8 @@ import {
   sharpeClass,
   RISK_FREE_PCT,
   sectorWeights,
+  tickerWeights,
+  assetTypeWeights,
   sectorCount,
   concentrationSeverity,
   dividendRows,
@@ -20,6 +27,7 @@ import {
   formatCurrency,
   formatSignedCurrency,
   formatPercent,
+  type SectorSlice,
 } from '@/lib/lensData'
 import { getPositions } from '@/lib/cookies'
 import { usePortfolioHistory } from '@/hooks/usePortfolioHistory'
@@ -38,60 +46,9 @@ function WidgetHeader({ title, right }: { title: string; right?: React.ReactNode
 // secondary, slight positive tracking.
 const TH = 'text-[13px] font-medium uppercase tracking-[0.01em] text-secondary'
 
-// ---------------------------------------------------------------------------
-// Portfolio Vector
-// ---------------------------------------------------------------------------
-
-export function PortfolioVectorWidget({ result }: { result: LensResult }) {
-  const slope = portfolioSlopePct(result)
-  const positive = slope >= 0
-  const label = slope > 5 ? 'Strong' : slope < -5 ? 'Weak' : 'Flat'
-  const color = slope > 5 ? 'text-accent-green' : slope < -5 ? 'text-accent-red' : 'text-secondary'
-
-  // Synthesized regression line: a straight 6-month line ending at the slope %.
-  const line = Array.from({ length: 26 }, (_, i) => ({
-    x: i,
-    y: (slope * i) / 25,
-  }))
-
-  return (
-    <Panel>
-      <WidgetHeader title="Portfolio Vector" />
-      <div className="flex items-center gap-3">
-        <span className={`text-[28px] font-semibold tracking-[-0.02em] ${color}`}>{label}</span>
-        <span className={`text-[28px] font-semibold tracking-[-0.02em] ${color}`}>
-          {formatPercent(slope, 3)}
-        </span>
-        {positive ? (
-          <TrendingUp className="text-accent-green" size={28} />
-        ) : (
-          <TrendingDown className="text-accent-red" size={28} />
-        )}
-      </div>
-
-      <div className="mt-3">
-        <LensLineChart
-          data={line}
-          xKey="x"
-          lines={[{ key: 'y', color: CHART_COLORS.teal, width: 2.5 }]}
-          gradientStroke
-          referenceY={0}
-          yDomain={['dataMin', 'dataMax']}
-          showGrid={false}
-          showAxes={false}
-          height={140}
-        />
-      </div>
-
-      <p className="mt-2 text-sm text-secondary">
-        {positive
-          ? 'The book is trending up on an equity-weighted basis.'
-          : 'The book is trending down on an equity-weighted basis.'}
-      </p>
-      <p className="mt-2 text-[11px] text-secondary">6-month linear regression · equity-weighted</p>
-    </Panel>
-  )
-}
+// Portfolio Vector lives in its own file (5 cyclable indicator styles); re-export
+// it here so the Dashboard's single widget import keeps working.
+export { PortfolioVectorWidget } from './PortfolioVector'
 
 // ---------------------------------------------------------------------------
 // Positions
@@ -262,9 +219,24 @@ export function SharpeWidget({ result }: { result: LensResult }) {
 // Diversification
 // ---------------------------------------------------------------------------
 
+// Assign brand palette colors to a sorted breakdown by index.
+function colorize(slices: SectorSlice[]) {
+  return slices.map((s, i) => ({
+    name: s.name,
+    value: s.value,
+    color: PIE_COLORS[i % PIE_COLORS.length],
+  }))
+}
+
 export function DiversificationWidget({ result }: { result: LensResult }) {
-  const slices = sectorWeights(result)
+  const positions = getPositions()
   const concentrated = ['moderate', 'high', 'critical'].includes(concentrationSeverity(result))
+
+  const views: PieView[] = [
+    { label: 'By Sector', data: colorize(sectorWeights(result)) },
+    { label: 'By Ticker', data: colorize(tickerWeights(result, positions)) },
+    { label: 'By Type', data: colorize(assetTypeWeights(positions)) },
+  ].filter((v) => v.data.length > 0)
 
   return (
     <Panel>
@@ -275,7 +247,7 @@ export function DiversificationWidget({ result }: { result: LensResult }) {
           Concentrated in one sector
         </p>
       )}
-      <SectorPie slices={slices} height={180} />
+      <CyclablePieChart views={views} height={180} />
     </Panel>
   )
 }

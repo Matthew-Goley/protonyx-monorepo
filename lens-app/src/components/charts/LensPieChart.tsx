@@ -1,4 +1,5 @@
-import { PieChart, Pie, Cell, Sector, ResponsiveContainer } from 'recharts'
+import { useState } from 'react'
+import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts'
 import { ANIM_DURATION, ANIM_EASING, useAnimateOnce } from './chartUtils'
 
 export interface PieSlice {
@@ -20,12 +21,10 @@ export interface LensPieChartProps {
   className?: string
 }
 
-// Active (hovered) sector lifts slightly: +4px outer radius. recharts drives the
-// active sector from hover state, so this is a no-op until a slice is hovered.
-function renderActiveSlice(props: any) {
-  const outerRadius = props.outerRadius ?? 0
-  return <Sector {...props} outerRadius={outerRadius + 4} />
-}
+// Hovered sector lifts by this many px. The chart box is padded by the same
+// amount (plus a hair) so the lifted slice never clips the SVG viewport.
+const ACTIVE_LIFT = 6
+const BOX_PAD = ACTIVE_LIFT + 3
 
 /**
  * Donut pie with a custom legend (no recharts <Legend>). Slice colors come from
@@ -41,9 +40,23 @@ export function LensPieChart({
   className,
 }: LensPieChartProps) {
   const animate = useAnimateOnce()
+  // Shared hover index, so the pie and the legend highlight in sync and EITHER
+  // one can drive the slice lift. null = nothing hovered.
+  const [activeIndex, setActiveIndex] = useState<number | null>(null)
+  const activeName = activeIndex != null ? data[activeIndex]?.name : null
+
+  // Per-slice outer radius: the active slice lifts, all others stay put. recharts
+  // v3 calls this per data point, so the lift is driven by our own state (works
+  // whether the hover starts on the pie or on the legend).
+  const sliceRadius = (entry: { name?: string }) =>
+    entry?.name === activeName ? size + ACTIVE_LIFT : size
+
+  // Box is the diameter plus padding on every side, so a lifted slice has room
+  // to grow without clipping against the SVG viewport edge.
+  const box = size * 2 + BOX_PAD * 2
 
   const pie = (
-    <div style={{ width: size * 2, height }} className="shrink-0">
+    <div style={{ width: box, height: Math.max(height, box) }} className="shrink-0">
       <ResponsiveContainer width="100%" height="100%">
         <PieChart>
           <Pie
@@ -53,10 +66,11 @@ export function LensPieChart({
             cx="50%"
             cy="50%"
             innerRadius={innerRadius}
-            outerRadius={size}
+            outerRadius={sliceRadius}
             paddingAngle={2}
             stroke="none"
-            activeShape={renderActiveSlice}
+            onMouseEnter={(_: unknown, i: number) => setActiveIndex(i)}
+            onMouseLeave={() => setActiveIndex(null)}
             isAnimationActive={animate}
             animationDuration={ANIM_DURATION}
             animationEasing={ANIM_EASING}
@@ -74,27 +88,47 @@ export function LensPieChart({
     <ul
       className={
         legendPosition === 'right'
-          ? 'flex flex-1 flex-col gap-2'
+          ? 'flex flex-1 flex-col gap-2 pl-2'
           : 'flex flex-wrap gap-x-4 gap-y-2'
       }
     >
-      {data.map((s) => (
-        <li key={s.name} className="flex items-center gap-2 text-[13px]">
-          <span
-            className="h-1.5 w-1.5 shrink-0 rounded-full"
-            style={{ backgroundColor: s.color }}
-          />
-          <span className="flex-1 text-secondary">{s.name}</span>
-          <span className="font-medium text-primary">{s.value.toFixed(1)}%</span>
-        </li>
-      ))}
+      {data.map((s, i) => {
+        const active = i === activeIndex
+        return (
+          <li
+            key={s.name}
+            onMouseEnter={() => setActiveIndex(i)}
+            onMouseLeave={() => setActiveIndex(null)}
+            className="flex cursor-default items-center gap-2 text-[13px]"
+          >
+            <span
+              className="h-1.5 w-1.5 shrink-0 rounded-full transition-transform duration-200 ease-out"
+              style={{ backgroundColor: s.color, transform: active ? 'scale(1.4)' : 'scale(1)' }}
+            />
+            <span
+              className={`flex-1 transition-colors duration-200 ease-out ${
+                active ? 'font-semibold text-white' : 'text-secondary'
+              }`}
+            >
+              {s.name}
+            </span>
+            <span
+              className={`transition-colors duration-200 ease-out ${
+                active ? 'font-semibold text-white' : 'font-medium text-primary'
+              }`}
+            >
+              {s.value.toFixed(1)}%
+            </span>
+          </li>
+        )
+      })}
     </ul>
   )
 
   return (
     <div
       className={`flex ${
-        legendPosition === 'right' ? 'flex-row items-center gap-5' : 'flex-col gap-4'
+        legendPosition === 'right' ? 'flex-row items-center gap-8' : 'flex-col gap-4'
       } ${className ?? ''}`}
     >
       {pie}

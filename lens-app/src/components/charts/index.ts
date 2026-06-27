@@ -17,6 +17,9 @@ export type { LensAreaFanChartProps, FanBand } from './LensAreaFanChart'
 export { LensPieChart } from './LensPieChart'
 export type { LensPieChartProps, PieSlice } from './LensPieChart'
 
+export { CyclablePieChart } from './CyclablePieChart'
+export type { CyclablePieChartProps, PieView } from './CyclablePieChart'
+
 export {
   CHART_COLORS,
   PIE_COLORS,
