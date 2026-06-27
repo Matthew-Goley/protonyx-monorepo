@@ -155,6 +155,9 @@ export function TotalEquityWidget({ result }: { result: LensResult }) {
           areas={[{ key: 'y', color: CHART_COLORS.green, strokeWidth: 2 }]}
           showGrid={false}
           showAxes={false}
+          showTooltip
+          tooltipFormatter={(v) => formatCurrency(Number(v))}
+          hideTooltipLabel
           height={64}
         />
       </div>

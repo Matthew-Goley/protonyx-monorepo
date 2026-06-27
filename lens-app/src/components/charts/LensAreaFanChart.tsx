@@ -6,6 +6,7 @@ import {
   YAxis,
   CartesianGrid,
   ReferenceLine,
+  Tooltip,
   ResponsiveContainer,
 } from 'recharts'
 import {
@@ -23,6 +24,64 @@ export interface FanBand {
   lowerKey: string
   color: string
   opacity: number
+}
+
+/*
+  Tooltip for the projection fan. The x labels are not unique (every historical
+  point shares an empty label), so the hovered row is read from the recharts
+  payload (`payload[i].payload` is the row at the active index) rather than by
+  label lookup. Shows the center value (projected median, or the historical line
+  before "Today") plus the outer band range when projecting.
+*/
+interface FanTooltipProps {
+  active?: boolean
+  payload?: Array<{ payload?: Record<string, unknown> }>
+  xKey: string
+  medianKey: string
+  historicalKey?: string
+  rangeLowerKey?: string
+  rangeUpperKey?: string
+  valueFormatter: (v: number) => string
+}
+function FanTooltip({
+  active,
+  payload,
+  xKey,
+  medianKey,
+  historicalKey,
+  rangeLowerKey,
+  rangeUpperKey,
+  valueFormatter,
+}: FanTooltipProps) {
+  if (!active || !payload || payload.length === 0) return null
+  const row = payload.find((p) => p.payload)?.payload
+  if (!row) return null
+
+  const median = row[medianKey]
+  const hist = historicalKey ? row[historicalKey] : undefined
+  const isProjected = typeof median === 'number'
+  const center = isProjected ? median : typeof hist === 'number' ? hist : null
+  if (center == null) return null
+
+  const lo = rangeLowerKey ? row[rangeLowerKey] : undefined
+  const hi = rangeUpperKey ? row[rangeUpperKey] : undefined
+  const hasRange = isProjected && typeof lo === 'number' && typeof hi === 'number'
+  const heading = typeof row[xKey] === 'string' && row[xKey] ? (row[xKey] as string) : null
+
+  return (
+    <div className="rounded-md border border-subtle bg-card px-3 py-2 text-sm text-primary shadow-lg">
+      {heading && <p className="mb-1 text-xs text-secondary">{heading}</p>}
+      <div className="flex items-center gap-2">
+        <span className="text-xs text-secondary">{isProjected ? 'Projected' : 'Historical'}</span>
+        <span className="font-medium text-primary">{valueFormatter(center as number)}</span>
+      </div>
+      {hasRange && (
+        <p className="mt-0.5 text-xs text-secondary">
+          Range {valueFormatter(lo as number)} to {valueFormatter(hi as number)}
+        </p>
+      )}
+    </div>
+  )
 }
 
 export interface LensAreaFanChartProps {
@@ -47,6 +106,8 @@ export interface LensAreaFanChartProps {
   yDomain?: [number | string, number | string]
   yTickFormatter?: (v: number) => string
   xTickFormatter?: (v: string) => string
+  /** Formats the values in the hover tooltip. Defaults to `yTickFormatter`. */
+  valueFormatter?: (v: number) => string
   className?: string
 }
 
@@ -70,9 +131,11 @@ export function LensAreaFanChart({
   yDomain = ['auto', 'auto'],
   yTickFormatter,
   xTickFormatter,
+  valueFormatter,
   className,
 }: LensAreaFanChartProps) {
   const animate = useAnimateOnce()
+  const tooltipFormat = valueFormatter ?? yTickFormatter ?? ((v: number) => String(v))
 
   const rows = data.map((d) => {
     const out: Record<string, unknown> = { ...d }
@@ -112,6 +175,19 @@ export function LensAreaFanChart({
             width={44}
             tickFormatter={yTickFormatter}
           />
+          <Tooltip
+            cursor={{ stroke: CHART_COLORS.subtle, strokeDasharray: '3 3' }}
+            content={
+              <FanTooltip
+                xKey={xKey}
+                medianKey={medianKey}
+                historicalKey={historicalKey}
+                rangeLowerKey={bands[0]?.lowerKey}
+                rangeUpperKey={bands[0]?.upperKey}
+                valueFormatter={tooltipFormat}
+              />
+            }
+          />
           {bands.map((b, i) => (
             <Area
               key={i}
@@ -131,6 +207,7 @@ export function LensAreaFanChart({
               stroke={color}
               strokeWidth={1.5}
               dot={false}
+              activeDot={{ r: 4, fill: CHART_COLORS.teal, stroke: CHART_COLORS.base, strokeWidth: 2 }}
               isAnimationActive={animate}
               animationDuration={ANIM_DURATION}
               animationEasing={ANIM_EASING}
@@ -142,6 +219,7 @@ export function LensAreaFanChart({
             stroke={color}
             strokeWidth={2}
             dot={false}
+            activeDot={{ r: 4, fill: CHART_COLORS.teal, stroke: CHART_COLORS.base, strokeWidth: 2 }}
             isAnimationActive={animate}
             animationDuration={ANIM_DURATION}
             animationEasing={ANIM_EASING}

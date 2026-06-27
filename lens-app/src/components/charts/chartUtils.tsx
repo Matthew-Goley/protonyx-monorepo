@@ -18,6 +18,7 @@ export const CHART_COLORS = {
   subtle: '#2a2d35',
   muted: '#4a4f5e',
   secondary: '#8b90a0',
+  base: '#111318',
 } as const
 
 // Pie palette: brand teal/sky/gain, then cool slate shades. No purple
@@ -78,13 +79,18 @@ interface LensTooltipProps {
   payload?: TooltipPayloadItem[]
   label?: string | number
   formatter?: (value: number | string, name: string) => React.ReactNode
+  /** Hide the header row entirely (e.g. when the x value is a meaningless index). */
+  hideLabel?: boolean
+  /** Transform the header label before display. */
+  labelFormatter?: (label: string | number) => React.ReactNode
 }
-export function LensTooltip({ active, payload, label, formatter }: LensTooltipProps) {
+export function LensTooltip({ active, payload, label, formatter, hideLabel, labelFormatter }: LensTooltipProps) {
   if (!active || !payload || payload.length === 0) return null
+  const showLabel = !hideLabel && label !== undefined && label !== ''
   return (
     <div className="rounded-md border border-subtle bg-card px-3 py-2 text-sm text-primary shadow-lg">
-      {label !== undefined && label !== '' && (
-        <p className="mb-1 text-xs text-secondary">{label}</p>
+      {showLabel && (
+        <p className="mb-1 text-xs text-secondary">{labelFormatter ? labelFormatter(label) : label}</p>
       )}
       {payload.map((item, i) => {
         const value = item.value ?? ''

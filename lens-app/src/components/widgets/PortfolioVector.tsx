@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Info } from 'lucide-react'
 import { type LensResult } from '@/api/lens'
 import { Panel } from '@/components/common/Panel'
 import { portfolioSlopePct, formatPercent } from '@/lib/lensData'
@@ -24,24 +25,30 @@ interface Tier {
   label: string
   color: string
   caption: string
+  /** Human-readable slope band shown on the info hover. */
+  range: string
 }
+
+// Slope band boundaries (annualized %). Single source for both classifyTier and
+// the displayed ranges below, so they can never drift. Tunable.
+const T_UP = 4
+const T_MOON = 15
 
 // Red -> orange -> grey -> green -> teal. Semantic momentum spectrum (not the
 // brand gradient), so a glance reads bad/flat/good intuitively.
 const TIERS: Tier[] = [
-  { key: 'crash', index: 0, label: 'Falling', color: '#f16b6b', caption: 'Falling sharply, well below trend.' },
-  { key: 'down', index: 1, label: 'Slipping', color: '#f5a623', caption: 'Drifting lower on an equity-weighted basis.' },
-  { key: 'flat', index: 2, label: 'Flat', color: '#8b90a0', caption: 'Roughly flat, with no clear direction.' },
-  { key: 'up', index: 3, label: 'Rising', color: '#3ecf8e', caption: 'Trending up on an equity-weighted basis.' },
-  { key: 'moon', index: 4, label: 'Surging', color: '#14b8a6', caption: 'Accelerating higher, well above trend.' },
+  { key: 'crash', index: 0, label: 'Falling', color: '#f16b6b', caption: 'Falling sharply on an equity-weighted basis.', range: `≤ -${T_MOON}%` },
+  { key: 'down', index: 1, label: 'Slipping', color: '#f5a623', caption: 'Drifting lower on an equity-weighted basis.', range: `-${T_MOON}% to -${T_UP}%` },
+  { key: 'flat', index: 2, label: 'Flat', color: '#8b90a0', caption: 'Roughly flat, with no clear direction.', range: `-${T_UP}% to +${T_UP}%` },
+  { key: 'up', index: 3, label: 'Rising', color: '#3ecf8e', caption: 'Moving higher on an equity-weighted basis.', range: `+${T_UP}% to +${T_MOON}%` },
+  { key: 'moon', index: 4, label: 'Surging', color: '#14b8a6', caption: 'Accelerating sharply higher on an equity-weighted basis.', range: `≥ +${T_MOON}%` },
 ]
 
-// Slope thresholds (annualized %). Tunable; the bands just have to be ordered.
 function classifyTier(slope: number): Tier {
-  if (slope >= 15) return TIERS[4]
-  if (slope >= 4) return TIERS[3]
-  if (slope > -4) return TIERS[2]
-  if (slope > -15) return TIERS[1]
+  if (slope >= T_MOON) return TIERS[4]
+  if (slope >= T_UP) return TIERS[3]
+  if (slope > -T_UP) return TIERS[2]
+  if (slope > -T_MOON) return TIERS[1]
   return TIERS[0]
 }
 
@@ -54,7 +61,15 @@ const RAIL_INSET = (ROW_H - RAIL_H) / 2
 // Status Ladder
 // ---------------------------------------------------------------------------
 
-function StatusLadder({ tier, slope }: { tier: Tier; slope: number }) {
+function StatusLadder({
+  tier,
+  slope,
+  showThresholds,
+}: {
+  tier: Tier
+  slope: number
+  showThresholds: boolean
+}) {
   // Top -> bottom = best -> worst (moon first).
   const rungs = [...TIERS].reverse()
   const currentRow = rungs.findIndex((t) => t.key === tier.key)
@@ -127,14 +142,16 @@ function StatusLadder({ tier, slope }: { tier: Tier; slope: number }) {
               >
                 {t.label}
               </span>
-              {isCurrent && (
+              {showThresholds ? (
+                <span className="ml-auto text-xs tabular-nums text-secondary">{t.range}</span>
+              ) : isCurrent ? (
                 <span
                   className="ml-auto text-base font-semibold tracking-[-0.02em]"
                   style={{ color: t.color }}
                 >
                   {formatPercent(slope, 1)}
                 </span>
-              )}
+              ) : null}
             </div>
           )
         })}
@@ -159,11 +176,26 @@ function StatusLadder({ tier, slope }: { tier: Tier; slope: number }) {
 export function PortfolioVectorWidget({ result }: { result: LensResult }) {
   const slope = portfolioSlopePct(result)
   const tier = classifyTier(slope)
+  // Hovering the info icon reveals each rank's slope threshold on the ladder.
+  const [showThresholds, setShowThresholds] = useState(false)
 
   return (
     <Panel>
-      <h3 className="mb-4 text-xl font-semibold text-primary">Portfolio Momentum</h3>
-      <StatusLadder tier={tier} slope={slope} />
+      <div className="mb-4 flex items-center justify-between">
+        <h3 className="text-xl font-semibold text-primary">Portfolio Momentum</h3>
+        <button
+          type="button"
+          aria-label="Show momentum thresholds"
+          onMouseEnter={() => setShowThresholds(true)}
+          onMouseLeave={() => setShowThresholds(false)}
+          onFocus={() => setShowThresholds(true)}
+          onBlur={() => setShowThresholds(false)}
+          className="text-secondary transition-colors duration-200 ease-out hover:text-primary"
+        >
+          <Info size={16} />
+        </button>
+      </div>
+      <StatusLadder tier={tier} slope={slope} showThresholds={showThresholds} />
       <p className="mt-3 text-[11px] text-secondary">6-month linear regression · equity-weighted</p>
     </Panel>
   )

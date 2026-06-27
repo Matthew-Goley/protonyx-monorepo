@@ -50,6 +50,7 @@ export function MonteCarloChart({ points }: { points: ProjectionPoint[] }) {
       height={220}
       yDomain={yDomain}
       yTickFormatter={(v) => `${v > 0 ? '+' : ''}${Math.round(v)}%`}
+      valueFormatter={(v) => `${v >= 0 ? '+' : ''}${v.toFixed(1)}%`}
     />
   )
 }

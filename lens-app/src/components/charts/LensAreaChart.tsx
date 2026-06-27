@@ -11,6 +11,7 @@ import {
   LensTooltip,
   AXIS_TICK_PROPS,
   GRID_PROPS,
+  CHART_COLORS,
   ANIM_DURATION,
   ANIM_EASING,
   useAnimateOnce,
@@ -33,6 +34,10 @@ export interface LensAreaChartProps {
   showGrid?: boolean
   showAxes?: boolean
   showTooltip?: boolean
+  /** Formats each value shown in the tooltip box (e.g. as currency). */
+  tooltipFormatter?: (value: number | string, name: string) => React.ReactNode
+  /** Hide the tooltip header (use when the x value is a meaningless index). */
+  hideTooltipLabel?: boolean
   /**
    * Y-axis domain. Defaults to `['dataMin', 'dataMax']` so the fill tracks the
    * data's own range — without this, recharts' default `[0, 'auto']` pins
@@ -55,6 +60,8 @@ export function LensAreaChart({
   showGrid = false,
   showAxes = false,
   showTooltip = false,
+  tooltipFormatter,
+  hideTooltipLabel = false,
   yDomain = ['dataMin', 'dataMax'],
   className,
 }: LensAreaChartProps) {
@@ -84,7 +91,12 @@ export function LensAreaChart({
             tickLine={false}
             axisLine={false}
           />
-          {showTooltip && <Tooltip content={<LensTooltip />} />}
+          {showTooltip && (
+            <Tooltip
+              content={<LensTooltip formatter={tooltipFormatter} hideLabel={hideTooltipLabel} />}
+              cursor={{ stroke: CHART_COLORS.subtle, strokeDasharray: '3 3' }}
+            />
+          )}
           {areas.map((a) => (
             <Area
               key={a.key}
@@ -94,6 +106,7 @@ export function LensAreaChart({
               strokeWidth={a.strokeWidth ?? 1.5}
               fill={`url(#lens-area-${a.key})`}
               baseValue="dataMin"
+              activeDot={showTooltip ? { r: 4, fill: a.color, stroke: CHART_COLORS.base, strokeWidth: 2 } : false}
               isAnimationActive={animate}
               animationDuration={ANIM_DURATION}
               animationEasing={ANIM_EASING}
