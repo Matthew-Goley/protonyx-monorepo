@@ -200,7 +200,15 @@ async def ticker_history(
     if not rows:
         raise HTTPException(status_code=404, detail=f"No data found for ticker '{sym}'")
 
-    return JSONResponse(content=rows)
+    # Sanitize before the response is constructed. JSONResponse renders eagerly in
+    # its constructor with allow_nan=False, so any non-finite float reaching it
+    # raises *during render* — an unhandled, generic 500 that the try/except above
+    # cannot catch. The per-row guards use pd.isna(), which catches NaN but NOT
+    # +/-inf, so an inf close/open/high/low (seen in production from yfinance) slips
+    # through to the render and crashes it. _finitize() (used by /analyze) strips
+    # NaN and inf to None; the json round-trip with default=str also defuses any
+    # stray non-serializable type. Mirror /analyze exactly.
+    return JSONResponse(content=_finitize(json.loads(json.dumps(rows, default=str))))
 
 
 @app.get("/ticker/{symbol}/info")
