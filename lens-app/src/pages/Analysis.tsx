@@ -2,6 +2,7 @@ import { Navigate } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
 import { isSubscribed } from '@/lib/subscription'
 import { useLensAnalysis } from '@/hooks/useLensAnalysis'
+import { usePortfolioHistory } from '@/hooks/usePortfolioHistory'
 import { getPositions } from '@/lib/cookies'
 import { type Position } from '@/api/lens'
 import { AppShell } from '@/components/layout/AppShell'
@@ -30,6 +31,7 @@ export function Analysis() {
   const { user } = useAuth()
   const hasPositions = getPositions().length > 0
   const query = useLensAnalysis()
+  const history = usePortfolioHistory('6mo')
 
   if (!hasPositions) return <Navigate to="/onboard" replace />
 
@@ -84,7 +86,7 @@ export function Analysis() {
 
       {result &&
         (() => {
-          const mc = buildMonteCarlo(result)
+          const mc = buildMonteCarlo(result, (history.data ?? []).map((p) => p.equity))
           const currentAlloc = sectorWeightsFromPositions(getPositions())
           const projectedAlloc = sectorWeightsFromPositions(
             (result.projected_positions as Position[]) ?? [],

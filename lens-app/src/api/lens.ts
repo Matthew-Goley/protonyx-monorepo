@@ -56,10 +56,15 @@ export interface AnalyzeRequest {
   settings?: LensSettings
 }
 
+export type HistoryPeriod = '1mo' | '3mo' | '6mo' | '1y' | '2y' | '5y'
+
 export interface TickerHistoryPoint {
   date: string
+  open: number
+  high: number
+  low: number
   close: number
-  volume?: number
+  volume: number
 }
 
 export interface TickerInfo {
@@ -104,10 +109,13 @@ export const lensApi = {
     }).then((r) => handleResponse<TickerInfo>(r))
   },
 
-  /** GET /ticker/{symbol}/history - stub, endpoint not yet implemented on server. */
-  getTickerHistory(_symbol: string): Promise<TickerHistoryPoint[]> {
-    // TODO: implement GET /ticker/{symbol}/history on lens-api and wire this up.
-    return Promise.reject(new Error('Not implemented'))
+  /** GET /ticker/{symbol}/history - real daily OHLCV from the lens-api (yfinance).
+   *  Used to build the real portfolio equity curve. period defaults to 1y. */
+  getTickerHistory(symbol: string, period: HistoryPeriod = '1y'): Promise<TickerHistoryPoint[]> {
+    return fetch(
+      `${LENS_API_URL}/ticker/${encodeURIComponent(symbol)}/history?period=${period}`,
+      { headers: apiHeaders() },
+    ).then((r) => handleResponse<TickerHistoryPoint[]>(r))
   },
 
   /** GET /health - check service availability (no auth required). */

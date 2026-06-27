@@ -305,18 +305,40 @@ function gbmQuantile(driftPct: number, volPct: number, months: number, z: number
   return Math.exp(exponent) - 1
 }
 
-function buildScenario(totalEquityVal: number, driftPct: number, volPct: number): ProjectionPoint[] {
+// Evenly sample n values across an array (keeps first and last).
+function sampleEvenly(arr: number[], n: number): number[] {
+  if (arr.length <= n) return arr.slice()
+  const out: number[] = []
+  for (let i = 0; i < n; i++) {
+    out.push(arr[Math.round((i / (n - 1)) * (arr.length - 1))])
+  }
+  return out
+}
+
+function buildScenario(
+  totalEquityVal: number,
+  driftPct: number,
+  volPct: number,
+  histPath?: number[],
+): ProjectionPoint[] {
   const points: ProjectionPoint[] = []
-  // Historical lead-in: months -5..-1, back-cast at the drift rate.
-  const mu = driftPct / 100
-  for (let m = -5; m < 0; m++) {
-    points.push({
-      label: '',
-      hist: (Math.exp(mu * (m / 12)) - 1) * 100,
-      median: null,
-      outer: null,
-      inner: null,
-    })
+  // Historical lead-in. Prefer the real equity curve (jagged % returns relative
+  // to today); fall back to a smooth drift back-cast when history is absent.
+  if (histPath && histPath.length > 0) {
+    for (const ret of histPath) {
+      points.push({ label: '', hist: ret, median: null, outer: null, inner: null })
+    }
+  } else {
+    const mu = driftPct / 100
+    for (let m = -5; m < 0; m++) {
+      points.push({
+        label: '',
+        hist: (Math.exp(mu * (m / 12)) - 1) * 100,
+        median: null,
+        outer: null,
+        inner: null,
+      })
+    }
   }
   for (let m = 0; m <= 5; m++) {
     if (m === 0) {
@@ -347,11 +369,23 @@ export interface MonteCarlo {
   improvementDollars: number
 }
 
-export function buildMonteCarlo(result: LensResult): MonteCarlo {
+export function buildMonteCarlo(result: LensResult, historyEquity?: number[]): MonteCarlo {
   const equity = totalEquity(result) || 1
   const drift = portfolioSlopePct(result)
   const vol = portfolioVolPct(result) || 20
   const caution = result.caution_score ?? 0
+
+  // Real historical lead-in: down-sample the equity curve to ~12 points and
+  // express each as a % return relative to the latest value (so it lands at 0%
+  // today). Both scenarios share this same real past. 12:6 history:projection
+  // keeps the projection fan from being crushed against the right edge.
+  let histPath: number[] | undefined
+  if (historyEquity && historyEquity.length >= 2) {
+    const last = historyEquity[historyEquity.length - 1]
+    if (last > 0) {
+      histPath = sampleEvenly(historyEquity, 12).map((v) => (v / last - 1) * 100)
+    }
+  }
 
   // "With all Lens projections": acting on the CTAs trims risk and nudges drift
   // up modestly. Reduction scales with how much caution there is to work off.
@@ -359,8 +393,8 @@ export function buildMonteCarlo(result: LensResult): MonteCarlo {
   const improvedVol = vol * (1 - volReduction)
   const improvedDrift = drift + (caution / 100) * 4
 
-  const current = buildScenario(equity, drift, vol)
-  const projected = buildScenario(equity, improvedDrift, improvedVol)
+  const current = buildScenario(equity, drift, vol, histPath)
+  const projected = buildScenario(equity, improvedDrift, improvedVol, histPath)
 
   const medianCurrent = gbmQuantile(drift, vol, 5, 0)
   const medianProjected = gbmQuantile(improvedDrift, improvedVol, 5, 0)
@@ -410,14 +444,7 @@ export function formatPercent(value: number, fractionDigits = 2): string {
 }
 
 // Pie palette: brand teal/sky/gain, then cool slate shades. No purple (styling.md
-// hard rule). Stays within the brand + neutral families.
-export const PIE_COLORS = [
-  '#14b8a6', // brand teal
-  '#38bdf8', // brand sky
-  '#3ecf8e', // gain green
-  '#8b90a0', // text-secondary slate
-  '#5b6473', // mid slate
-  '#0e8c80', // deep teal
-  '#2f7fb0', // deep sky
-  '#3a3f4e', // dark slate
-]
+// hard rule). The canonical definition now lives in the chart layer
+// (src/components/charts/chartUtils.tsx); re-exported here so existing
+// `import { PIE_COLORS } from '@/lib/lensData'` call sites keep working.
+export { PIE_COLORS } from '@/components/charts'

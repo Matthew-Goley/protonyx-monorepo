@@ -1,16 +1,8 @@
 import { TrendingUp, TrendingDown, AlertTriangle } from 'lucide-react'
-import {
-  LineChart,
-  Line,
-  AreaChart,
-  Area,
-  CartesianGrid,
-  ReferenceLine,
-  ResponsiveContainer,
-} from 'recharts'
 import { type LensResult } from '@/api/lens'
 import { Panel } from '@/components/common/Panel'
 import { SectorPie } from '@/components/common/SectorPie'
+import { LensLineChart, LensAreaChart, CHART_COLORS } from '@/components/charts'
 import {
   portfolioSlopePct,
   portfolioBeta,
@@ -30,6 +22,7 @@ import {
   formatPercent,
 } from '@/lib/lensData'
 import { getPositions } from '@/lib/cookies'
+import { usePortfolioHistory } from '@/hooks/usePortfolioHistory'
 
 // Card title = styling.md --text-heading-md (20px / 600, tightened tracking).
 function WidgetHeader({ title, right }: { title: string; right?: React.ReactNode }) {
@@ -44,23 +37,6 @@ function WidgetHeader({ title, right }: { title: string; right?: React.ReactNode
 // Shared table-header row styling (styling.md §Tables): 13px / 500, uppercase,
 // secondary, slight positive tracking.
 const TH = 'text-[13px] font-medium uppercase tracking-[0.01em] text-secondary'
-// Brand-gradient chart stroke (styling.md §Charts).
-const LINE_GRAD = 'url(#widget-line-grad)'
-
-function ChartDefs() {
-  return (
-    <defs>
-      <linearGradient id="widget-line-grad" x1="0" y1="0" x2="1" y2="0">
-        <stop offset="0%" stopColor="#14b8a6" />
-        <stop offset="100%" stopColor="#38bdf8" />
-      </linearGradient>
-      <linearGradient id="widget-area-grad" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stopColor="#38bdf8" stopOpacity={0.18} />
-        <stop offset="100%" stopColor="#14b8a6" stopOpacity={0.02} />
-      </linearGradient>
-    </defs>
-  )
-}
 
 // ---------------------------------------------------------------------------
 // Portfolio Vector
@@ -93,22 +69,18 @@ export function PortfolioVectorWidget({ result }: { result: LensResult }) {
         )}
       </div>
 
-      <div className="mt-3 h-[140px] w-full">
-        <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={line} margin={{ top: 8, right: 8, bottom: 8, left: 8 }}>
-            <ChartDefs />
-            <CartesianGrid vertical={false} stroke="#2a2d35" strokeWidth={1} />
-            <ReferenceLine y={0} stroke="#2a2d35" strokeDasharray="4 4" />
-            <Line
-              type="monotone"
-              dataKey="y"
-              stroke={LINE_GRAD}
-              strokeWidth={2.5}
-              dot={false}
-              isAnimationActive={false}
-            />
-          </LineChart>
-        </ResponsiveContainer>
+      <div className="mt-3">
+        <LensLineChart
+          data={line}
+          xKey="x"
+          lines={[{ key: 'y', color: CHART_COLORS.teal, width: 2.5 }]}
+          gradientStroke
+          referenceY={0}
+          yDomain={['dataMin', 'dataMax']}
+          showGrid={false}
+          showAxes={false}
+          height={140}
+        />
       </div>
 
       <p className="mt-2 text-sm text-secondary">
@@ -177,16 +149,38 @@ export function PositionsWidget({ result }: { result: LensResult }) {
 export function TotalEquityWidget({ result }: { result: LensResult }) {
   const equity = totalEquity(result)
   const slope = portfolioSlopePct(result)
-  // 5-day change estimated from the annualized slope (~252 trading days).
-  const changePct = (slope / 252) * 5
-  const changeDollars = (equity * changePct) / 100
+  const history = usePortfolioHistory('6mo')
+  const real = history.data ?? []
+  const hasReal = real.length >= 2
+
+  let spark: { x: number; y: number }[]
+  let changeDollars: number
+  let changePct: number
+  let footnote: string
+
+  if (hasReal) {
+    // Real daily equity curve (jagged). Sparkline shows the recent window; the
+    // 5-day change compares the last close to ~5 trading days prior.
+    const recent = real.slice(-40)
+    spark = recent.map((pt, i) => ({ x: i, y: pt.equity }))
+    const last = recent[recent.length - 1].equity
+    const ref = recent[Math.max(0, recent.length - 6)].equity
+    changeDollars = last - ref
+    changePct = ref !== 0 ? (changeDollars / ref) * 100 : 0
+    footnote = 'Live daily closes'
+  } else {
+    // Fallback until history loads (or if it fails): synthesize from the slope.
+    changePct = (slope / 252) * 5
+    changeDollars = (equity * changePct) / 100
+    spark = Array.from({ length: 12 }, (_, i) => ({
+      x: i,
+      y: equity * (1 + (changePct / 100) * ((i - 11) / 11)),
+    }))
+    footnote = 'Estimated from 6-month trend'
+  }
+
   const positive = changeDollars >= 0
   const color = positive ? 'text-accent-green' : 'text-accent-red'
-
-  const spark = Array.from({ length: 12 }, (_, i) => ({
-    x: i,
-    y: equity * (1 + (changePct / 100) * ((i - 11) / 11)),
-  }))
 
   return (
     <Panel>
@@ -197,22 +191,17 @@ export function TotalEquityWidget({ result }: { result: LensResult }) {
       <p className={`mt-1 text-sm ${color}`}>
         {formatSignedCurrency(changeDollars)} &nbsp; {formatPercent(changePct)}
       </p>
-      <div className="mt-3 h-[64px] w-full">
-        <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={spark} margin={{ top: 4, right: 0, bottom: 0, left: 0 }}>
-            <ChartDefs />
-            <Area
-              type="monotone"
-              dataKey="y"
-              stroke={LINE_GRAD}
-              strokeWidth={2}
-              fill="url(#widget-area-grad)"
-              isAnimationActive={false}
-            />
-          </AreaChart>
-        </ResponsiveContainer>
+      <div className="mt-3">
+        <LensAreaChart
+          data={spark}
+          xKey="x"
+          areas={[{ key: 'y', color: CHART_COLORS.green, strokeWidth: 2 }]}
+          showGrid={false}
+          showAxes={false}
+          height={64}
+        />
       </div>
-      <p className="mt-1 text-[11px] text-secondary">Estimated from 6-month trend</p>
+      <p className="mt-1 text-[11px] text-secondary">{footnote}</p>
     </Panel>
   )
 }
