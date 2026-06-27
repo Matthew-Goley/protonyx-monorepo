@@ -29,11 +29,11 @@ interface Tier {
 // Red -> orange -> grey -> green -> teal. Semantic momentum spectrum (not the
 // brand gradient), so a glance reads bad/flat/good intuitively.
 const TIERS: Tier[] = [
-  { key: 'crash', index: 0, label: 'Crashing', color: '#f16b6b', caption: 'Falling sharply, well below trend.' },
-  { key: 'down', index: 1, label: 'Sliding', color: '#f5a623', caption: 'Drifting lower on an equity-weighted basis.' },
+  { key: 'crash', index: 0, label: 'Falling', color: '#f16b6b', caption: 'Falling sharply, well below trend.' },
+  { key: 'down', index: 1, label: 'Slipping', color: '#f5a623', caption: 'Drifting lower on an equity-weighted basis.' },
   { key: 'flat', index: 2, label: 'Flat', color: '#8b90a0', caption: 'Roughly flat, with no clear direction.' },
-  { key: 'up', index: 3, label: 'Climbing', color: '#3ecf8e', caption: 'Trending up on an equity-weighted basis.' },
-  { key: 'moon', index: 4, label: 'To the moon', color: '#14b8a6', caption: 'Accelerating higher, well above trend.' },
+  { key: 'up', index: 3, label: 'Rising', color: '#3ecf8e', caption: 'Trending up on an equity-weighted basis.' },
+  { key: 'moon', index: 4, label: 'Surging', color: '#14b8a6', caption: 'Accelerating higher, well above trend.' },
 ]
 
 // Slope thresholds (annualized %). Tunable; the bands just have to be ordered.
@@ -162,7 +162,7 @@ export function PortfolioVectorWidget({ result }: { result: LensResult }) {
 
   return (
     <Panel>
-      <h3 className="mb-4 text-xl font-semibold text-primary">Portfolio Vector</h3>
+      <h3 className="mb-4 text-xl font-semibold text-primary">Portfolio Momentum</h3>
       <StatusLadder tier={tier} slope={slope} />
       <p className="mt-3 text-[11px] text-secondary">6-month linear regression · equity-weighted</p>
     </Panel>
