@@ -71,7 +71,7 @@ These modules were copied from `Vector-Main/vector/` into `lens-api/engine/`:
 | `lens/analyzers/__init__.py` | `engine/lens/analyzers/__init__.py` | none |
 | `lens/analyzers/beta.py` | `engine/lens/analyzers/beta.py` | import fix |
 | `lens/analyzers/concentration.py` | `engine/lens/analyzers/concentration.py` | import fix |
-| `lens/analyzers/dividends.py` | `engine/lens/analyzers/dividends.py` | none |
+| `lens/analyzers/dividends.py` | `engine/lens/analyzers/dividends.py` | **DIVERGED** (next-ex-date estimation, see §6) |
 | `lens/analyzers/earnings.py` | `engine/lens/analyzers/earnings.py` | import fix |
 | `lens/analyzers/index_fund.py` | `engine/lens/analyzers/index_fund.py` | import fix |
 | `lens/analyzers/performance.py` | `engine/lens/analyzers/performance.py` | none |
@@ -232,13 +232,26 @@ Each CTA in `ctas`:
 }
 ```
 
+**Dividend details (in `pool_results.dividends.ticker_results[TICKER].details`).** yfinance only exposes *historical* ex-dividend dates, so a genuine future date is almost never present. To drive the web app's Dividend Calendar, the dividends analyzer **estimates** the next ex-date by projecting forward from the historical payment cadence. Each per-ticker `details` carries `next_ex_date`, `days_until`, `amount` (last paid), `annual_yield_pct`, `frequency` (`Monthly`/`Quarterly`/`Semi-Annual`/`Annual`), and `estimated` (`true` when projected). **Estimated dates do not affect `severity`/`flag` or the portfolio aggregate** (`nearest_days`, `tickers_with_upcoming`) — those stay driven by genuinely future-dated ex-dates only, so the brief and CTA logic are unchanged. The lens-app reads these via `dividendRows()` in `src/lib/lensData.ts`.
+
+#### `GET /ticker/{symbol}/info`
+Requires `X-API-Key`. Company snapshot from yfinance `.info`: `{ name, sector, market_cap, pe_ratio, dividend_yield, "52_week_high", "52_week_low", current_price }`. Unknown tickers (no `currentPrice`/`regularMarketPrice`) → 404. Numeric fields are NaN-sanitized to `null` (see NaN note below). Used by the lens-app `AddPositionModal` to validate a ticker and pull live price/sector/name.
+
+#### `GET /ticker/{symbol}/history`
+Requires `X-API-Key`. `?period=` one of `1mo|3mo|6mo|1y|2y|5y` (default `1y`); anything else → 400. Returns a JSON array of `{ date, open, high, low, close, volume }` daily bars (`yf.history(interval="1d", auto_adjust=False)`). Empty/no usable rows → 404. Used by the lens-app `usePortfolioHistory` hook to build the real portfolio equity curve (Total Equity sparkline + Monte Carlo historical lead-in). Rows are built defensively: any bar with no `close` is skipped and NaN `volume` is coerced to `0` (see NaN note).
+
+#### `GET /ticker/{symbol}/compare`
+Requires `X-API-Key`. `?symbols=NVDA,SPY&period=1y`. Returns each series normalized to 100 at its first trading day for overlay charts. Not currently called by the lens-app.
+
+> **NaN-safety (all endpoints).** Starlette's `JSONResponse` serializes with `allow_nan=False`, so a single `NaN`/`inf` reaching the response (common from yfinance: in-progress trading day, non-dividend payer's `trailingPE`, split rows) raises *during render* — an unhandled, generic `500 Internal Server Error` that the route's try/except cannot catch. Every response body is therefore sanitized: `/analyze` runs through `_finitize()` (recursively replaces non-finite floats with `null`), `/info` coerces each numeric field, and `/history` skips/repairs NaN cells. This was the root cause of `/ticker/{symbol}/history` returning 500 in production while `/info` happened to work. Keep new endpoints NaN-safe.
+
 ### How the pipeline works (inside `/analyze`)
 
 1. `DEFAULT_SETTINGS` is merged with any caller-provided `settings` (caller overrides win).
 2. `generate_lens_full(positions, store, merged_settings)` is called via `run_in_threadpool` (the pipeline is synchronous and makes network calls to yfinance; running it in a thread keeps the async event loop free).
 3. `generate_lens_full` calls `build_lens_output` in `engine/lens/lens_output.py`, which runs the full pipeline: analyzers → CTA engine → sentence composers → caution score → result dict.
 4. The DataStore (`_store`) is a module-level singleton — one instance per worker process. It maintains an in-memory market data cache (`_market_cache`) backed by `market_data.json` on disk. This means repeated calls for the same tickers will hit the in-memory cache after the first fetch.
-5. The result is serialized via `json.dumps(result, default=str)` and returned as a `JSONResponse`, bypassing Pydantic. This is necessary because `pool_results` contains engine-internal types (specifically `DataStore`) that Pydantic cannot serialize — it would throw `PydanticSerializationError` and cause a 500 before the response is sent. The `default=str` fallback converts any non-serializable object to its repr string. If a future refactor cleans those types out of the result dict, the `JSONResponse` approach can stay (it is not harmful) or be replaced with a typed Pydantic response model.
+5. The result is serialized via `json.dumps(result, default=str)`, passed through `_finitize()` (to strip any NaN/inf — see the NaN-safety note in §6), and returned as a `JSONResponse`, bypassing Pydantic. This is necessary because `pool_results` contains engine-internal types (specifically `DataStore`) that Pydantic cannot serialize — it would throw `PydanticSerializationError` and cause a 500 before the response is sent. The `default=str` fallback converts any non-serializable object to its repr string. If a future refactor cleans those types out of the result dict, the `JSONResponse` approach can stay (it is not harmful) or be replaced with a typed Pydantic response model.
 
 ---
 
@@ -422,6 +435,8 @@ When the Lens engine is updated in `Vector-Main/` (new analyzer behavior, CTA lo
 3. If `constants.py` changed (risk profiles, sector maps, thresholds), copy it without modification (it uses relative imports only).
 4. If `paths.py` changed in Vector-Main, apply the same change to `engine/paths.py` but **preserve the `LENS_DATA_DIR` env-var block** — that addition must not be lost.
 5. Run parity check (section 8) to confirm output is still identical.
+
+**Watch out for `engine/lens/analyzers/dividends.py` — it has DIVERGED from Vector-Main.** It was given next-ex-date estimation (§6) so the web Dividend Calendar works; Vector-Main's copy still only reports genuinely future-dated (i.e. effectively never) ex-dates. Do **not** blind-copy Vector-Main's `dividends.py` over this one; re-apply the estimation, or port the estimation back into Vector-Main first so they converge again. The estimation is deliberately severity/flag-neutral, so parity of the brief/CTAs is unaffected.
 
 **The engine package is intentionally a copy, not a symlink.** This is deliberate: the web service and the desktop app may diverge in configuration (retry logic, caching layers, auth) so keeping them as independent copies is safer than sharing code between two very different runtime environments.
 

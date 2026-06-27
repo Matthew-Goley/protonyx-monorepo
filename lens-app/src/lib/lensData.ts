@@ -157,6 +157,8 @@ export interface DividendRow {
   daysUntil: number
   exDate: string | null
   amount: number | null
+  frequency: string | null
+  estimated: boolean
 }
 export function dividendRows(result: LensResult): DividendRow[] {
   const tr = tickerResults(result, 'dividends')
@@ -170,6 +172,8 @@ export function dividendRows(result: LensResult): DividendRow[] {
         daysUntil,
         exDate: typeof details.next_ex_date === 'string' ? details.next_ex_date : null,
         amount: typeof details.amount === 'number' ? details.amount : null,
+        frequency: typeof details.frequency === 'string' ? details.frequency : null,
+        estimated: details.estimated === true,
       })
     }
   }

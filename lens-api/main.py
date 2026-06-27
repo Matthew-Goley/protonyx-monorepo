@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import math
 import os
 from typing import Any
 
@@ -72,6 +73,28 @@ class AnalyzeRequest(BaseModel):
 
 
 # ------------------------------------------------------------------
+# Helpers
+# ------------------------------------------------------------------
+
+
+def _finitize(value: Any) -> Any:
+    """Recursively replace non-finite floats (NaN, +/-inf) with None.
+
+    Starlette's JSONResponse serializes with allow_nan=False, so any NaN/inf
+    reaching the response crashes the render with an unhandled 500. Engine
+    output and yfinance-derived numbers can both contain NaN, so every response
+    body is passed through this first.
+    """
+    if isinstance(value, float):
+        return value if math.isfinite(value) else None
+    if isinstance(value, dict):
+        return {k: _finitize(v) for k, v in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_finitize(v) for v in value]
+    return value
+
+
+# ------------------------------------------------------------------
 # Endpoints
 # ------------------------------------------------------------------
 
@@ -109,8 +132,9 @@ async def analyze(
 
     # Pydantic cannot serialize engine-internal types (e.g. DataStore) that may
     # appear in pool_results. Serialise via stdlib json with a str fallback so
-    # unknown types become their repr rather than blowing up the response.
-    return JSONResponse(content=json.loads(json.dumps(result, default=str)))
+    # unknown types become their repr rather than blowing up the response, then
+    # strip any NaN/inf (allow_nan=False in the final render would otherwise 500).
+    return JSONResponse(content=_finitize(json.loads(json.dumps(result, default=str))))
 
 
 @app.get("/ticker/{symbol}/history")
@@ -133,7 +157,7 @@ async def ticker_history(
 
     try:
         df: pd.DataFrame = await run_in_threadpool(
-            lambda: yf.Ticker(sym).history(period=period)
+            lambda: yf.Ticker(sym).history(period=period, interval="1d", auto_adjust=False)
         )
     except Exception as exc:
         _log.exception("yfinance history failed for %s", sym)
@@ -142,17 +166,40 @@ async def ticker_history(
     if df.empty:
         raise HTTPException(status_code=404, detail=f"No data found for ticker '{sym}'")
 
-    rows = [
-        {
-            "date": date.strftime("%Y-%m-%d"),
-            "open": round(float(row["Open"]), 4),
-            "high": round(float(row["High"]), 4),
-            "low": round(float(row["Low"]), 4),
-            "close": round(float(row["Close"]), 4),
-            "volume": int(row["Volume"]),
-        }
-        for date, row in df.iterrows()
-    ]
+    # Build rows defensively. yfinance can return NaN cells (e.g. the in-progress
+    # trading day, split/halt rows). Starlette's JSONResponse serializes with
+    # allow_nan=False, so a single NaN reaching the response raises mid-render
+    # (an unhandled 500). Skip rows with no usable close and coerce NaN volume to 0.
+    try:
+        rows = []
+        for idx, row in df.iterrows():
+            close = row.get("Close")
+            if close is None or pd.isna(close):
+                continue  # a day with no close is not a usable point
+
+            def _f(col: str, fallback: float) -> float:
+                v = row.get(col)
+                return round(float(v), 4) if v is not None and not pd.isna(v) else fallback
+
+            close_f = round(float(close), 4)
+            vol = row.get("Volume")
+            rows.append(
+                {
+                    "date": pd.Timestamp(idx).strftime("%Y-%m-%d"),
+                    "open": _f("Open", close_f),
+                    "high": _f("High", close_f),
+                    "low": _f("Low", close_f),
+                    "close": close_f,
+                    "volume": int(vol) if vol is not None and not pd.isna(vol) else 0,
+                }
+            )
+    except Exception as exc:
+        _log.exception("history row build failed for %s", sym)
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+    if not rows:
+        raise HTTPException(status_code=404, detail=f"No data found for ticker '{sym}'")
+
     return JSONResponse(content=rows)
 
 
@@ -175,16 +222,26 @@ async def ticker_info(
     if not info or (info.get("currentPrice") is None and info.get("regularMarketPrice") is None):
         raise HTTPException(status_code=404, detail=f"No data found for ticker '{sym}'")
 
+    # NaN-safe: JSONResponse serializes with allow_nan=False, so any NaN numeric
+    # field (e.g. trailingPE / dividendYield for non-dividend or unprofitable
+    # names) would crash the render. Coerce NaN/inf to None.
+    def _num(v: Any) -> float | None:
+        try:
+            f = float(v)
+        except (TypeError, ValueError):
+            return None
+        return f if math.isfinite(f) else None
+
     return JSONResponse(
         content={
             "name": info.get("longName") or info.get("shortName"),
             "sector": info.get("sector"),
-            "market_cap": info.get("marketCap"),
-            "pe_ratio": info.get("trailingPE"),
-            "dividend_yield": info.get("dividendYield"),
-            "52_week_high": info.get("fiftyTwoWeekHigh"),
-            "52_week_low": info.get("fiftyTwoWeekLow"),
-            "current_price": info.get("currentPrice") or info.get("regularMarketPrice"),
+            "market_cap": _num(info.get("marketCap")),
+            "pe_ratio": _num(info.get("trailingPE")),
+            "dividend_yield": _num(info.get("dividendYield")),
+            "52_week_high": _num(info.get("fiftyTwoWeekHigh")),
+            "52_week_low": _num(info.get("fiftyTwoWeekLow")),
+            "current_price": _num(info.get("currentPrice")) or _num(info.get("regularMarketPrice")),
         }
     )
 

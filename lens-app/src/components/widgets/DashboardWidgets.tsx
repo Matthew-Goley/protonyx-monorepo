@@ -338,7 +338,7 @@ export function DividendCalendarWidget({ result }: { result: LensResult }) {
                 </span>
                 <span className="font-semibold text-primary">{row.ticker}</span>
                 <span className="text-secondary">{row.exDate ?? '--'}</span>
-                <span className="text-secondary">Quarterly</span>
+                <span className="text-secondary">{row.frequency ?? 'Quarterly'}</span>
                 <span className="text-right text-primary">
                   {row.amount != null ? formatCurrency(row.amount) : '--'}
                 </span>
