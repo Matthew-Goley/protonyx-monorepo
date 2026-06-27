@@ -10,12 +10,18 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **Protonyx** is an early-stage fintech building institutional-grade portfolio analytics for retail investors. This is the monorepo for the entire platform — backend API, web frontend, and the desktop app — held together by a single Postgres user database.
 
+> **IGNORE `app/` and `frontend/`.** Two top-level folders are dead weight and should be treated as out of scope unless a task explicitly names them:
+> - **`app/`** — a very old copy of the Vector desktop app. There is **no desktop app anymore**; the product is web-only. Do not read it for reference, do not run it, do not update it.
+> - **`frontend/`** — a stale, **not-live** static marketing site. The live marketing/auth/account site is `../Protonyx Site/` (one level above this monorepo, with its own `CLAUDE.md` and a `CNAME`). Don't edit `frontend/` expecting it to ship; if the task is about the public site, work in `../Protonyx Site/` instead.
+>
+> The folders that matter: **`backend/`** (Fastify API), **`lens-api/`** (Python analytics service), and **`lens-app/`** (the live React web app). The §2 layout below still documents `app/` and `frontend/`, but only so you recognize them as the things to skip.
+
 There are four deliverables:
 
 | Product | Stack | Purpose |
 |---|---|---|
-| **Vector** (`app/`) | Python 3.12 + PyQt6, packaged with Nuitka | Downloadable Windows desktop app. Tracks positions, fetches market data via `yfinance`, and renders an analytics dashboard powered by a proprietary engine called **Lens**. Currently version **0.5.0**. The `app/` folder in this repo is a **stale, rarely-synced copy** — the canonical source of truth is `Vector-Main/` one level above the monorepo. |
-| **Web frontend** (`frontend/`) | Plain static HTML/CSS/JS, served by VS Code Live Server | Marketing site, signup/login, account dashboard, direct app download. No framework, no bundler. |
+| **Vector** (`app/`) — **DEAD, see note above** | Python 3.12 + PyQt6, packaged with Nuitka | Old downloadable Windows desktop app. There is no desktop app in the product anymore. The `app/` folder is a stale, rarely-synced copy; the canonical historical source is `Vector-Main/` one level above the monorepo. Ignore unless explicitly asked. |
+| **Web frontend** (`frontend/`) — **DEAD/not live, see note above** | Plain static HTML/CSS/JS | Old static marketing/auth/account site. **Not deployed.** The live public site is `../Protonyx Site/`. Ignore `frontend/` unless explicitly asked. |
 | **Backend API** (`backend/`) | Fastify + TypeScript on Node, PostgreSQL | Authentication, account profile, download counter, and (eventually) the API the desktop app talks to. |
 | **Lens API** (`lens-api/`) | Python FastAPI, deployed on Railway | Standalone analytics microservice. Live at `https://lens-api-production-b0ab.up.railway.app`. Accepts a portfolio over HTTP, runs the Lens engine, returns the full result dict. Currently called directly from `lens-app` in the browser (dev); intended to be proxied server-to-server via Fastify in production. |
 | **Lens App** (`lens-app/`) | Vite + React + TypeScript | Web app for Lens analytics at `app.use-lens.com`, branded **Lens Arc** (the product's full name; logo assets in `lens-app/assets/lens-arc/`). Calls lens-api directly (dev only) or via Fastify (prod). Stack: React Router, Tailwind CSS, shadcn/ui, Recharts, TanStack Query. |
@@ -37,15 +43,17 @@ _monorepo/
 │   │   ├── email.ts               # Resend send logic (welcome + verify + password reset)
 │   │   ├── emailTemplates.ts      # Inline HTML strings for the three transactional emails
 │   │   ├── version.json           # Single source of truth for the latest Vector version (served by GET /version)
-│   │   ├── constants.ts           # Single source of truth for current TOS + EULA versions (CURRENT_TOS_VERSION, CURRENT_EULA_VERSION)
+│   │   ├── constants.ts           # Current TOS + EULA versions (CURRENT_TOS_VERSION, CURRENT_EULA_VERSION). Also exports BETA_ACTIVE = false, but nothing imports it — the /beta-status route reads process.env.BETA_ACTIVE directly, and signup gating uses betaConfig.ts
 │   │   ├── betaConfig.ts          # BETA_ACTIVE kill switch + MAX_BETA_USERS cap, read from env (gates signup)
 │   │   ├── middleware/
 │   │   │   └── authenticate.ts    # JWT preHandler — checks Authorization: Bearer header first, falls back to session cookie
 │   │   └── routes/
-│   │       ├── auth.ts            # /signup, /login (sets httpOnly cookie + returns token), /logout, /verify-email, /forgot-password, /reset-password
-│   │       ├── debug.ts           # /protected, /me, /download, /version
+│   │       ├── auth.ts            # /signup, /login (sets httpOnly cookie + returns token), /logout, /verify-email, /resend-verification, /forgot-password, /reset-password
+│   │       ├── debug.ts           # /version, /beta-status (legacy, still polled by shipped desktop app), /protected, /me, /download
 │   │       ├── legal.ts           # /legal/status, /legal/accept
-│   │       └── beta.ts            # /beta/status (public signup-availability check)
+│   │       ├── beta.ts            # /beta/status (public signup-availability check)
+│   │       ├── stripe.ts          # /stripe/create-checkout-session, /stripe/portal, /stripe/webhook
+│   │       └── subscription.ts    # /subscription/status
 │   ├── package.json
 │   ├── tsconfig.json
 │   ├── CLAUDE.md                  # Backend quick-start reference
@@ -57,6 +65,8 @@ _monorepo/
 │   ├── Procfile                   # uvicorn main:app --host 0.0.0.0 --port $PORT
 │   ├── .env.example               # LENS_API_KEY, LENS_DATA_DIR
 │   ├── parity_check.py            # Regression verification vs Vector-Main
+│   ├── parity_output.md           # Saved output of the last parity run
+│   ├── test.json                  # Sample /analyze request payload for manual testing
 │   ├── CLAUDE.md                  # Full service reference — read this before working in lens-api/
 │   └── engine/                    # Lens computation package (extracted from Vector-Main/vector/)
 │       ├── analytics.py / constants.py / lens_engine.py / monte_carlo.py
@@ -65,7 +75,7 @@ _monorepo/
 │       └── lens/                  # 8 analyzers, CTA engine, sentence composers, assembler
 │           └── templates/sentences.json
 │
-├── frontend/                      # Static site, one index.html per route
+├── frontend/                      # IGNORE — stale, NOT live. Old static site; live public site is ../Protonyx Site/. One index.html per route
 │   ├── index.html                 # Landing page (hero 2-col + discovery 3-video strip + trust strip + pricing section)
 │   ├── style.css                  # Entry stylesheet — @imports the four files below in cascade order
 │   ├── base.css                   # Resets, :root tokens, typography, button primitives
@@ -98,13 +108,14 @@ _monorepo/
 │   ├── src/
 │   │   ├── api/lens.ts            # Typed API client (lensApi.analyze, getTickerInfo, getTickerHistory, health)
 │   │   ├── contexts/AuthContext.tsx  # isAuthenticated, loading, user, login(u,p), signup(u,e,p), logout() — real Fastify auth, httpOnly session cookie
-│   │   ├── hooks/useLensAnalysis.ts  # react-query hook: POST /analyze from the positions+risk cookies (shared cache)
+│   │   ├── hooks/                # useLensAnalysis.ts (react-query POST /analyze from positions+risk cookies, shared cache), usePortfolioHistory.ts (real equity curve from /ticker history)
 │   │   ├── components/
 │   │   │   ├── ProtectedRoute.tsx # Redirects to /login if not authenticated
 │   │   │   ├── layout/           # Sidebar, AppShell (sidebar + main), PageHeader
-│   │   │   ├── common/           # Logo (Lens Arc brand mark), Panel, BriefText (rich-colored brief), SectorPie, RiskProfileCards, AddPositionModal, UpgradePrompt
-│   │   │   ├── widgets/DashboardWidgets.tsx  # Portfolio Vector, Positions, Total Equity, Sharpe, Diversification, Beta, Dividend Calendar
-│   │   │   ├── analysis/         # CautionGauge (SVG), CtaList, MonteCarloChart
+│   │   │   ├── charts/           # Recharts wrapper layer — the ONLY place that imports recharts. LensLineChart, LensAreaChart, LensAreaFanChart, LensPieChart, CyclablePieChart; shared internals in chartUtils.tsx (CHART_COLORS, PIE_COLORS, GradientDefs, LensTooltip, useAnimateOnce). See lens-app/CLAUDE.md §6/§7.
+│   │   │   ├── common/           # Logo (Lens Arc brand mark), Panel, BriefText (rich-colored brief), SectorPie, RiskProfileCards, AddPositionModal, CycleControl (arrow-pair cycler), UpgradePrompt
+│   │   │   ├── widgets/          # DashboardWidgets.tsx (Positions, Total Equity, Sharpe, Diversification, Beta, Dividend Calendar) + PortfolioVector.tsx (Portfolio Momentum status-ladder widget, re-exported from DashboardWidgets)
+│   │   │   ├── analysis/         # CautionGauge (SVG), CtaList, MonteCarloChart (wraps LensAreaFanChart)
 │   │   │   └── ui/               # button + input (restyled dark); card/label/textarea/badge are now unused leftovers
 │   │   ├── assets/lens-arc/      # Lens Arc logo PNGs, bundled via import (mirror of ../assets/lens-arc)
 │   │   ├── lib/                  # utils.ts (cn), cookies.ts (positions/settings cookies), lensData.ts (derivations), subscription.ts (isSubscribed)
@@ -119,14 +130,15 @@ _monorepo/
 │   ├── styling.md                 # GUI styling spec - single source of truth for the visual design system (palette, type, spacing, signature elements). src/index.css implements it.
 │   └── CLAUDE.md                  # Full lens-app reference - read this before working in lens-app/
 │
-├── app/                           # STALE copy of Vector desktop app — NOT the source of truth
-│   │                              # Canonical desktop app code is in Vector-Main/ (one level above _monorepo/)
-│   │                              # Do not use app/ as a reference; use Vector-Main/ instead
+├── app/                           # IGNORE — DEAD. Very old copy of the Vector desktop app; the product is web-only now (no desktop app)
+│   │                              # Do not read, run, or update it. Kept only for history.
 │   ├── main.py
 │   └── vector/
 │
 ├── scripts/                       # Admin / DB utility scripts — currently empty
 ├── database/                      # Legacy SQLite dir — gitignored, empty, no longer used
+├── dev.bat                        # Windows helper: starts backend (npm run dev) + frontend (browser-sync on 5500)
+├── front.bat                      # Windows helper: starts only the frontend (browser-sync on 5500), API points at Railway prod
 ├── README.md                      # Public-facing repo blurb
 ├── CLAUDE.md                      # This file
 └── .gitignore                     # node_modules/, .env, database/, dist/, .DS_Store, Thumbs.db
@@ -146,8 +158,9 @@ Run from `backend/`:
 |---|---|---|
 | Install deps | `npm install` | |
 | Dev server | `npm run dev` | `ts-node-dev src/server.ts`, hot-reloads, serves on `http://localhost:3000` |
-| Typecheck | `npx tsc --noEmit` | No npm script — invoke `tsc` directly |
-| Build | *(none)* | No build script. `ts-node-dev` runs TS directly in dev. There's no production build path yet. |
+| Typecheck | `npx tsc --noEmit` | No dedicated typecheck script — invoke `tsc` directly |
+| Build | `npm run build` | `tsc` — compiles `src/` to `dist/`. |
+| Start (prod) | `npm run start` | `node dist/server.js` — runs the compiled output (build first). |
 | Test | *(none)* | No test framework installed. Do not invent one. |
 | Lint / format | *(none)* | No ESLint/Prettier. Match existing style. |
 
@@ -158,6 +171,7 @@ Served by **VS Code Live Server** — there is no npm/Vite/Webpack step.
 - Default port is **5501** (locked in `frontend/.vscode/settings.json`).
 - Open any `index.html` via the Live Server extension. Navigation uses **root-absolute paths** like `/auth/index.html`, so Live Server **must be rooted at `frontend/`** (not at the repo root) for links to resolve. If links 404, that is almost always the cause.
 - Ports **5500** and **5501** (both `127.0.0.1` and `localhost`) are allowlisted by the backend CORS config. If Live Server picks a different port, every request to the API will fail CORS.
+- Alternatively, the repo-root `dev.bat` (backend + frontend) and `front.bat` (frontend only, API → Railway prod) serve the frontend with **browser-sync** on port **5500**. Same CORS constraint applies — keep it on 5500.
 
 ### Lens API
 
@@ -369,6 +383,7 @@ The error field is always named `message`. The frontend (`auth.js`) reads `data.
 | `GET` | `/me` | ✅ | — | Returns the full user profile **excluding `password`, `stripe_customer_id`, `verification_token`, `tos_accepted_at`, and `eula_accepted_at`**. Shape: `{ success, user: { id, username, email, plan, plan_expires_at, member_since, last_login, beta_access, download_count, email_verified, is_active, tos_version_accepted, eula_version_accepted, subscription_status } }`. (`tos_version_accepted` and `eula_version_accepted` are included so the client can reason about legal state; the `*_accepted_at` timestamps are deliberately omitted.) The frontend calls this on login and on every account-page load. |
 | `POST` | `/download` | ✅ | — (empty body) | Increments `download_count` for the authenticated user. Fired by the shared `[data-download]` click handler in `script.js` (hero button + pricing Free card + per-page menu overlay link) for signed-in users only. Returns `{ success, message: "Download recorded" }`. The actual binary URL is **not** returned by this endpoint — the buttons download `/assets/downloads/Vector-Setup.exe` natively via the `download` attribute. |
 | `GET` | `/version` | — | — | Public, no auth. Reads `src/version.json` (imported at module load via `resolveJsonModule`) and returns `{ success: true, version: "<x.y.z>" }`. **Single source of truth for the latest Vector release** — to ship a new version, edit `src/version.json` and nothing else on the backend. The frontend and the desktop auto-update check should both consume this endpoint rather than hardcoding the version. |
+| `GET` | `/beta-status` | — | — | **Legacy, do not remove** — the shipped Vector desktop app still polls this (note the hyphen, distinct from `/beta/status`). Lives in `routes/debug.ts`. Returns `{ success: true, beta_active: process.env.BETA_ACTIVE === "true" }` — reads the env var directly (not `betaConfig.ts` and not the `constants.ts` `BETA_ACTIVE`), defaulting to `false` when unset. |
 | `GET` | `/beta/status` | — | — | Public, no auth. Runs `SELECT COUNT(*) FROM users` and returns `{ success: true, open: boolean, spots_remaining: number }`. `open` is true only when `BETA_ACTIVE` is true **and** the user count is below `MAX_BETA_USERS`. `spots_remaining` is `max(0, MAX_BETA_USERS - count)` when `BETA_ACTIVE` is true, otherwise `0`. Lives in `routes/beta.ts`; both constants come from `src/betaConfig.ts`. Lets the frontend reflect signup availability. |
 | `POST` | `/logout` | — | — | Clears the `session` httpOnly cookie. Returns `{ success: true, message: "Logged out" }`. Used by lens-app to end cookie-based sessions; the static frontend doesn't call this (it clears `localStorage` directly). |
 | `GET` | `/legal/status` | ✅ | — | Compares the user's `tos_version_accepted` against `CURRENT_TOS_VERSION` and `eula_version_accepted` against `CURRENT_EULA_VERSION` from `constants.ts`. Returns `{ success: true, tos_accepted: boolean, eula_accepted: boolean, current_tos_version: "<v>", current_eula_version: "<v>" }`. Each `*_accepted` flag is `false` when the stored version is `NULL` or doesn't match the current version. User row not found → 401. The frontend's `checkLegalAcceptance()` (in `auth.js`) consumes this and **fails open** if the call errors. |
@@ -382,7 +397,7 @@ There is **no** `/notes`, `/getnotes`, `/notes/:id` endpoint. Earlier docs refer
 
 ### Legal versioning (`src/constants.ts`)
 
-`constants.ts` exports two constants, the single source of truth for each active legal document version:
+`constants.ts` also exports a `BETA_ACTIVE = false` constant that **nothing imports** — it is unused. (The legacy `GET /beta-status` route reads `process.env.BETA_ACTIVE` directly, and signup gating uses `betaConfig.ts`.) Leave the route alone — shipped desktop-app installs still poll it — but the constant itself is inert. The two constants that matter are the single source of truth for each active legal document version:
 
 - `CURRENT_TOS_VERSION` (currently `"3.1"`): the active Terms of Service version. `auth.ts` (signup auto-accept) and `legal.ts` (status comparison + accept stamping) both import it. **To re-prompt every signed-in user after a TOS change, bump this string and nothing else.** The next `GET /legal/status` they hit will report `tos_accepted: false` and the frontend modal will block them until they re-accept.
 - `CURRENT_EULA_VERSION` (currently `"3.1"`): the active End User License Agreement version, consumed only by `legal.ts` (status comparison + accept stamping). **EULA is not auto-accepted at signup**; acceptance happens in the Vector desktop app via `POST /legal/accept` with `{ document: "eula" }`. Bumping this string makes the next `GET /legal/status` report `eula_accepted: false`.
@@ -436,9 +451,10 @@ Three exported functions in `email.ts`, all using the **Resend** SDK and all fir
 | `dotenv` | Loads `.env` (imported via `import "dotenv/config"` in `server.ts`) |
 | `resend` | Transactional email (welcome only, for now) |
 | `stripe` | Stripe SDK — Checkout sessions, billing portal, webhook signature verification |
-| `better-sqlite3` + `@types/better-sqlite3` | **Dead.** Leftover from the SQLite era before the Postgres migration. Nothing in `src/` imports it. Safe to remove from `package.json`. |
 
-`ts-node-dev` and the `@types/*` packages are devDeps. `typescript` is a devDep but there is no compile step in the npm scripts.
+(`better-sqlite3` from the pre-Postgres SQLite era has been removed from `package.json` — do not re-introduce a SQLite code path.)
+
+`ts-node-dev` and the `@types/*` packages are devDeps. `typescript` is a devDep used by the `build` script (`tsc` → `dist/`).
 
 ---
 
@@ -744,7 +760,7 @@ Anything more specific than the map above — exact widget struct, accordion mea
 - **`session` cookie flags.** `httpOnly: true` (no JS access). `secure` and `sameSite` are environment-gated: `sameSite: lax, secure: false` in dev (localhost cross-port); `sameSite: none, secure: true` in production (cross-domain). Do not flatten this to a single value — `sameSite: none` without `secure` is rejected by Chrome.
 - **`JWT_SECRET`, `DATABASE_URL`, and `RESEND_API_KEY` live in `.env`.** `.env` is gitignored. Never commit it; never paste real values into code or chat. `JWT_SECRET=your-secret-here` style placeholders in docs are placeholders — do not preserve them as if they were real.
 - **The error field on the wire is `message`.** New endpoints should keep it that way. The frontend's `data.message || data.error` fallback exists for historical reasons but should not be relied on.
-- **`better-sqlite3`** is still in `package.json` but no runtime code imports it. Removing it (and `@types/better-sqlite3`) is safe cleanup if you are touching `package.json` anyway. Do not re-introduce SQLite code paths.
+- **`better-sqlite3`** has been removed from `package.json` (it was a leftover from the pre-Postgres SQLite era). Do not re-introduce SQLite code paths.
 
 ### Frontend
 

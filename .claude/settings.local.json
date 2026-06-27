@@ -15,7 +15,10 @@
       "Bash(npx ts-node *)",
       "Bash(git mv *)",
       "Bash(echo \"EXIT: $?\")",
-      "PowerShell(New-Item *)"
+      "PowerShell(New-Item *)",
+      "Bash(grep *)",
+      "Bash(node -e \"const p=require\\('./backend/package.json'\\); console.log\\(JSON.stringify\\(p.scripts,null,2\\)\\); console.log\\('better-sqlite3:', !!\\(p.dependencies&&p.dependencies['better-sqlite3']\\)||!!\\(p.devDependencies&&p.devDependencies['better-sqlite3']\\)\\)\")",
+      "Bash(echo \"exit:$?\")"
     ]
   }
 }
