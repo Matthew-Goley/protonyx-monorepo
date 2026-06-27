@@ -26,7 +26,7 @@ function StepDots({ step }: { step: 1 | 2 }) {
                 className={cn(
                   'flex h-9 w-9 items-center justify-center rounded-full text-sm font-semibold',
                   done && 'bg-accent-teal text-base',
-                  active && 'bg-gradient-brand text-base',
+                  active && 'bg-accent-teal text-base',
                   !done && !active && 'border border-subtle bg-card text-muted',
                 )}
               >
@@ -96,13 +96,13 @@ export function Onboard() {
   }
 
   return (
-    <div className="min-h-screen bg-base px-4 py-16">
+    <div className="page-fade min-h-screen bg-base px-4 py-16">
       <div className="mx-auto w-full max-w-2xl">
         <StepDots step={step} />
 
         {step === 1 ? (
           <div>
-            <h2 className="text-2xl font-bold text-primary">How do you want to invest?</h2>
+            <h2 className="text-2xl font-semibold text-primary">How do you want to invest?</h2>
             <p className="mt-2 text-secondary">
               This shapes how aggressively Lens flags risks. You can change this in Settings.
             </p>
@@ -117,14 +117,14 @@ export function Onboard() {
           </div>
         ) : (
           <div>
-            <h2 className="text-2xl font-bold text-primary">Add Your Positions</h2>
+            <h2 className="text-2xl font-semibold text-primary">Add Your Positions</h2>
             <p className="mt-2 text-secondary">
               Add one or more holdings. Lens validates each ticker before saving.
             </p>
 
             <div className="mt-8 min-h-[180px]">
               {positions.length === 0 ? (
-                <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-subtle py-14 text-center">
+                <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-subtle py-14 text-center">
                   <LayoutGrid className="text-muted" size={32} />
                   <p className="mt-3 font-medium text-primary">No positions yet</p>
                   <p className="mt-1 text-sm text-secondary">
@@ -140,7 +140,7 @@ export function Onboard() {
                         key={p.ticker}
                         onClick={() => toggleSelect(p.ticker)}
                         className={cn(
-                          'relative cursor-pointer rounded-xl border p-5 transition-colors',
+                          'relative cursor-pointer rounded-lg border p-6 transition-all duration-200 ease-out',
                           isSel
                             ? 'border-accent-teal bg-accent-teal/5'
                             : 'border-subtle bg-card hover:border-accent-teal/40',
@@ -156,7 +156,7 @@ export function Onboard() {
                         >
                           <X size={18} />
                         </button>
-                        <p className="text-2xl font-bold text-primary">{p.ticker}</p>
+                        <p className="text-2xl font-semibold text-primary">{p.ticker}</p>
                         <p className="mt-1 text-sm text-secondary">
                           {p.shares} shares · {formatCurrency(p.price)} ·{' '}
                           {formatCurrency(p.equity)} · {p.sector}

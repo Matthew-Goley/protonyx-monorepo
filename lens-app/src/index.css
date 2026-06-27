@@ -1,48 +1,91 @@
 @import "tailwindcss";
 
 /*
-  Tailwind v4 uses CSS-based config via @theme (there is no tailwind.config.js
-  in this project). Every token below generates the matching utility classes,
-  e.g. --color-accent-teal => bg-accent-teal / text-accent-teal / border-accent-teal.
+  Lens Arc design system — values come from styling.md (the single source of
+  truth). Tailwind v4 generates utilities from every --color-* / --text-* token
+  here (there is no tailwind.config.js in effect).
+
+  App token names map onto styling.md's semantic names like so:
+    --color-base        = spec bg-base        #111318  (root canvas)
+    --color-card        = spec bg-surface     #1a1d24  (cards, panels)
+    --color-card-hover  = spec bg-elevated    #21242d  (dropdowns, hover)
+    --color-subtle      = spec border-subtle  #2a2d35
+    --color-primary     = spec text-primary   #f0f2f5
+    --color-secondary   = spec text-secondary #8b90a0
+    --color-muted       = spec text-tertiary  #4a4f5e
+    --color-accent-teal = spec brand-teal     #14b8a6
+    --color-accent-blue = spec brand-sky      #38bdf8
+    --color-accent-green= spec gain           #3ecf8e
+    --color-accent-red  = spec loss           #f16b6b
+    --color-accent-yellow/orange = spec caution #f5a623 (spec has no orange)
 */
 @theme {
   /* Surfaces */
-  --color-base: #0a0d14;
-  --color-card: #111827;
-  --color-card-hover: #1a2236;
-  --color-sidebar: #0d1117;
-  --color-subtle: #1f2937;
+  --color-base: #111318;
+  --color-card: #1a1d24;
+  --color-card-hover: #21242d;
+  --color-sidebar: #111318;
+  --color-subtle: #2a2d35;
 
   /* Text */
-  --color-primary: #f9fafb;
-  --color-secondary: #9ca3af;
-  --color-muted: #4b5563;
+  --color-primary: #f0f2f5;
+  --color-secondary: #8b90a0;
+  --color-muted: #4a4f5e;
 
-  /* Accents */
-  --color-accent-teal: #2dd4bf;
-  --color-accent-blue: #3b82f6;
-  --color-accent-green: #10b981;
-  --color-accent-red: #ef4444;
-  --color-accent-yellow: #f59e0b;
-  --color-accent-orange: #f97316;
+  /* Brand + semantic — DO NOT CHANGE THESE VALUES (styling.md) */
+  --color-accent-teal: #14b8a6;   /* brand teal */
+  --color-accent-blue: #38bdf8;   /* brand sky */
+  --color-accent-green: #3ecf8e;  /* gain */
+  --color-accent-red: #f16b6b;    /* loss */
+  --color-accent-yellow: #f5a623; /* caution */
+  --color-accent-orange: #f5a623; /* caution (no separate orange in the spec) */
 
-  /* Semantic aliases kept so the leftover shadcn primitives still render in
-     dark mode if used. They map onto the same dark palette. */
-  --color-background: #0a0d14;
-  --color-foreground: #f9fafb;
-  --color-card-foreground: #f9fafb;
-  --color-border: #1f2937;
-  --color-input: #1f2937;
-  --color-ring: #2dd4bf;
-  --color-destructive: #ef4444;
-  --color-destructive-foreground: #f9fafb;
-  --color-muted-foreground: #9ca3af;
-  --color-secondary-foreground: #f9fafb;
-  --color-accent: #1a2236;
-  --color-accent-foreground: #f9fafb;
-  --color-primary-foreground: #0a0d14;
+  /* Spec-named aliases (identical values) so the styling.md names also resolve */
+  --color-brand-teal: #14b8a6;
+  --color-brand-sky: #38bdf8;
+  --color-gain: #3ecf8e;
+  --color-loss: #f16b6b;
+  --color-caution: #f5a623;
+
+  /* Semantic aliases kept so the leftover shadcn primitives still render. */
+  --color-background: #111318;
+  --color-foreground: #f0f2f5;
+  --color-card-foreground: #f0f2f5;
+  --color-border: #2a2d35;
+  --color-input: #2a2d35;
+  --color-ring: #14b8a6;
+  --color-destructive: #f16b6b;
+  --color-destructive-foreground: #f0f2f5;
+  --color-muted-foreground: #8b90a0;
+  --color-secondary-foreground: #f0f2f5;
+  --color-accent: #21242d;
+  --color-accent-foreground: #f0f2f5;
+  --color-primary-foreground: #111318;
+
+  /* Type scale (styling.md). Pair each with the weight/tracking the doc lists:
+     weights are 400/500/600 only; >=20px gets letter-spacing -0.02em. */
+  --text-axis: 11px;
+  --text-caption: 12px;
+  --text-label: 13px;
+  --text-body: 14px;
+  --text-ui: 14px;
+  --text-heading-sm: 16px;
+  --text-heading-md: 20px;
+  --text-metric: 28px;
+  --text-score: 56px;
 
   --font-sans: "Sora", ui-sans-serif, system-ui, sans-serif;
+}
+
+/* Spacing scale (styling.md) — 8px base, every gap a multiple. Exposed for raw
+   CSS; in markup, Tailwind's p-2/4/6/8 and gap-6/8 already map to these. */
+:root {
+  --space-1: 8px;
+  --space-2: 16px;
+  --space-3: 24px;
+  --space-4: 32px;
+  --space-5: 48px;
+  --space-6: 64px;
 }
 
 @layer base {
@@ -58,33 +101,78 @@
     font-family: "Sora", ui-sans-serif, system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
   }
+  /* Tracking rule (styling.md): headings render at >=20px, so they tighten. */
+  h1, h2, h3 {
+    letter-spacing: -0.02em;
+  }
 }
 
 /* Brand gradient helpers (background-clip needs real CSS, not a utility).
-   The canonical brand blue gradient is #14b8a6 -> #38bdf8 (135deg). Any blue
-   gradient anywhere in the app must use these exact stops. */
+   Canonical brand blue gradient is #14b8a6 -> #38bdf8 (135deg). Per styling.md
+   the gradient is reserved for: the Caution Score (arc + value), the primary CTA
+   fill, gradient hairlines, and the active sidebar nav indicator. Nowhere else. */
 .text-gradient {
   background: linear-gradient(135deg, #14b8a6 0%, #38bdf8 100%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
 }
-
 .bg-gradient-brand {
   background-image: linear-gradient(135deg, #14b8a6 0%, #38bdf8 100%);
+}
+
+/* Signature element: tick-mark grid. Root dashboard canvas ONLY — never on
+   cards, modals, or the sidebar. #1e2028 on #111318 is meant to be sensed,
+   not seen; do not raise the contrast. (styling.md §Signature Elements) */
+.tick-grid-bg {
+  background-image: url("data:image/svg+xml,%3Csvg width='32' height='32' viewBox='0 0 32 32' xmlns='http://www.w3.org/2000/svg'%3E%3Cline x1='16' y1='14' x2='16' y2='18' stroke='%231e2028' stroke-width='1'/%3E%3Cline x1='14' y1='16' x2='18' y2='16' stroke='%231e2028' stroke-width='1'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-size: 32px 32px;
+}
+
+/* Signature element: gradient hairline. Layout separator only (never a card
+   border). Fades to transparent at both ends. Max 2 visible per screen. */
+.gradient-hairline {
+  height: 1px;
+  width: 100%;
+  border: none;
+  margin: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    #14b8a6 20%,
+    #38bdf8 80%,
+    transparent 100%
+  );
+}
+
+/* Motion: page transitions are an opacity fade only, 150ms ease-out. No slide,
+   scale, or blur. (styling.md §Motion) */
+@keyframes page-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.page-fade {
+  animation: page-fade-in 150ms ease-out;
+}
+
+/* Motion: Caution Score arc sweeps 0 -> value on load only, 600ms. The single
+   load animation in the app. (styling.md §Motion) */
+.caution-arc {
+  transition: stroke-dasharray 600ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 /* Dark scrollbars so the chrome matches the theme. */
 * {
   scrollbar-width: thin;
-  scrollbar-color: #1f2937 transparent;
+  scrollbar-color: #2a2d35 transparent;
 }
 *::-webkit-scrollbar {
   width: 10px;
   height: 10px;
 }
 *::-webkit-scrollbar-thumb {
-  background-color: #1f2937;
+  background-color: #2a2d35;
   border-radius: 9999px;
   border: 2px solid transparent;
   background-clip: content-box;

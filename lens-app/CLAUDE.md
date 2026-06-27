@@ -147,27 +147,37 @@ Other helpers in this file: classification bands (`sharpeClass`, `betaClass`, `c
 
 ---
 
-## 6. Design system (`src/index.css`)
+## 6. Design system (`src/index.css` + `styling.md`)
 
-Tailwind v4. **All tokens live in the `@theme` block in `src/index.css`** — there is no JS Tailwind config in effect. A token like `--color-accent-teal` auto-generates `bg-accent-teal`, `text-accent-teal`, `border-accent-teal`, and supports opacity (`bg-accent-teal/10`).
+**`styling.md` (in `lens-app/`) is the single source of truth for the visual design.** Do not change gradient hex values, the font, or the 8px spacing unit without explicit instruction. `src/index.css` implements that spec; this section maps the spec onto the actual tokens/classes.
 
-Palette (dark theme, Sora font):
+Tailwind v4. **All color/type tokens live in the `@theme` block in `src/index.css`** — there is no JS Tailwind config in effect. A token like `--color-accent-teal` auto-generates `bg-accent-teal`, `text-accent-teal`, `border-accent-teal`, and supports opacity (`bg-accent-teal/10`).
 
-| Group | Tokens |
+Palette (dark theme, Sora font). The app's token names predate styling.md, so the values below are the spec values under the existing names (the spec's own names are also defined as identical aliases, e.g. `--color-gain`, `--color-brand-teal`):
+
+| Group | Tokens (value = styling.md) |
 |---|---|
-| Surfaces | `base #0a0d14`, `card #111827`, `card-hover #1a2236`, `sidebar #0d1117`, `subtle #1f2937` |
-| Text | `primary #f9fafb`, `secondary #9ca3af`, `muted #4b5563` |
-| Accents | `accent-teal #2dd4bf`, `accent-blue #3b82f6`, `accent-green #10b981`, `accent-red #ef4444`, `accent-yellow #f59e0b`, `accent-orange #f97316` |
+| Surfaces | `base #111318` (bg-base), `card #1a1d24` (bg-surface), `card-hover #21242d` (bg-elevated), `sidebar #111318`, `subtle #2a2d35` (border) |
+| Text | `primary #f0f2f5`, `secondary #8b90a0` (labels/timestamps/helper copy), `muted #4a4f5e` (= spec text-tertiary; disabled/placeholder only) |
+| Brand/semantic | `accent-teal #14b8a6` (brand teal), `accent-blue #38bdf8` (brand sky), `accent-green #3ecf8e` (gain), `accent-red #f16b6b` (loss), `accent-yellow`/`accent-orange #f5a623` (caution — the spec has no orange) |
+
+Note the **text-role rule**: helper copy, timestamps, footnotes and form labels use `text-secondary`; `text-muted` is reserved for disabled/placeholder/empty (`--`). Don't use `text-muted` for captions.
 
 There is also a set of **semantic aliases** (`background`, `foreground`, `border`, `input`, `ring`, `destructive`, etc.) kept so the leftover shadcn primitives still render in dark mode.
 
-Two CSS helper classes (because `background-clip:text` needs real CSS, not a utility):
-- `.text-gradient` — brand blue gradient clipped to text (page titles, accent text).
-- `.bg-gradient-brand` — the same gradient as a background (gradient buttons, badges, progress fills).
+**Type scale** (`--text-axis`/`caption`/`label`/`body`/`ui`/`heading-sm`/`heading-md`/`metric`/`score` = 11/12/13/14/14/16/20/28/56px, defined in `@theme`). Weight discipline: only **400 / 500 / 600** (never 700/800/300); 600 is reserved for meaningful numbers (metric values, the caution score) and headings, not descriptive/label text. Tracking: text >=20px tightens to `-0.02em` (a base rule covers `h1-h3`; add `tracking-[-0.02em]` on large metric spans). Card/section titles are heading-md (`text-xl`/600), page titles too; metrics are `text-[28px]`/600; the caution score is 56px/600.
 
-**Canonical brand blue gradient:** `linear-gradient(135deg, #14b8a6 0%, #38bdf8 100%)`. Any blue gradient anywhere in the app — these two helpers or anything new — must use these exact stops (teal `#14b8a6` -> sky `#38bdf8`, 135deg). Both helpers are defined in `src/index.css`; if you add a new gradient surface, reuse a helper rather than hand-rolling new stops.
+**Spacing**: 8px base, every gap a multiple. Card padding 24px (`p-6`, baked into `Panel`), section gaps 32px (`space-y-8`), grid gutters 24px (`gap-6`), max content width `1280px` centered (set in `AppShell`). `--space-1..6` are exposed in `:root` for raw CSS.
 
-The `@layer base` block sets the default border color to `--color-subtle`, paints `html`/`body` with the base bg + Sora (loaded from Google Fonts in `index.html`; `--font-sans` in `@theme` and the `body` rule both name it), and there are custom dark scrollbar styles. Use the tokens; do not hardcode hex values in components (the one acceptable exception is recharts `stroke`/`fill`/`stopColor` props, which take literal colors — match the existing hexes like `#2dd4bf`, `#3b82f6`, `#10b981`, `#ef4444`, `#4b5563`).
+**Gradient discipline (hard rule):** the brand gradient `linear-gradient(135deg, #14b8a6 0%, #38bdf8 100%)` appears in only these places — (1) the Caution Score gauge arc + 56px value, (2) the primary CTA button fill (`button` `gradient` variant), (3) gradient hairline separators, (4) the active sidebar nav indicator. Charts additionally use it as an SVG line/area stroke per the styling.md §Charts spec. Helpers `.text-gradient` / `.bg-gradient-brand` are defined in `index.css`; do not add gradient anywhere else (no gradient badges, progress bars, step dots, success circles — those were removed).
+
+**Signature elements** (in `index.css`): `.tick-grid-bg` (sparse `+` crosshair SVG, applied to the `AppShell` root canvas only — never cards/modals/sidebar; do not raise its contrast) and `.gradient-hairline` (1px horizontal rule fading to transparent at both ends, layout separators only, max 2 per screen — currently one on the Analysis page under the Caution Score zone, plus the sidebar's vertical active-nav bar).
+
+**Motion** (`index.css`): default interactive transition is `200ms ease-out` (never ease-in); `.page-fade` (opacity 0->1, 150ms) wraps the `AppShell` content and the standalone Login/Onboard/Success pages; `.caution-arc` sweeps the gauge 0->value once on load (600ms `cubic-bezier(0.16,1,0.3,1)`) — the only load animation. **No skeleton pulse** — loading blocks are static dim (`opacity-60`) surfaces.
+
+**Cards/tables**: `Panel` is the standard card (bg-surface, 1px subtle border, `rounded-lg` = 8px, `p-6`, **no shadow** — depth comes from the surface lift over the tick grid). No `border-radius` above 8px on data cards (controls use 6px `rounded-md`). Tables/list-rows: 13px/500 uppercase secondary headers, row `hover:bg-card-hover`, no zebra striping; charts have horizontal grid lines only (`vertical={false}`), transparent background, 11px tertiary axis labels.
+
+Use the tokens; do not hardcode hex values in components (the one acceptable exception is recharts `stroke`/`fill`/`stopColor`/gradient-stop props, which take literal colors — match the brand/semantic hexes `#14b8a6`, `#38bdf8`, `#3ecf8e`, `#f16b6b`, `#2a2d35`, `#4a4f5e`).
 
 ### Brand / logo assets
 
@@ -176,7 +186,7 @@ The product's full name is **Lens Arc**. Anywhere a brand mark is shown, render 
 - **Source artwork** lives in `assets/lens-arc/` (PNG, repo-tracked source of truth) and is mirrored into `src/assets/lens-arc/` so Vite can hash-bundle it via `import`. Keep the two in sync if you add/replace files. `public/lens-arc-icon.png` (a copy of `icon-rounded.png`) is the favicon, referenced from `index.html`.
 - **Files:** `lens-arc-{white,dark}.png` (full icon + "Lens Arc" wordmark, ~4.5:1), `arc-{white,dark}.png` (icon + "Arc" only, for tight lockups), `icon-nobg.png` (1:1 transparent mark), `icon-square.png` / `icon-rounded.png` (1:1 mark on dark navy, rounded is the app-icon style). White variants are for the app's dark surfaces; dark variants are for light backgrounds (none in-app yet).
 - **Use the `Logo` component** (`src/components/common/Logo.tsx`), never raw `<img>`. It exposes `variant: 'full' | 'full-dark' | 'icon' | 'icon-rounded'` (default `full` = white wordmark) and takes a `className` for sizing (e.g. `h-7 w-auto`); the image keeps its own aspect ratio. Current usages: Sidebar header (`full`), Login (`full`), Success page (`full`). The `full` wordmark already contains the icon, so don't pair `icon` next to it.
-- The old `.text-gradient` "Lens" wordmarks in the Sidebar and Login have been replaced by the logo. `.text-gradient` is still used for page titles / accent text, just not as the brand mark.
+- The old `.text-gradient` "Lens" wordmarks in the Sidebar and Login have been replaced by the logo. Page titles are now solid `text-primary` (not gradient), per the gradient discipline in §6; `.text-gradient` remains defined but is not currently used in JSX.
 
 ---
 
@@ -188,7 +198,7 @@ All authed screens render inside `AppShell` (`src/components/layout/AppShell.tsx
 |---|---|---|
 | **Login** | `pages/Login.tsx` | Sign in / Sign up tabs (local `tab` state, no route change). Sign-in field is "Username or email". Sign-up posts username/email/password then auto-logs-in. On success -> `/dashboard`. Has a non-functional "Forgot password?" / "Remember me" and a TOS/Privacy notice with `href="#"` placeholders (not yet wired). |
 | **Onboard** | `pages/Onboard.tsx` | 2-step wizard with a `StepDots` indicator. Step 1 = `RiskProfileCards` (tier select). Step 2 = add positions via `AddPositionModal`, multi-select to remove. "Launch Lens" writes `setSettings`/`setPositions` cookies and navigates `/dashboard`. Guarded but **not** subscription-gated (a user must be able to onboard before paying). |
-| **Dashboard** | `pages/Dashboard.tsx` | Redirects to `/onboard` when no positions cookie. If `!isSubscribed(user)` renders `<UpgradePrompt/>` instead of data. Otherwise: Lens Brief panel (with quick-action buttons: add position, and pencil/trash that route to Settings) + the 7-widget grid. Loading shows skeletons; error shows a retry panel. Adding a position invalidates `['lens-analysis']`. |
+| **Dashboard** | `pages/Dashboard.tsx` | Redirects to `/onboard` when no positions cookie. If `!isSubscribed(user)` renders `<UpgradePrompt/>` instead of data. Otherwise: Lens Brief panel (brief text + an "Analysis" link to `/analysis`) + the 7-widget grid. Loading shows static skeletons; error shows a retry panel. Position add/remove now lives only in Onboard and Settings. |
 | **Analysis** | `pages/Analysis.tsx` | Same onboard-redirect + subscription gate. Renders Lens Brief (with a fixed legal `DISCLAIMER`), Caution gauge + CTA list, two Monte Carlo charts (current vs "With All Lens Projections +$X"), a projection-explanation panel (uses `result.full_report`), and current vs projected sector pies. The MC fan and projected allocation are derived (see §5). |
 | **Profile** | `pages/Profile.tsx` | Avatar (first initial), username, member-since, total equity (from `useLensAnalysis`), and an info table (username/email/plan badge/member since/beta access). Read-only. |
 | **Settings** | `pages/Settings.tsx` | General (Theme/Date format dropdowns — **display-only, not persisted**), Investment Style (`RiskProfileCards`, persists + invalidates query), Subscription (Pro badge + "Manage Billing" via `POST /stripe/portal` when subscribed, else "Upgrade to Lens Pro" via `POST /stripe/create-checkout-session`), six **placeholder** `Collapsible` sections ("coming soon"), Positions CRUD (add/remove, "Edit" is disabled), and an About section that pings `lensApi.health()` for live API status. |

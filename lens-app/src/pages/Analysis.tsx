@@ -21,8 +21,9 @@ const DISCLAIMER =
   'caution scores and projections, is informational only and not investment advice. ' +
   'Do your own research before making any investment decision.'
 
+// No pulse animation (styling.md §Motion) — a static dim surface block.
 function Skeleton({ className }: { className?: string }) {
-  return <div className={`animate-pulse rounded-xl bg-card ${className ?? ''}`} />
+  return <div className={`rounded-lg bg-card opacity-60 ${className ?? ''}`} />
 }
 
 export function Analysis() {
@@ -60,7 +61,7 @@ export function Analysis() {
       {header}
 
       {query.isLoading && (
-        <div className="space-y-6">
+        <div className="space-y-8">
           <p className="text-center text-sm text-muted">Running analysis...</p>
           <Skeleton className="h-32" />
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
@@ -93,9 +94,9 @@ export function Analysis() {
             'Acting on the projections above reshapes the portfolio toward the target allocation.'
 
           return (
-            <div className="space-y-6">
+            <div className="space-y-8">
               {/* Lens Brief */}
-              <Panel className="p-6">
+              <Panel>
                 <CardLabel>Lens Brief</CardLabel>
                 <div className="mt-3">
                   <BriefText result={result} />
@@ -103,39 +104,44 @@ export function Analysis() {
                 <p className="mt-4 text-xs italic leading-relaxed text-muted">{DISCLAIMER}</p>
               </Panel>
 
-              {/* Caution + CTAs */}
-              <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-                <Panel>
-                  <h3 className="mb-4 font-semibold text-primary">Caution Score</h3>
+              {/* Caution Score commands the page: 5 of 12 columns, CTAs take 7
+                  (styling.md §Layout). */}
+              <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+                <Panel className="lg:col-span-5">
+                  <h3 className="mb-4 text-xl font-semibold text-primary">Caution Score</h3>
                   <CautionGauge score={result.caution_score} />
                 </Panel>
-                <Panel>
-                  <h3 className="mb-4 font-semibold text-primary">All Projections</h3>
+                <Panel className="lg:col-span-7">
+                  <h3 className="mb-4 text-xl font-semibold text-primary">All Projections</h3>
                   <CtaList result={result} />
                 </Panel>
               </div>
 
+              {/* Gradient hairline separates the Caution Score zone from the
+                  projection content below (styling.md §Gradient Hairlines). */}
+              <hr className="gradient-hairline" />
+
               {/* Monte Carlo */}
               <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
                 <Panel>
-                  <h3 className="mb-4 font-semibold text-primary">Current Portfolio</h3>
-                  <MonteCarloChart points={mc.current} medianColor="#2dd4bf" />
+                  <h3 className="mb-4 text-xl font-semibold text-primary">Current Portfolio</h3>
+                  <MonteCarloChart points={mc.current} />
                 </Panel>
                 <Panel>
-                  <h3 className="mb-4 font-semibold text-primary">
+                  <h3 className="mb-4 text-xl font-semibold text-primary">
                     With All Lens Projections{' '}
                     <span className="text-accent-teal">
                       +{formatCurrency(mc.improvementDollars, 0)}
                     </span>
                   </h3>
-                  <MonteCarloChart points={mc.projected} medianColor="#3b82f6" />
+                  <MonteCarloChart points={mc.projected} />
                 </Panel>
               </div>
 
               {/* Projection explanation */}
-              <Panel className="p-6">
+              <Panel>
                 <CardLabel>What the Lens Projection shows</CardLabel>
-                <p className="mt-3 text-lg leading-[1.7] text-primary">{reportText}</p>
+                <p className="mt-3 text-base leading-[1.7] text-primary">{reportText}</p>
                 <p className="mt-4 text-xs italic text-muted">
                   Projection bands are a deterministic estimate derived from the portfolio
                   drift and volatility, not a guarantee of future returns.
@@ -145,11 +151,11 @@ export function Analysis() {
               {/* Allocation comparison */}
               <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
                 <Panel>
-                  <h3 className="mb-4 font-semibold text-primary">Current Allocation</h3>
+                  <h3 className="mb-4 text-xl font-semibold text-primary">Current Allocation</h3>
                   <SectorPie slices={currentAlloc} />
                 </Panel>
                 <Panel>
-                  <h3 className="mb-4 font-semibold text-primary">Projected Allocation</h3>
+                  <h3 className="mb-4 text-xl font-semibold text-primary">Projected Allocation</h3>
                   <SectorPie slices={projectedAlloc} />
                 </Panel>
               </div>

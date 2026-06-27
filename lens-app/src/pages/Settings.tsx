@@ -23,8 +23,8 @@ const BACKEND_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3000'
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <Panel className="p-6">
-      <h3 className="mb-4 font-semibold text-primary">{title}</h3>
+    <Panel>
+      <h3 className="mb-4 text-xl font-semibold text-primary">{title}</h3>
       {children}
     </Panel>
   )
@@ -37,16 +37,16 @@ function Collapsible({ title, children }: { title: string; children?: ReactNode 
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="flex w-full items-center justify-between p-5 text-left"
+        className="flex w-full items-center justify-between p-6 text-left"
       >
-        <span className="font-semibold text-primary">{title}</span>
+        <span className="text-base font-medium text-primary">{title}</span>
         <ChevronRight
           size={18}
-          className={cn('text-muted transition-transform', open && 'rotate-90')}
+          className={cn('text-secondary transition-transform duration-200 ease-out', open && 'rotate-90')}
         />
       </button>
       {open && (
-        <div className="border-t border-subtle p-5 text-sm text-muted">
+        <div className="border-t border-subtle p-6 text-sm text-secondary">
           {children ?? 'Configuration for this section is coming soon.'}
         </div>
       )}
@@ -64,7 +64,7 @@ function Dropdown({
   return (
     <div className="flex items-center justify-between">
       <span className="text-sm text-secondary">{label}</span>
-      <select className="rounded-lg border border-subtle bg-base px-4 py-2.5 text-sm text-primary focus:border-accent-teal focus:outline-none">
+      <select className="rounded-md border border-subtle bg-base px-4 py-2.5 text-sm text-primary transition-all duration-200 ease-out focus:border-accent-teal focus:outline-none">
         {options.map((o) => (
           <option key={o}>{o}</option>
         ))}
@@ -159,7 +159,7 @@ export function Settings() {
     <AppShell>
       <PageHeader title="Settings" breadcrumb="Lens / Settings" />
 
-      <div className="space-y-5">
+      <div className="space-y-8">
         <Section title="General">
           <div className="space-y-4">
             <Dropdown label="Theme" options={['Dark', 'Light']} />
@@ -179,7 +179,7 @@ export function Settings() {
                 Pro
               </span>
             ) : (
-              <span className="rounded-full border border-subtle px-3 py-1 text-xs font-medium text-muted">
+              <span className="rounded-full border border-subtle px-3 py-1 text-xs font-medium text-secondary">
                 Free
               </span>
             )}
@@ -216,7 +216,7 @@ export function Settings() {
                   type="button"
                   onClick={() => setSelected((s) => (s === p.ticker ? null : p.ticker))}
                   className={cn(
-                    'flex w-full items-center rounded-lg border px-4 py-3 text-left text-sm transition-colors',
+                    'flex w-full items-center rounded-md border px-4 py-3 text-left text-sm transition-all duration-200 ease-out',
                     selected === p.ticker
                       ? 'border-accent-teal bg-accent-teal/5'
                       : 'border-subtle hover:border-accent-teal/40',
@@ -246,11 +246,11 @@ export function Settings() {
           <div className="space-y-3 text-sm">
             <div className="flex items-center justify-between">
               <span className="text-secondary">App Version</span>
-              <span className="text-primary">Lens 1.0 · API {apiStatus}</span>
+              <span className="text-primary">Lens Arc 1.0 · API {apiStatus}</span>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-secondary">Brand</span>
-              <span className="text-primary">Lens by Protonyx</span>
+              <span className="text-primary">Lens Arc by Protonyx</span>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-secondary">Credits</span>

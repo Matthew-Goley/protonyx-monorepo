@@ -13,7 +13,7 @@ function PlanBadge({ pro }: { pro: boolean }) {
       Pro
     </span>
   ) : (
-    <span className="rounded-full border border-subtle px-3 py-1 text-xs font-medium text-muted">
+    <span className="rounded-full border border-subtle px-3 py-1 text-xs font-medium text-secondary">
       Free
     </span>
   )
@@ -22,7 +22,7 @@ function PlanBadge({ pro }: { pro: boolean }) {
 function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div className="flex items-center justify-between border-b border-subtle py-4 last:border-b-0">
-      <span className="text-[11px] uppercase tracking-widest text-muted">{label}</span>
+      <span className="text-[13px] font-medium uppercase tracking-wider text-secondary">{label}</span>
       <span className="text-sm text-primary">{value}</span>
     </div>
   )
@@ -50,19 +50,19 @@ export function Profile() {
     <AppShell>
       <PageHeader title="Profile" breadcrumb="Lens / Profile" />
 
-      <Panel className="mb-6 flex items-center justify-between p-6">
+      <Panel className="mb-8 flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-accent-teal/20 text-2xl font-bold text-accent-teal">
+          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-accent-teal/20 text-xl font-semibold text-accent-teal">
             {initial}
           </div>
           <div>
-            <p className="text-2xl font-bold text-primary">{user?.username ?? 'User'}</p>
-            <p className="text-sm text-muted">Member since {memberSince}</p>
+            <p className="text-xl font-semibold text-primary">{user?.username ?? 'User'}</p>
+            <p className="text-sm text-secondary">Member since {memberSince}</p>
           </div>
         </div>
         <div className="text-right">
-          <p className="text-[28px] font-bold text-primary">{equity}</p>
-          <p className="text-xs text-muted">Total equity</p>
+          <p className="text-[28px] font-semibold tracking-[-0.02em] text-primary">{equity}</p>
+          <p className="text-xs text-secondary">Total equity</p>
         </div>
       </Panel>
 

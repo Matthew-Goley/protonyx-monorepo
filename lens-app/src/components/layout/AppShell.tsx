@@ -6,7 +6,10 @@ export function AppShell({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-screen bg-base">
       <Sidebar />
-      <main className="ml-[220px] min-h-screen overflow-y-auto p-8">{children}</main>
+      {/* Tick-grid canvas lives on the root dashboard surface only (styling.md). */}
+      <main className="tick-grid-bg ml-[220px] min-h-screen overflow-y-auto p-8">
+        <div className="page-fade mx-auto max-w-[1280px]">{children}</div>
+      </main>
     </div>
   )
 }

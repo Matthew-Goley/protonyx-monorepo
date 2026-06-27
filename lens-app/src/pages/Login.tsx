@@ -72,11 +72,10 @@ export function Login() {
   }
 
   return (
-    <div className="min-h-screen bg-base px-4">
+    <div className="page-fade min-h-screen bg-base px-4">
       <div className="mx-auto mt-24 w-full max-w-md">
         <div className="flex flex-col items-center text-center">
           <Logo variant="full" className="h-10 w-auto" />
-          <p className="mt-3 text-secondary">Portfolio intelligence, clearly explained.</p>
         </div>
 
         <div className="mt-10 flex border-b border-subtle">
@@ -98,7 +97,7 @@ export function Login() {
         </div>
 
         {tab === 'signin' ? (
-          <form onSubmit={handleSignIn} className="mt-8 space-y-5">
+          <form onSubmit={handleSignIn} className="mt-8 space-y-6">
             <Field
               label="Username or email"
               type="text"
@@ -139,7 +138,7 @@ export function Login() {
             </Button>
           </form>
         ) : (
-          <form onSubmit={handleSignUp} className="mt-8 space-y-5">
+          <form onSubmit={handleSignUp} className="mt-8 space-y-6">
             <Field
               label="Username"
               type="text"
@@ -172,7 +171,7 @@ export function Login() {
             <Button type="submit" variant="gradient" className="w-full" disabled={submitting}>
               {submitting ? 'Creating account...' : 'Create Account'}
             </Button>
-            <p className="text-xs leading-relaxed text-muted">
+            <p className="text-xs leading-relaxed text-secondary">
               By signing up you agree to our{' '}
               <a href="#" className="text-accent-teal hover:underline">
                 Terms of Service

@@ -32,7 +32,7 @@ export function CtaList({ result }: { result: LensResult }) {
             className="rounded-lg bg-base p-4"
             style={{ borderLeft: `3px solid ${accent}` }}
           >
-            <span className="text-[13px] font-bold" style={{ color: accent }}>
+            <span className="text-[13px] font-semibold" style={{ color: accent }}>
               {label}
               {amount && ` ${amount}`}
               {cta.ticker && ` · ${cta.ticker}`}

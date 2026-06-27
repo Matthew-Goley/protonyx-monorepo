@@ -4,6 +4,7 @@ import {
   Line,
   AreaChart,
   Area,
+  CartesianGrid,
   ReferenceLine,
   ResponsiveContainer,
 } from 'recharts'
@@ -30,12 +31,34 @@ import {
 } from '@/lib/lensData'
 import { getPositions } from '@/lib/cookies'
 
+// Card title = styling.md --text-heading-md (20px / 600, tightened tracking).
 function WidgetHeader({ title, right }: { title: string; right?: React.ReactNode }) {
   return (
     <div className="mb-4 flex items-center justify-between">
-      <h3 className="font-semibold text-primary">{title}</h3>
-      {right && <span className="text-xs text-muted">{right}</span>}
+      <h3 className="text-xl font-semibold text-primary">{title}</h3>
+      {right && <span className="text-xs text-secondary">{right}</span>}
     </div>
+  )
+}
+
+// Shared table-header row styling (styling.md §Tables): 13px / 500, uppercase,
+// secondary, slight positive tracking.
+const TH = 'text-[13px] font-medium uppercase tracking-[0.01em] text-secondary'
+// Brand-gradient chart stroke (styling.md §Charts).
+const LINE_GRAD = 'url(#widget-line-grad)'
+
+function ChartDefs() {
+  return (
+    <defs>
+      <linearGradient id="widget-line-grad" x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0%" stopColor="#14b8a6" />
+        <stop offset="100%" stopColor="#38bdf8" />
+      </linearGradient>
+      <linearGradient id="widget-area-grad" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stopColor="#38bdf8" stopOpacity={0.18} />
+        <stop offset="100%" stopColor="#14b8a6" stopOpacity={0.02} />
+      </linearGradient>
+    </defs>
   )
 }
 
@@ -59,8 +82,10 @@ export function PortfolioVectorWidget({ result }: { result: LensResult }) {
     <Panel>
       <WidgetHeader title="Portfolio Vector" />
       <div className="flex items-center gap-3">
-        <span className={`text-[32px] font-bold ${color}`}>{label}</span>
-        <span className={`text-[32px] font-bold ${color}`}>{formatPercent(slope, 3)}</span>
+        <span className={`text-[28px] font-semibold tracking-[-0.02em] ${color}`}>{label}</span>
+        <span className={`text-[28px] font-semibold tracking-[-0.02em] ${color}`}>
+          {formatPercent(slope, 3)}
+        </span>
         {positive ? (
           <TrendingUp className="text-accent-green" size={28} />
         ) : (
@@ -71,11 +96,13 @@ export function PortfolioVectorWidget({ result }: { result: LensResult }) {
       <div className="mt-3 h-[140px] w-full">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={line} margin={{ top: 8, right: 8, bottom: 8, left: 8 }}>
-            <ReferenceLine y={0} stroke="#4b5563" strokeDasharray="4 4" />
+            <ChartDefs />
+            <CartesianGrid vertical={false} stroke="#2a2d35" strokeWidth={1} />
+            <ReferenceLine y={0} stroke="#2a2d35" strokeDasharray="4 4" />
             <Line
               type="monotone"
               dataKey="y"
-              stroke="#2dd4bf"
+              stroke={LINE_GRAD}
               strokeWidth={2.5}
               dot={false}
               isAnimationActive={false}
@@ -89,7 +116,7 @@ export function PortfolioVectorWidget({ result }: { result: LensResult }) {
           ? 'The book is trending up on an equity-weighted basis.'
           : 'The book is trending down on an equity-weighted basis.'}
       </p>
-      <p className="mt-2 text-[11px] text-muted">6-month linear regression · equity-weighted</p>
+      <p className="mt-2 text-[11px] text-secondary">6-month linear regression · equity-weighted</p>
     </Panel>
   )
 }
@@ -104,7 +131,7 @@ export function PositionsWidget({ result }: { result: LensResult }) {
   return (
     <Panel>
       <WidgetHeader title="Positions" right={`${positions.length} positions`} />
-      <div className="grid grid-cols-[1.6fr_0.8fr_0.9fr_1fr_0.9fr] gap-2 border-b border-subtle pb-2 text-[11px] uppercase tracking-wider text-muted">
+      <div className={`grid grid-cols-[1.6fr_0.8fr_0.9fr_1fr_0.9fr] gap-2 border-b border-subtle pb-2 ${TH}`}>
         <span>Ticker</span>
         <span className="text-right">Shares</span>
         <span className="text-right">Price</span>
@@ -119,11 +146,11 @@ export function PositionsWidget({ result }: { result: LensResult }) {
           return (
             <div
               key={p.ticker}
-              className="grid grid-cols-[1.6fr_0.8fr_0.9fr_1fr_0.9fr] items-center gap-2 py-2.5 text-sm"
+              className="-mx-2 grid grid-cols-[1.6fr_0.8fr_0.9fr_1fr_0.9fr] items-center gap-2 rounded-sm px-2 py-2.5 text-sm transition-colors duration-200 ease-out hover:bg-card-hover"
             >
               <div className="min-w-0">
-                <p className="font-bold text-primary">{p.ticker}</p>
-                <p className="truncate text-xs text-muted">{p.name ?? p.ticker}</p>
+                <p className="font-semibold text-primary">{p.ticker}</p>
+                <p className="truncate text-xs text-secondary">{p.name ?? p.ticker}</p>
               </div>
               <span className="text-right text-secondary">{p.shares}</span>
               <span className="text-right text-secondary">{formatCurrency(price)}</span>
@@ -155,7 +182,6 @@ export function TotalEquityWidget({ result }: { result: LensResult }) {
   const changeDollars = (equity * changePct) / 100
   const positive = changeDollars >= 0
   const color = positive ? 'text-accent-green' : 'text-accent-red'
-  const fill = positive ? '#10b981' : '#ef4444'
 
   const spark = Array.from({ length: 12 }, (_, i) => ({
     x: i,
@@ -165,31 +191,28 @@ export function TotalEquityWidget({ result }: { result: LensResult }) {
   return (
     <Panel>
       <WidgetHeader title="Total Equity" right="5-day change" />
-      <p className={`text-[28px] font-bold ${color}`}>{formatCurrency(equity)}</p>
+      <p className={`text-[28px] font-semibold tracking-[-0.02em] ${color}`}>
+        {formatCurrency(equity)}
+      </p>
       <p className={`mt-1 text-sm ${color}`}>
         {formatSignedCurrency(changeDollars)} &nbsp; {formatPercent(changePct)}
       </p>
       <div className="mt-3 h-[64px] w-full">
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={spark} margin={{ top: 4, right: 0, bottom: 0, left: 0 }}>
-            <defs>
-              <linearGradient id="equitySpark" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor={fill} stopOpacity={0.4} />
-                <stop offset="100%" stopColor={fill} stopOpacity={0} />
-              </linearGradient>
-            </defs>
+            <ChartDefs />
             <Area
               type="monotone"
               dataKey="y"
-              stroke={fill}
+              stroke={LINE_GRAD}
               strokeWidth={2}
-              fill="url(#equitySpark)"
+              fill="url(#widget-area-grad)"
               isAnimationActive={false}
             />
           </AreaChart>
         </ResponsiveContainer>
       </div>
-      <p className="mt-1 text-[11px] text-muted">Estimated from 6-month trend</p>
+      <p className="mt-1 text-[11px] text-secondary">Estimated from 6-month trend</p>
     </Panel>
   )
 }
@@ -212,16 +235,18 @@ export function SharpeWidget({ result }: { result: LensResult }) {
     <Panel>
       <WidgetHeader title="Sharpe Ratio" right="6 months" />
       {value === null ? (
-        <p className="text-2xl font-bold text-muted">--</p>
+        <p className="text-[28px] font-semibold text-muted">--</p>
       ) : (
         <>
           <div className="flex items-baseline gap-3">
-            <span className="text-[32px] font-bold text-accent-teal">{value.toFixed(2)}</span>
+            <span className="text-[28px] font-semibold tracking-[-0.02em] text-accent-teal">
+              {value.toFixed(2)}
+            </span>
             <span style={{ color: sharpeClass(value).color }} className="text-sm font-medium">
               {sharpeClass(value).label}
             </span>
           </div>
-          <p className="mt-1 text-xs text-muted">rf = {RISK_FREE_PCT}%</p>
+          <p className="mt-1 text-xs text-secondary">rf = {RISK_FREE_PCT}%</p>
           <div className="mt-4 space-y-1.5">
             {SHARPE_SCALE.map((row) => {
               const active = row.test(value)
@@ -279,14 +304,16 @@ export function BetaWidget({ result }: { result: LensResult }) {
     <Panel>
       <WidgetHeader title="Beta" right="vs SPY · 6 months" />
       <div className="flex items-baseline gap-3">
-        <span className="text-[32px] font-bold text-accent-teal">{beta.toFixed(2)}</span>
+        <span className="text-[28px] font-semibold tracking-[-0.02em] text-accent-teal">
+          {beta.toFixed(2)}
+        </span>
         <span style={{ color: cls.color }} className="text-sm font-medium">
           {cls.label}
         </span>
       </div>
       <div className="relative mt-4 h-2 w-full rounded-full bg-base">
         <div
-          className="bg-gradient-brand h-2 rounded-full"
+          className="h-2 rounded-full bg-accent-teal"
           style={{ width: `${fillPct}%` }}
         />
         <div
@@ -310,7 +337,7 @@ export function BetaWidget({ result }: { result: LensResult }) {
 // ---------------------------------------------------------------------------
 
 function dueColor(days: number): string {
-  if (days < 30) return 'bg-accent-orange/15 text-accent-orange'
+  if (days < 30) return 'bg-accent-red/15 text-accent-red'
   if (days <= 60) return 'bg-accent-yellow/15 text-accent-yellow'
   return 'bg-accent-teal/15 text-accent-teal'
 }
@@ -322,10 +349,10 @@ export function DividendCalendarWidget({ result }: { result: LensResult }) {
     <Panel>
       <WidgetHeader title="Dividend Calendar" right="estimated" />
       {rows.length === 0 ? (
-        <p className="text-sm text-muted">No upcoming dividends detected.</p>
+        <p className="text-sm text-secondary">No upcoming dividends detected.</p>
       ) : (
         <>
-          <div className="grid grid-cols-[0.7fr_0.8fr_1fr_1fr_0.8fr] gap-2 border-b border-subtle pb-2 text-[11px] uppercase tracking-wider text-muted">
+          <div className={`grid grid-cols-[0.7fr_0.8fr_1fr_1fr_0.8fr] gap-2 border-b border-subtle pb-2 ${TH}`}>
             <span>Due</span>
             <span>Ticker</span>
             <span>Est. Date</span>
@@ -336,7 +363,7 @@ export function DividendCalendarWidget({ result }: { result: LensResult }) {
             {rows.map((row) => (
               <div
                 key={row.ticker}
-                className="grid grid-cols-[0.7fr_0.8fr_1fr_1fr_0.8fr] items-center gap-2 py-2.5 text-sm"
+                className="-mx-2 grid grid-cols-[0.7fr_0.8fr_1fr_1fr_0.8fr] items-center gap-2 rounded-sm px-2 py-2.5 text-sm transition-colors duration-200 ease-out hover:bg-card-hover"
               >
                 <span
                   className={`inline-flex w-fit rounded-md px-2 py-0.5 text-xs font-medium ${dueColor(
@@ -345,7 +372,7 @@ export function DividendCalendarWidget({ result }: { result: LensResult }) {
                 >
                   +{row.daysUntil}d
                 </span>
-                <span className="font-bold text-primary">{row.ticker}</span>
+                <span className="font-semibold text-primary">{row.ticker}</span>
                 <span className="text-secondary">{row.exDate ?? '--'}</span>
                 <span className="text-secondary">Quarterly</span>
                 <span className="text-right text-primary">

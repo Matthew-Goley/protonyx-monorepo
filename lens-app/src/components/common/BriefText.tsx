@@ -2,12 +2,14 @@ import { type LensResult } from '@/api/lens'
 import { getPositions } from '@/lib/cookies'
 import { tokenizeBrief, type BriefKind } from '@/lib/lensData'
 
+// Weight stays at 500 max for these emphasis tokens; styling.md reserves 600
+// for meaningful numeric metrics, not descriptive words.
 const KIND_CLASS: Record<BriefKind, string> = {
   plain: '',
-  ticker: 'font-semibold text-accent-teal',
+  ticker: 'font-medium text-accent-teal',
   money: 'text-accent-teal',
   percent: 'text-accent-teal',
-  action: 'font-semibold text-accent-blue',
+  action: 'font-medium text-accent-blue',
 }
 
 /** Renders a Lens brief with tickers / dollar amounts / percentages / action

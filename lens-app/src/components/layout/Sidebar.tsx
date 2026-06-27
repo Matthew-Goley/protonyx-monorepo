@@ -39,15 +39,27 @@ export function Sidebar() {
             to={to}
             className={({ isActive }) =>
               cn(
-                'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors',
+                'relative flex items-center gap-3 rounded-md px-3 py-2.5 text-sm transition-all duration-200 ease-out',
                 isActive
                   ? 'bg-accent-teal/10 font-medium text-accent-teal'
                   : 'text-secondary hover:bg-card hover:text-primary',
               )
             }
           >
-            <Icon size={18} />
-            {label}
+            {({ isActive }) => (
+              <>
+                {/* Active nav indicator: 2px vertical brand-gradient bar on the
+                    left edge (styling.md §Gradient Hairlines). */}
+                {isActive && (
+                  <span
+                    aria-hidden
+                    className="bg-gradient-brand absolute inset-y-2 left-0 w-0.5 rounded-r-sm"
+                  />
+                )}
+                <Icon size={18} />
+                {label}
+              </>
+            )}
           </NavLink>
         ))}
       </nav>
@@ -56,7 +68,7 @@ export function Sidebar() {
         <button
           type="button"
           onClick={handleLogout}
-          className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-sm text-muted transition-colors hover:bg-card hover:text-accent-red"
+          className="flex w-full items-center gap-2 rounded-md px-3 py-2.5 text-sm text-muted transition-all duration-200 ease-out hover:bg-card hover:text-accent-red"
         >
           <LogOut size={18} />
           Log out

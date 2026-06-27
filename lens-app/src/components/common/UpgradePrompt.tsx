@@ -30,19 +30,19 @@ export function UpgradePrompt() {
   }
 
   return (
-    <Panel className="mx-auto max-w-md p-8">
+    <Panel className="mx-auto max-w-md">
       <span className="inline-flex rounded-full border border-accent-teal/30 bg-accent-teal/10 px-3 py-1 text-xs font-medium text-accent-teal">
         Lens Pro
       </span>
-      <h2 className="mt-4 text-2xl font-bold text-primary">Upgrade to unlock analytics</h2>
+      <h2 className="mt-4 text-xl font-semibold text-primary">Upgrade to unlock analytics</h2>
       <p className="mt-2 text-sm leading-relaxed text-secondary">
         Lens portfolio analytics requires an active subscription. Get the full brief,
         caution score, projections and actionable buy / sell / hold guidance.
       </p>
 
-      <div className="mt-6 rounded-xl border border-subtle bg-base p-5">
-        <p className="text-3xl font-bold text-primary">
-          $10 <span className="text-base font-normal text-muted">/ month</span>
+      <div className="mt-6 rounded-lg border border-subtle bg-base p-6">
+        <p className="text-[28px] font-semibold tracking-[-0.02em] text-primary">
+          $10 <span className="text-base font-normal text-secondary">/ month</span>
         </p>
         <ul className="mt-3 space-y-1.5 text-sm text-secondary">
           <li>Full portfolio analysis</li>

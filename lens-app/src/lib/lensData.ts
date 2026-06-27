@@ -160,11 +160,13 @@ export function betaClass(beta: number): { label: string; color: string } {
 // Caution score classification
 // ---------------------------------------------------------------------------
 
+// Three tiers per styling.md §Caution Score: 1-33 gain, 34-66 caution, 67-99 loss.
+// This colors the supplementary tier label/badge only; the gauge arc itself is
+// always the brand gradient.
 export function cautionClass(score: number): { label: string; color: string } {
-  if (score <= 30) return { label: 'Manageable', color: 'var(--color-accent-green)' }
-  if (score <= 60) return { label: 'Elevated', color: 'var(--color-accent-yellow)' }
-  if (score <= 80) return { label: 'High', color: 'var(--color-accent-orange)' }
-  return { label: 'Critical', color: 'var(--color-accent-red)' }
+  if (score <= 33) return { label: 'Manageable', color: 'var(--color-gain)' }
+  if (score <= 66) return { label: 'Elevated', color: 'var(--color-caution)' }
+  return { label: 'Critical', color: 'var(--color-loss)' }
 }
 
 // ---------------------------------------------------------------------------
@@ -407,14 +409,15 @@ export function formatPercent(value: number, fractionDigits = 2): string {
   return `${sign}${value.toFixed(fractionDigits)}%`
 }
 
-// Pie palette: teal, blue, then cool slate shades.
+// Pie palette: brand teal/sky/gain, then cool slate shades. No purple (styling.md
+// hard rule). Stays within the brand + neutral families.
 export const PIE_COLORS = [
-  '#2dd4bf',
-  '#3b82f6',
-  '#64748b',
-  '#94a3b8',
-  '#475569',
-  '#0ea5e9',
-  '#818cf8',
-  '#334155',
+  '#14b8a6', // brand teal
+  '#38bdf8', // brand sky
+  '#3ecf8e', // gain green
+  '#8b90a0', // text-secondary slate
+  '#5b6473', // mid slate
+  '#0e8c80', // deep teal
+  '#2f7fb0', // deep sky
+  '#3a3f4e', // dark slate
 ]

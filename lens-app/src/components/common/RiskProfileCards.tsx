@@ -46,13 +46,13 @@ export function RiskProfileCards({
             type="button"
             onClick={() => onChange(opt.tier)}
             className={cn(
-              'rounded-xl border-2 p-6 text-left transition-colors',
+              'rounded-lg border-2 p-6 text-left transition-all duration-200 ease-out',
               selected
                 ? 'border-accent-teal bg-accent-teal/5'
                 : 'border-subtle hover:border-accent-teal/50',
             )}
           >
-            <p className="text-base font-bold text-primary">{opt.title}</p>
+            <p className="text-base font-semibold text-primary">{opt.title}</p>
             <p className="mt-0.5 text-sm font-medium text-accent-teal">{opt.subtitle}</p>
             <p className="mt-3 text-sm leading-relaxed text-secondary">{opt.description}</p>
           </button>

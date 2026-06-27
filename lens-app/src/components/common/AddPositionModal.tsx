@@ -58,17 +58,17 @@ export function AddPositionModal({
       onClick={onClose}
     >
       <div
-        className="w-full max-w-sm rounded-2xl border border-subtle bg-card p-6"
+        className="w-full max-w-sm rounded-lg border border-subtle bg-card p-6"
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 className="text-xl font-bold text-primary">Add a Position</h2>
+        <h2 className="text-xl font-semibold text-primary">Add a Position</h2>
         <p className="mt-1 text-sm text-secondary">
           Lens validates the ticker before saving.
         </p>
 
-        <div className="mt-5 space-y-4">
+        <div className="mt-6 space-y-4">
           <div className="space-y-1.5">
-            <label className="text-[11px] font-medium uppercase tracking-widest text-muted">
+            <label className="text-[13px] font-medium uppercase tracking-wider text-secondary">
               Ticker Symbol
             </label>
             <Input
@@ -80,7 +80,7 @@ export function AddPositionModal({
             />
           </div>
           <div className="space-y-1.5">
-            <label className="text-[11px] font-medium uppercase tracking-widest text-muted">
+            <label className="text-[13px] font-medium uppercase tracking-wider text-secondary">
               Number of Shares
             </label>
             <Input
@@ -101,7 +101,7 @@ export function AddPositionModal({
             type="button"
             onClick={onClose}
             disabled={validating}
-            className="text-sm text-muted transition-colors hover:text-primary disabled:opacity-50"
+            className="text-sm text-secondary transition-all duration-200 ease-out hover:text-primary disabled:opacity-50"
           >
             Cancel
           </button>
