@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Search, Lock, Bell, TrendingUp } from 'lucide-react'
+import { Search, Lock, Bell, TrendingUp, Sun, Moon } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useTheme } from '@/contexts/ThemeContext'
 
 /* Searchable index. Just the placeholder instrument for now; real results will
    come from a quote/search endpoint later. Each item links to its detail page. */
@@ -20,6 +21,7 @@ export function TopBar() {
         <SearchBar />
       </div>
       <div className="absolute right-6 top-1/2 flex -translate-y-1/2 items-center gap-1">
+        <ThemeToggle />
         <Notifications />
         <SecurityLock />
       </div>
@@ -113,6 +115,22 @@ function SearchBar() {
         </div>
       )}
     </div>
+  )
+}
+
+function ThemeToggle() {
+  const { theme, toggleTheme } = useTheme()
+  const next = theme === 'dark' ? 'light' : 'dark'
+  return (
+    <button
+      type="button"
+      onClick={toggleTheme}
+      aria-label={`Switch to ${next} mode`}
+      title={`Switch to ${next} mode`}
+      className="flex h-9 w-9 items-center justify-center rounded-md text-secondary transition-colors duration-200 ease-out hover:bg-card hover:text-accent-teal"
+    >
+      {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+    </button>
   )
 }
 

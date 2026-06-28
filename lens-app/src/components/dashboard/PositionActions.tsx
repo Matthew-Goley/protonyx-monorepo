@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useState } from 'react'
 import { Plus, SlidersHorizontal, Pencil, Trash2, X, Check } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -53,52 +53,49 @@ function SharesEditor({
   )
 }
 
-export function PositionActions({ positions, addPosition, removePosition, updateShares }: PositionsManager) {
+export function PositionActions({
+  positions,
+  addPosition,
+  removePosition,
+  updateShares,
+  size,
+}: PositionsManager & { size: number }) {
   const [addOpen, setAddOpen] = useState(false)
   const [drawer, setDrawer] = useState(false)
   const [editing, setEditing] = useState<string | null>(null)
 
-  // The box stretches to the Lens Brief's height (flex row, align-items:stretch).
-  // CSS `aspect-square` can't make the width follow that dynamic height (the
-  // aspect-ratio cancels the stretch), so measure the stretched height and set
-  // the width to match — making it a true square that tracks the brief.
-  const boxRef = useRef<HTMLDivElement>(null)
-  const [side, setSide] = useState<number>()
-  useEffect(() => {
-    const el = boxRef.current
-    if (!el) return
-    const ro = new ResizeObserver(() => {
-      const h = Math.round(el.getBoundingClientRect().height)
-      setSide((prev) => (prev === h ? prev : h))
-    })
-    ro.observe(el)
-    return () => ro.disconnect()
-  }, [])
+  // Square side for each of the two stacked buttons: the container height (`size`)
+  // minus the p-4 padding (16 top + 16 bottom) and the gap-4 between them (16),
+  // split in half. Keep 48 in sync with the p-4 / gap-4 classes below.
+  const buttonSide = (size - 48) / 2
 
   return (
     <>
+      {/* Two square buttons stacked → the container is a 1x2 (tall) rectangle.
+          Container height = `size` (matches the Lens Brief). */}
       <div
-        ref={boxRef}
-        style={{ width: side }}
-        className="flex shrink-0 flex-col gap-4 self-stretch rounded-lg border border-subtle bg-card p-4"
+        style={{ height: size }}
+        className="flex shrink-0 flex-col items-center gap-4 self-start rounded-lg border border-subtle bg-card p-4"
       >
         <button
           type="button"
           onClick={() => setAddOpen(true)}
           aria-label="Add position"
           title="Add position"
-          className="bg-gradient-brand flex w-full flex-1 items-center justify-center rounded-xl text-[#0a0d12] transition-transform duration-200 ease-out hover:scale-[1.03]"
+          style={{ width: buttonSide, height: buttonSide }}
+          className="bg-gradient-brand flex items-center justify-center rounded-xl text-[#0a0d12] transition-transform duration-200 ease-out hover:scale-[1.03]"
         >
-          <Plus size={28} />
+          <Plus size={32} />
         </button>
         <button
           type="button"
           onClick={() => setDrawer(true)}
           aria-label="Manage holdings"
           title="Manage holdings"
-          className="flex w-full flex-1 items-center justify-center rounded-xl border border-subtle text-secondary transition-colors duration-200 ease-out hover:border-[#3a3f4e] hover:bg-card-hover hover:text-primary"
+          style={{ width: buttonSide, height: buttonSide }}
+          className="flex items-center justify-center rounded-xl border border-subtle text-secondary transition-colors duration-200 ease-out hover:border-[#3a3f4e] hover:bg-card-hover hover:text-primary"
         >
-          <SlidersHorizontal size={24} />
+          <SlidersHorizontal size={28} />
         </button>
       </div>
 

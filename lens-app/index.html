@@ -11,6 +11,13 @@
       rel="stylesheet"
     />
     <title>Lens Arc</title>
+    <!-- Apply the saved theme before paint so light mode doesn't flash dark. -->
+    <script>
+      try {
+        if (localStorage.getItem('lens-theme') === 'light')
+          document.documentElement.classList.add('light')
+      } catch (e) {}
+    </script>
   </head>
   <body>
     <div id="root"></div>

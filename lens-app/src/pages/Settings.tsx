@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { ChevronRight } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
+import { useTheme } from '@/contexts/ThemeContext'
 import { isSubscribed } from '@/lib/subscription'
 import { lensApi, type Position } from '@/api/lens'
 import {
@@ -57,14 +58,22 @@ function Collapsible({ title, children }: { title: string; children?: ReactNode 
 function Dropdown({
   label,
   options,
+  value,
+  onChange,
 }: {
   label: string
   options: string[]
+  value?: string
+  onChange?: (value: string) => void
 }) {
   return (
     <div className="flex items-center justify-between">
       <span className="text-sm text-secondary">{label}</span>
-      <select className="rounded-md border border-subtle bg-base px-4 py-2.5 text-sm text-primary transition-all duration-200 ease-out focus:border-accent-teal focus:outline-none">
+      <select
+        value={value}
+        onChange={(e) => onChange?.(e.target.value)}
+        className="rounded-md border border-subtle bg-base px-4 py-2.5 text-sm text-primary transition-all duration-200 ease-out focus:border-accent-teal focus:outline-none"
+      >
         {options.map((o) => (
           <option key={o}>{o}</option>
         ))}
@@ -76,6 +85,7 @@ function Dropdown({
 export function Settings() {
   const queryClient = useQueryClient()
   const { user } = useAuth()
+  const { theme, setTheme } = useTheme()
   const pro = isSubscribed(user)
 
   const [risk, setRisk] = useState<RiskTier>(getSettings().risk_tier)
@@ -162,7 +172,12 @@ export function Settings() {
       <div className="space-y-8">
         <Section title="General">
           <div className="space-y-4">
-            <Dropdown label="Theme" options={['Dark', 'Light']} />
+            <Dropdown
+              label="Theme"
+              options={['Dark', 'Light']}
+              value={theme === 'light' ? 'Light' : 'Dark'}
+              onChange={(v) => setTheme(v === 'Light' ? 'light' : 'dark')}
+            />
             <Dropdown label="Date Format" options={['MM/DD/YYYY', 'DD/MM/YYYY', 'YYYY-MM-DD']} />
           </div>
         </Section>

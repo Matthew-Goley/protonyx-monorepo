@@ -27,6 +27,10 @@ function Skeleton({ className }: { className?: string }) {
   return <div className={`rounded-lg bg-card opacity-60 ${className ?? ''}`} />
 }
 
+// Single source of truth for the Lens Brief height (px). The action box squares
+// itself to this exact value (width = height = BRIEF_HEIGHT). Tweak freely.
+const BRIEF_HEIGHT = 320
+
 export function Dashboard() {
   const navigate = useNavigate()
   const { user } = useAuth()
@@ -98,11 +102,13 @@ export function Dashboard() {
         <div className="space-y-8">
           {/* Action box (add / manage holdings) + Lens Brief */}
           <div className="flex flex-col gap-4 sm:flex-row sm:gap-6">
-            <PositionActions {...manager} />
-            {/* Fixed height (placeholder — tweak freely); the action box squares
-                itself to whatever this is. Text overflows visibly rather than
-                being clipped. */}
-            <Panel className="flex h-80 min-w-0 flex-1 flex-col overflow-visible">
+            <PositionActions {...manager} size={BRIEF_HEIGHT} />
+            {/* Fixed height from BRIEF_HEIGHT (the action box squares itself to
+                the same value). Text overflows visibly rather than being clipped. */}
+            <Panel
+              style={{ height: BRIEF_HEIGHT }}
+              className="flex min-w-0 flex-1 flex-col overflow-visible"
+            >
               <CardLabel>Lens Brief</CardLabel>
               <div className="mt-3">
                 <BriefText result={result} />
