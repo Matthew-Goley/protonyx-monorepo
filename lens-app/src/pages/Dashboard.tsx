@@ -3,9 +3,11 @@ import { ChevronRight, Plus, Trash2, Pencil } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { isSubscribed } from '@/lib/subscription'
 import { useLensAnalysis } from '@/hooks/useLensAnalysis'
+import { usePositionsManager } from '@/hooks/usePositionsManager'
 import { getPositions } from '@/lib/cookies'
 import { AppShell } from '@/components/layout/AppShell'
 import { PageHeader } from '@/components/layout/PageHeader'
+import { PositionActions } from '@/components/dashboard/PositionActions'
 import { Panel, CardLabel } from '@/components/common/Panel'
 import { BriefText } from '@/components/common/BriefText'
 import { UpgradePrompt } from '@/components/common/UpgradePrompt'
@@ -29,6 +31,7 @@ export function Dashboard() {
   const navigate = useNavigate()
   const { user } = useAuth()
 
+  const manager = usePositionsManager()
   const hasPositions = getPositions().length > 0
   const query = useLensAnalysis()
 
@@ -93,18 +96,24 @@ export function Dashboard() {
 
       {result && (
         <div className="space-y-8">
-          {/* Lens Brief */}
-          <Panel>
-            <CardLabel>Lens Brief</CardLabel>
-            <div className="mt-3">
-              <BriefText result={result} />
-            </div>
-            <div className="mt-5 flex justify-end">
-              <Button variant="teal" onClick={() => navigate('/analysis')}>
-                Analysis <ChevronRight size={16} />
-              </Button>
-            </div>
-          </Panel>
+          {/* Action box (add / manage holdings) + Lens Brief */}
+          <div className="flex flex-col gap-4 sm:flex-row sm:gap-6">
+            <PositionActions {...manager} />
+            {/* Fixed height (placeholder — tweak freely); the action box squares
+                itself to whatever this is. Text overflows visibly rather than
+                being clipped. */}
+            <Panel className="flex h-80 min-w-0 flex-1 flex-col overflow-visible">
+              <CardLabel>Lens Brief</CardLabel>
+              <div className="mt-3">
+                <BriefText result={result} />
+              </div>
+              <div className="mt-auto flex justify-end pt-5">
+                <Button variant="teal" onClick={() => navigate('/analysis')}>
+                  Analysis <ChevronRight size={16} />
+                </Button>
+              </div>
+            </Panel>
+          </div>
 
           {/* Widget grid */}
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
