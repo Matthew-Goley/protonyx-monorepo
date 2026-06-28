@@ -179,6 +179,8 @@ There is also a set of **semantic aliases** (`background`, `foreground`, `border
 
 **Cards/tables**: `Panel` is the standard card (bg-surface, 1px subtle border, `rounded-lg` = 8px, `p-6`, **no shadow** — depth comes from the surface lift over the tick grid). No `border-radius` above 8px on data cards (controls use 6px `rounded-md`). Tables/list-rows: 13px/500 uppercase secondary headers, row `hover:bg-card-hover`, no zebra striping; charts have horizontal grid lines only (`vertical={false}`), transparent background, 11px tertiary axis labels.
 
+**Scroll areas (one framework)**: there is a single app-wide dark scrollbar styled on `*` in `index.css` (10px, `#2a2d35` thumb, `scrollbar-width: thin`); it applies to the page scroll and to any in-card scroll area, so all scrolling looks the same. To make a list scrollable, give it `max-h-[...] overflow-y-auto` and it inherits the chrome — no per-list scrollbar styling. The Positions widget list does this (caps at 4 rows, `max-h-[232px] overflow-y-auto overflow-x-hidden`, with a matching `pr-2` on the header so columns stay aligned against the scrollbar gutter); `overflow-x-hidden` is needed there because the rows use a `-mx-2` hover bleed that would otherwise trigger a horizontal scrollbar.
+
 Use the tokens; do not hardcode hex values in components (the one acceptable exception is recharts `stroke`/`fill`/`stopColor`/gradient-stop props, which take literal colors — match the brand/semantic hexes `#38bdf8`, `#60a5fa`, `#3ecf8e`, `#f16b6b`, `#2a2d35`, `#4a4f5e`).
 
 ### Brand / logo assets
@@ -194,7 +196,7 @@ The product's full name is **Lens Arc**. Anywhere a brand mark is shown, render 
 
 ## 7. Screen-by-screen map
 
-All authed screens render inside `AppShell` (`src/components/layout/AppShell.tsx`): a fixed 220px `Sidebar` + a scrollable `<main className="ml-[220px] ... p-8">`. The sidebar (`Sidebar.tsx`) has the gradient "Lens" wordmark, four `NavLink`s (Dashboard, Analysis, Profile, Settings) with an active teal state, and a logout button at the bottom that calls `logout()` then navigates to `/login`. `PageHeader` renders the title, a breadcrumb, and an optional `right` slot.
+All authed screens render inside `AppShell` (`src/components/layout/AppShell.tsx`): a fixed 220px `Sidebar` + a scrollable `<main className="ml-[220px] ... p-8">`. The sidebar (`Sidebar.tsx`) has the gradient "Lens" wordmark, four `NavLink`s (Dashboard, Analysis, Profile, Settings) with an active teal state, and a logout button at the bottom that calls `logout()` then navigates to `/login`. `PageHeader` is a **slim inline bar**: title and breadcrumb on one line (`Title · path`), an optional `right` actions slot, and a thin `border-b` divider beneath — kept compact so it frames the page without dominating it. The Dashboard passes three placeholder widget-management icon buttons (Plus / Trash2 / Pencil, no behavior yet) into `right`.
 
 | Page | File | Behavior |
 |---|---|---|

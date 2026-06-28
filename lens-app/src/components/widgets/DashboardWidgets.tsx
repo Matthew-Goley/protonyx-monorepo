@@ -60,14 +60,16 @@ export function PositionsWidget({ result }: { result: LensResult }) {
   return (
     <Panel>
       <WidgetHeader title="Positions" right={`${positions.length} positions`} />
-      <div className={`grid grid-cols-[1.6fr_0.8fr_0.9fr_1fr_0.9fr] gap-2 border-b border-subtle pb-2 ${TH}`}>
+      <div className={`grid grid-cols-[1.6fr_0.8fr_0.9fr_1fr_0.9fr] gap-2 border-b border-subtle pb-2 pr-2 ${TH}`}>
         <span>Ticker</span>
         <span className="text-right">Shares</span>
         <span className="text-right">Price</span>
         <span className="text-right">Equity</span>
         <span className="text-right">6mo</span>
       </div>
-      <div className="divide-y divide-subtle">
+      {/* Scrolls after 4 rows using the app-wide dark scrollbar (index.css). The
+          pr-2 here + on the header keeps the columns aligned against the gutter. */}
+      <div className="max-h-[232px] divide-y divide-subtle overflow-y-auto overflow-x-hidden pr-2">
         {positions.map((p) => {
           const price = tickerCurrentPrice(result, p.ticker) || p.price
           const equity = price * p.shares

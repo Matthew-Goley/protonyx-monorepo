@@ -1,5 +1,5 @@
 import { useNavigate, Navigate } from 'react-router-dom'
-import { ChevronRight } from 'lucide-react'
+import { ChevronRight, Plus, Trash2, Pencil } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { isSubscribed } from '@/lib/subscription'
 import { useLensAnalysis } from '@/hooks/useLensAnalysis'
@@ -34,12 +34,23 @@ export function Dashboard() {
 
   if (!hasPositions) return <Navigate to="/onboard" replace />
 
+  // Widget-management actions (no behavior yet — placeholders).
+  const headerActions = (
+    <>
+      <Button variant="outline" size="icon" className="h-8 w-8" title="Add widget" aria-label="Add widget">
+        <Plus size={16} />
+      </Button>
+      <Button variant="outline" size="icon" className="h-8 w-8" title="Remove widget" aria-label="Remove widget">
+        <Trash2 size={16} />
+      </Button>
+      <Button variant="outline" size="icon" className="h-8 w-8" title="Edit layout" aria-label="Edit layout">
+        <Pencil size={16} />
+      </Button>
+    </>
+  )
+
   const header = (
-    <PageHeader
-      title="Dashboard"
-      breadcrumb="Lens / Dashboard"
-      right={<span className="text-xs text-secondary">Last updated: just now</span>}
-    />
+    <PageHeader title="Dashboard" breadcrumb="Lens / Dashboard" right={headerActions} />
   )
 
   if (!isSubscribed(user)) {

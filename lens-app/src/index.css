@@ -166,7 +166,10 @@
   transition: stroke-dasharray 600ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-/* Dark scrollbars so the chrome matches the theme. */
+/* App-wide scroll framework: one dark scrollbar for every overflow container
+   (the page scroll on Dashboard/Analysis, in-card scroll areas like the Positions
+   list, dropdowns, etc.) so all scrolling looks cohesive. To make any list
+   scrollable, give it `max-h-[...] overflow-y-auto`; it inherits this chrome. */
 * {
   scrollbar-width: thin;
   scrollbar-color: #2a2d35 transparent;
