@@ -9,6 +9,7 @@ import { Analysis } from '@/pages/Analysis'
 import { Profile } from '@/pages/Profile'
 import { Settings } from '@/pages/Settings'
 import { Success } from '@/pages/Success'
+import { Commodity } from '@/pages/Commodity'
 
 const queryClient = new QueryClient()
 
@@ -64,6 +65,14 @@ export default function App() {
               element={
                 <ProtectedRoute>
                   <Success />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/commodity/:symbol"
+              element={
+                <ProtectedRoute>
+                  <Commodity />
                 </ProtectedRoute>
               }
             />

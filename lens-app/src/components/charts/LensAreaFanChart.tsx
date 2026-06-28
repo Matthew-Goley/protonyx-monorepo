@@ -207,7 +207,7 @@ export function LensAreaFanChart({
               stroke={color}
               strokeWidth={1.5}
               dot={false}
-              activeDot={{ r: 4, fill: CHART_COLORS.teal, stroke: CHART_COLORS.base, strokeWidth: 2 }}
+              activeDot={{ r: 4, fill: '#38bdf8', stroke: CHART_COLORS.base, strokeWidth: 2 }}
               isAnimationActive={animate}
               animationDuration={ANIM_DURATION}
               animationEasing={ANIM_EASING}
@@ -219,7 +219,7 @@ export function LensAreaFanChart({
             stroke={color}
             strokeWidth={2}
             dot={false}
-            activeDot={{ r: 4, fill: CHART_COLORS.teal, stroke: CHART_COLORS.base, strokeWidth: 2 }}
+            activeDot={{ r: 4, fill: '#38bdf8', stroke: CHART_COLORS.base, strokeWidth: 2 }}
             isAnimationActive={animate}
             animationDuration={ANIM_DURATION}
             animationEasing={ANIM_EASING}

@@ -188,7 +188,10 @@ export function SharpeWidget({ result }: { result: LensResult }) {
       ) : (
         <>
           <div className="flex items-baseline gap-3">
-            <span className="text-[28px] font-semibold tracking-[-0.02em] text-accent-teal">
+            <span
+              style={{ color: sharpeClass(value).color }}
+              className="text-[28px] font-semibold tracking-[-0.02em]"
+            >
               {value.toFixed(2)}
             </span>
             <span style={{ color: sharpeClass(value).color }} className="text-sm font-medium">
@@ -268,7 +271,10 @@ export function BetaWidget({ result }: { result: LensResult }) {
     <Panel>
       <WidgetHeader title="Beta" right="vs SPY · 6 months" />
       <div className="flex items-baseline gap-3">
-        <span className="text-[28px] font-semibold tracking-[-0.02em] text-accent-teal">
+        <span
+          style={{ color: cls.color }}
+          className="text-[28px] font-semibold tracking-[-0.02em]"
+        >
           {beta.toFixed(2)}
         </span>
         <span style={{ color: cls.color }} className="text-sm font-medium">
@@ -277,8 +283,8 @@ export function BetaWidget({ result }: { result: LensResult }) {
       </div>
       <div className="relative mt-4 h-2 w-full rounded-full bg-base">
         <div
-          className="h-2 rounded-full bg-accent-teal"
-          style={{ width: `${fillPct}%` }}
+          className="h-2 rounded-full"
+          style={{ width: `${fillPct}%`, backgroundColor: cls.color }}
         />
         <div
           className="absolute top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-base bg-primary"

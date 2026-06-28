@@ -38,9 +38,10 @@ export function CautionGauge({ score }: { score: number }) {
     <div className="caution-score-wrapper flex flex-col items-center justify-center">
       <svg width={260} height={150} viewBox="0 0 260 150">
         <defs>
+          {/* Brand gradient #38bdf8 -> #60a5fa (styling.md). */}
           <linearGradient id="caution-grad" x1="0" y1="0" x2="1" y2="0">
-            <stop offset="0%" stopColor="#14b8a6" />
-            <stop offset="100%" stopColor="#38bdf8" />
+            <stop offset="0%" stopColor="#38bdf8" />
+            <stop offset="100%" stopColor="#60a5fa" />
           </linearGradient>
         </defs>
         <path

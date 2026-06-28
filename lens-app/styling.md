@@ -55,8 +55,8 @@ Also used as the active indicator on the sidebar nav (left edge, vertical, 2px w
   background: linear-gradient(
     90deg,
     transparent 0%,
-    #14b8a6 20%,
-    #38bdf8 80%,
+    #38bdf8 20%,
+    #60a5fa 80%,
     transparent 100%
   );
   border: none;
@@ -74,7 +74,7 @@ Also used as the active indicator on the sidebar nav (left edge, vertical, 2px w
   top: 8px;
   bottom: 8px;
   width: 2px;
-  background: linear-gradient(180deg, #14b8a6, #38bdf8);
+  background: linear-gradient(180deg, #38bdf8, #60a5fa);
   border-radius: 0 2px 2px 0;
 }
 ```
@@ -104,10 +104,11 @@ Also used as the active indicator on the sidebar nav (left edge, vertical, 2px w
   --color-text-tertiary:  #4a4f5e;   /* Disabled, placeholder */
 
   /* Brand Gradient — DO NOT CHANGE THESE VALUES */
-  --color-brand-teal:     #14b8a6;
-  --color-brand-sky:      #38bdf8;
-  --gradient-brand:       linear-gradient(135deg, #14b8a6 0%, #38bdf8 100%);
-  --gradient-brand-text:  linear-gradient(135deg, #14b8a6, #38bdf8);
+  --color-brand-sky:      #38bdf8;   /* gradient start */
+  --color-brand-blue:     #60a5fa;   /* gradient end */
+  --color-accent:         #4cb1f9;   /* solid mid-tone for flat highlights/selection/borders */
+  --gradient-brand:       linear-gradient(135deg, #38bdf8 0%, #60a5fa 100%);
+  --gradient-brand-text:  linear-gradient(135deg, #38bdf8, #60a5fa);
 
   /* Semantic */
   --color-gain:           #3ecf8e;   /* Positive returns — desaturated green */
@@ -232,7 +233,7 @@ No box shadows. Depth is created by the surface color lift over the tick grid, n
 
 ```css
 .btn-primary {
-  background: linear-gradient(135deg, #14b8a6 0%, #38bdf8 100%);
+  background: linear-gradient(135deg, #38bdf8 0%, #60a5fa 100%);
   color: #0a0d12;
   font-family: 'Sora', sans-serif;
   font-size: 14px;
@@ -331,7 +332,7 @@ The score is the visual centerpiece. Largest type on the page. Most real estate.
   font-size: 56px;
   font-weight: 600;
   letter-spacing: -0.02em;
-  background: linear-gradient(135deg, #14b8a6, #38bdf8);
+  background: linear-gradient(135deg, #38bdf8, #60a5fa);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -358,7 +359,7 @@ Score tier coloring applies to supplementary text/badges only — not the arc it
 ### Charts (Custom Graph System)
 
 ```
-Line stroke:      linear gradient #14b8a6 → #38bdf8 applied as SVG linearGradient
+Line stroke:      linear gradient #38bdf8 → #60a5fa applied as SVG linearGradient
 Area fill:        same gradient at 10% opacity beneath the line
 Grid lines:       horizontal only, 1px, --color-border-subtle
 Vertical grids:   none
@@ -421,9 +422,10 @@ Secondary:          #8b90a0
 Tertiary:           #4a4f5e
 
 ── BRAND ────────────────────────────────────
-Teal:               #14b8a6
-Sky:                #38bdf8
-Gradient:           linear-gradient(135deg, #14b8a6, #38bdf8)
+Sky (start):        #38bdf8
+Blue (end):         #60a5fa
+Accent (flat):      #4cb1f9
+Gradient:           linear-gradient(135deg, #38bdf8, #60a5fa)
 
 ── SEMANTIC ─────────────────────────────────
 Gain:               #3ecf8e
@@ -447,5 +449,5 @@ Score animation:    600ms cubic-bezier(0.16, 1, 0.3, 1)
 
 ── SIGNATURE ELEMENTS ───────────────────────
 Tick grid:          SVG crosshair, #1e2028 on #111318, 32px repeat
-Hairline:           linear-gradient(90deg, transparent, #14b8a6, #38bdf8, transparent)
+Hairline:           linear-gradient(90deg, transparent, #38bdf8, #60a5fa, transparent)
 ```

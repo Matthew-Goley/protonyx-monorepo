@@ -52,15 +52,16 @@ export const GRID_PROPS = {
 // the horizontal `lens-brand-line` (135deg teal -> sky) for line/area strokes,
 // and the vertical `lens-brand-area` for area fills.
 export function GradientDefs() {
+  // Brand gradient #38bdf8 -> #60a5fa (styling.md §Charts line/area stroke).
   return (
     <defs>
       <linearGradient id="lens-brand-line" x1="0" y1="0" x2="1" y2="0">
-        <stop offset="0%" stopColor={CHART_COLORS.teal} />
-        <stop offset="100%" stopColor={CHART_COLORS.blue} />
+        <stop offset="0%" stopColor="#38bdf8" />
+        <stop offset="100%" stopColor="#60a5fa" />
       </linearGradient>
       <linearGradient id="lens-brand-area" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stopColor={CHART_COLORS.blue} stopOpacity={0.18} />
-        <stop offset="100%" stopColor={CHART_COLORS.teal} stopOpacity={0.02} />
+        <stop offset="0%" stopColor="#38bdf8" stopOpacity={0.18} />
+        <stop offset="100%" stopColor="#60a5fa" stopOpacity={0.02} />
       </linearGradient>
     </defs>
   )

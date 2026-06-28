@@ -119,10 +119,6 @@ export function Analysis() {
                 </Panel>
               </div>
 
-              {/* Gradient hairline separates the Caution Score zone from the
-                  projection content below (styling.md §Gradient Hairlines). */}
-              <hr className="gradient-hairline" />
-
               {/* Monte Carlo */}
               <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
                 <Panel>

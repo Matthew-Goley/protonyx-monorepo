@@ -161,7 +161,7 @@ Palette (dark theme, Sora font). The app's token names predate styling.md, so th
 |---|---|
 | Surfaces | `base #111318` (bg-base), `card #1a1d24` (bg-surface), `card-hover #21242d` (bg-elevated), `sidebar #111318`, `subtle #2a2d35` (border) |
 | Text | `primary #f0f2f5`, `secondary #8b90a0` (labels/timestamps/helper copy), `muted #4a4f5e` (= spec text-tertiary; disabled/placeholder only) |
-| Brand/semantic | `accent-teal #14b8a6` (brand teal), `accent-blue #38bdf8` (brand sky), `accent-green #3ecf8e` (gain), `accent-red #f16b6b` (loss), `accent-yellow`/`accent-orange #f5a623` (caution — the spec has no orange) |
+| Brand/semantic | `accent-teal #4cb1f9` (interactive accent / selection — a solid mid-tone of the brand gradient; **token name is legacy**, the accent is now blue not teal), `accent-blue #38bdf8` (brand gradient start), `accent-green #3ecf8e` (gain), `accent-red #f16b6b` (loss), `accent-yellow`/`accent-orange #f5a623` (caution — the spec has no orange) |
 
 Note the **text-role rule**: helper copy, timestamps, footnotes and form labels use `text-secondary`; `text-muted` is reserved for disabled/placeholder/empty (`--`). Don't use `text-muted` for captions.
 
@@ -171,15 +171,15 @@ There is also a set of **semantic aliases** (`background`, `foreground`, `border
 
 **Spacing**: 8px base, every gap a multiple. Card padding 24px (`p-6`, baked into `Panel`), section gaps 32px (`space-y-8`), grid gutters 24px (`gap-6`), max content width `1280px` centered (set in `AppShell`). `--space-1..6` are exposed in `:root` for raw CSS.
 
-**Gradient discipline (hard rule):** the brand gradient `linear-gradient(135deg, #14b8a6 0%, #38bdf8 100%)` appears in only these places — (1) the Caution Score gauge arc + 56px value, (2) the primary CTA button fill (`button` `gradient` variant), (3) gradient hairline separators, (4) the active sidebar nav indicator. Charts additionally use it as an SVG line/area stroke per the styling.md §Charts spec. Helpers `.text-gradient` / `.bg-gradient-brand` are defined in `index.css`; do not add gradient anywhere else (no gradient badges, progress bars, step dots, success circles — those were removed).
+**Gradient discipline (hard rule):** the brand gradient `linear-gradient(135deg, #38bdf8 0%, #60a5fa 100%)` appears in only these places — (1) the Caution Score gauge arc + 56px value, (2) the primary CTA button fill (`button` `gradient` variant), (3) gradient hairline separators, (4) the active sidebar nav indicator. Charts additionally use it as an SVG line/area stroke per the styling.md §Charts spec. Helpers `.text-gradient` / `.bg-gradient-brand` are defined in `index.css`; do not add gradient anywhere else (no gradient badges, progress bars, step dots, success circles — those were removed).
 
-**Signature elements** (in `index.css`): `.tick-grid-bg` (sparse `+` crosshair SVG, applied to the `AppShell` root canvas only — never cards/modals/sidebar; do not raise its contrast) and `.gradient-hairline` (1px horizontal rule fading to transparent at both ends, layout separators only, max 2 per screen — currently one on the Analysis page under the Caution Score zone, plus the sidebar's vertical active-nav bar).
+**Signature elements** (in `index.css`): `.tick-grid-bg` (sparse `+` crosshair SVG, applied to the `AppShell` root canvas only — never cards/modals/sidebar; do not raise its contrast) and `.gradient-hairline` (1px horizontal rule fading to transparent at both ends, layout separators only, max 2 per screen — currently used on the Commodity page's About panel, plus the sidebar's vertical active-nav bar).
 
 **Motion** (`index.css`): default interactive transition is `200ms ease-out` (never ease-in); `.page-fade` (opacity 0->1, 150ms) wraps the `AppShell` content and the standalone Login/Onboard/Success pages; `.caution-arc` sweeps the gauge 0->value once on load (600ms `cubic-bezier(0.16,1,0.3,1)`) — the only load animation. **No skeleton pulse** — loading blocks are static dim (`opacity-60`) surfaces.
 
 **Cards/tables**: `Panel` is the standard card (bg-surface, 1px subtle border, `rounded-lg` = 8px, `p-6`, **no shadow** — depth comes from the surface lift over the tick grid). No `border-radius` above 8px on data cards (controls use 6px `rounded-md`). Tables/list-rows: 13px/500 uppercase secondary headers, row `hover:bg-card-hover`, no zebra striping; charts have horizontal grid lines only (`vertical={false}`), transparent background, 11px tertiary axis labels.
 
-Use the tokens; do not hardcode hex values in components (the one acceptable exception is recharts `stroke`/`fill`/`stopColor`/gradient-stop props, which take literal colors — match the brand/semantic hexes `#14b8a6`, `#38bdf8`, `#3ecf8e`, `#f16b6b`, `#2a2d35`, `#4a4f5e`).
+Use the tokens; do not hardcode hex values in components (the one acceptable exception is recharts `stroke`/`fill`/`stopColor`/gradient-stop props, which take literal colors — match the brand/semantic hexes `#38bdf8`, `#60a5fa`, `#3ecf8e`, `#f16b6b`, `#2a2d35`, `#4a4f5e`).
 
 ### Brand / logo assets
 

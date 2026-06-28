@@ -13,8 +13,8 @@
     --color-primary     = spec text-primary   #f0f2f5
     --color-secondary   = spec text-secondary #8b90a0
     --color-muted       = spec text-tertiary  #4a4f5e
-    --color-accent-teal = spec brand-teal     #14b8a6
-    --color-accent-blue = spec brand-sky      #38bdf8
+    --color-accent-teal = interactive accent  #4cb1f9  (legacy name; blue, not teal)
+    --color-accent-blue = spec brand-sky      #38bdf8  (brand gradient start)
     --color-accent-green= spec gain           #3ecf8e
     --color-accent-red  = spec loss           #f16b6b
     --color-accent-yellow/orange = spec caution #f5a623 (spec has no orange)
@@ -33,7 +33,11 @@
   --color-muted: #4a4f5e;
 
   /* Brand + semantic — DO NOT CHANGE THESE VALUES (styling.md) */
-  --color-accent-teal: #14b8a6;   /* brand teal */
+  /* Interactive accent / selection color: a solid mid-tone of the brand gradient
+     (#38bdf8 -> #60a5fa) for flat text/border/fill highlights where a gradient
+     can't render. The token name `accent-teal` is legacy (the old brand was teal
+     #14b8a6); the accent is now blue. */
+  --color-accent-teal: #4cb1f9;
   --color-accent-blue: #38bdf8;   /* brand sky */
   --color-accent-green: #3ecf8e;  /* gain */
   --color-accent-red: #f16b6b;    /* loss */
@@ -41,8 +45,8 @@
   --color-accent-orange: #f5a623; /* caution (no separate orange in the spec) */
 
   /* Spec-named aliases (identical values) so the styling.md names also resolve */
-  --color-brand-teal: #14b8a6;
-  --color-brand-sky: #38bdf8;
+  --color-brand-sky: #38bdf8;   /* brand gradient start */
+  --color-brand-blue: #60a5fa;  /* brand gradient end */
   --color-gain: #3ecf8e;
   --color-loss: #f16b6b;
   --color-caution: #f5a623;
@@ -53,7 +57,7 @@
   --color-card-foreground: #f0f2f5;
   --color-border: #2a2d35;
   --color-input: #2a2d35;
-  --color-ring: #14b8a6;
+  --color-ring: #4cb1f9;
   --color-destructive: #f16b6b;
   --color-destructive-foreground: #f0f2f5;
   --color-muted-foreground: #8b90a0;
@@ -108,17 +112,17 @@
 }
 
 /* Brand gradient helpers (background-clip needs real CSS, not a utility).
-   Canonical brand blue gradient is #14b8a6 -> #38bdf8 (135deg). Per styling.md
-   the gradient is reserved for: the Caution Score (arc + value), the primary CTA
+   Canonical brand gradient is #38bdf8 -> #60a5fa (135deg). Per styling.md the
+   gradient is reserved for: the Caution Score (arc + value), the primary CTA
    fill, gradient hairlines, and the active sidebar nav indicator. Nowhere else. */
 .text-gradient {
-  background: linear-gradient(135deg, #14b8a6 0%, #38bdf8 100%);
+  background: linear-gradient(135deg, #38bdf8 0%, #60a5fa 100%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
 }
 .bg-gradient-brand {
-  background-image: linear-gradient(135deg, #14b8a6 0%, #38bdf8 100%);
+  background-image: linear-gradient(135deg, #38bdf8 0%, #60a5fa 100%);
 }
 
 /* Signature element: tick-mark grid. Root dashboard canvas ONLY — never on
@@ -140,8 +144,8 @@
   background: linear-gradient(
     90deg,
     transparent 0%,
-    #14b8a6 20%,
-    #38bdf8 80%,
+    #38bdf8 20%,
+    #60a5fa 80%,
     transparent 100%
   );
 }
