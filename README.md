@@ -1,52 +1,32 @@
-# Protonyx
+<div align="center">
 
-Internal development repository for Protonyx — a fintech company built around institutional-grade portfolio analytics for retail investors. This repo contains the full stack: backend API, web frontend, and the Vector desktop application.
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="frontend/assets/company/protonyx_full_white.png">
+  <source media="(prefers-color-scheme: light)" srcset="frontend/assets/company/protonyx_full_black.png">
+  <img alt="Protonyx" src="frontend/assets/company/protonyx_full_black.png" width="420">
+</picture>
 
----
+<br>
+<br>
 
-## What We're Building
+**Institutional-grade portfolio analytics for retail investors.**
 
-**Vector** is the first Protonyx product — a downloadable desktop application that gives retail investors access to portfolio analysis tools typically reserved for institutional players. It runs a proprietary internal engine called Lens that generates personalized portfolio insights.
+[protonyxdata.com](https://protonyxdata.com)
 
-This repository is the development workspace for the entire platform — backend infrastructure, the marketing and account frontend, and the Vector app itself all live here and share a single API.
-
----
-
-## Repo Structure
-
-```
-protonyx/
-├── backend/       # Fastify + TypeScript REST API
-├── frontend/      # Web dashboard and marketing site
-├── app/           # Vector desktop app (PyQt6)
-├── scripts/       # Admin and database utility scripts
-├── database/      # Local development database
-└── .env           # Local secrets — never committed
-```
+</div>
 
 ---
 
-## Backend
+## What this is
 
-The backend is a Fastify + TypeScript API handling authentication, data persistence, and business logic for both the web frontend and the Vector desktop app.
+Protonyx is an early-stage fintech building portfolio analytics that have traditionally been reserved for institutions, and putting them in the hands of everyday investors.
 
-**Stack:** Fastify, TypeScript, PostgreSQL, bcrypt, JWT, dotenv
+This is the monorepo for the platform. Several independent services live here and share a single user database.
 
-**To run locally:**
-```bash
-cd backend
-npm install
-npm run dev
-```
+## Why it exists
 
-Requires a `.env` file in `backend/` with:
-```
-JWT_SECRET=your-secret-here
-DATABASE_URL=your-postgres-url-here
-```
-
----
+Retail investors rarely get a clear, honest read on what their portfolio is actually doing, or what to do next. Protonyx closes that gap with a proprietary analytics engine, **Lens**, that turns a list of holdings into plain-language insight and concrete next steps.
 
 ## Status
 
-This project is in active early development. Frontend and app documentation will be added as those components mature.
+Actively in development. This repository is private and internal.
