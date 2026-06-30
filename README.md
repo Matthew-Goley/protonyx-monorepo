@@ -9,7 +9,7 @@
 <br>
 <br>
 
-**Institutional-grade portfolio analytics for retail investors.**
+**Actionable Insight for Everyone.**
 
 [protonyxdata.com](https://protonyxdata.com)
 
@@ -19,7 +19,7 @@
 
 ## What this is
 
-Protonyx is an early-stage fintech building portfolio analytics that have traditionally been reserved for institutions, and putting them in the hands of everyday investors.
+Protonyx is an seed-stage fintech building portfolio analytics that bring meaning to data, in a crossroad between precision and simplicity, allowing everyday individuals to have the clarity and direction needed for smart investments.
 
 This is the monorepo for the platform. Several independent services live here and share a single user database.
 
@@ -29,4 +29,4 @@ Retail investors rarely get a clear, honest read on what their portfolio is actu
 
 ## Status
 
-Actively in development. This repository is private and internal.
+Actively in development.
