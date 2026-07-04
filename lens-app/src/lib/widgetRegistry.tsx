@@ -55,13 +55,14 @@ export interface WidgetRegistryEntry {
   lockHeight?: boolean
 }
 
-// Registry order == default dashboard order (fed to the first-fit packer). The
-// top band tiles cleanly to 12; later groupings overflow 12, so the first-fit
-// packer wraps those widgets onto their own rows rather than tiling clean bands:
-//   position-actions (2) | lens-brief (7) | caution (3)   = 12
-//   total-equity (6) | composition (6)
-//   positions (5) | portfolio-momentum (3) | sharpe (3) | beta (3)
-//   dividend-calendar (4)
+// Registry order == default dashboard order (fed to the first-fit packer over the
+// defaultVisible widgets). The default layout tiles cleanly into three 12-wide
+// rows:
+//   position-actions (2) | lens-brief (7) | caution (3)        = 12
+//   total-equity (6) | composition (6)                          = 12
+//   positions (5) | portfolio-momentum (3) | dividend-calendar (4) = 12
+// sharpe and beta are defaultVisible:false (deliberately not in the default
+// layout) but remain in the registry so they can be added from the Add menu.
 export const WIDGET_REGISTRY: WidgetRegistryEntry[] = [
   {
     id: 'position-actions',
@@ -108,7 +109,7 @@ export const WIDGET_REGISTRY: WidgetRegistryEntry[] = [
     defaultSpan: { w: 3, h: 2 },
     minSpan: { w: 3, h: 3 },
     maxSpan: { w: 4, h: 4 },
-    defaultVisible: true,
+    defaultVisible: false, // not in the default layout; still addable from the Add menu
   },
   {
     id: 'composition',
@@ -144,16 +145,17 @@ export const WIDGET_REGISTRY: WidgetRegistryEntry[] = [
     defaultSpan: { w: 3, h: 2 },
     minSpan: { w: 3, h: 3 },
     maxSpan: { w: 4, h: 4 },
-    defaultVisible: true,
+    defaultVisible: false, // not in the default layout; still addable from the Add menu
   },
   {
     id: 'dividend-calendar',
     title: 'Dividend Calendar',
     render: (r) => <DividendCalendarWidget result={r} />,
-    defaultSpan: { w: 4, h: 2 },
+    defaultSpan: { w: 4, h: 4 },
     minSpan: { w: 4, h: 3 },
-    maxSpan: { w: 8, h: 4 },
+    maxSpan: { w: 8, h: 6 },
     defaultVisible: true,
+    lockHeight: true, // fixed 4 rows so it matches Positions / Portfolio Momentum; list scrolls
   },
 ]
 

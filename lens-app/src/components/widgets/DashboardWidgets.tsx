@@ -432,20 +432,24 @@ export function DividendCalendarWidget({ result }: { result: LensResult }) {
   const rows = dividendRows(result)
 
   return (
-    <Panel>
+    // lockHeight (registry) pins this to exactly 4 rows = the same height as
+    // Positions / Portfolio Momentum, so it fills its cell and scrolls the list.
+    <Panel className="flex h-full flex-col overflow-hidden">
       <WidgetHeader title="Dividend Calendar" right="estimated" />
       {rows.length === 0 ? (
         <p className="text-sm text-secondary">No upcoming dividends detected.</p>
       ) : (
         <>
-          <div className={`grid grid-cols-[0.7fr_0.8fr_1fr_1fr_0.8fr] gap-2 border-b border-subtle pb-2 ${TH}`}>
+          <div className={`grid grid-cols-[0.7fr_0.8fr_1fr_1fr_0.8fr] gap-2 border-b border-subtle pb-2 px-2 ${TH}`}>
             <span>Due</span>
             <span>Ticker</span>
             <span>Est. Date</span>
             <span>Frequency</span>
             <span className="text-right">Per Share</span>
           </div>
-          <div className="divide-y divide-subtle">
+          {/* Fills the remaining locked height and scrolls when there are more
+              dividends than fit. */}
+          <div className="min-h-0 flex-1 divide-y divide-subtle overflow-y-auto overflow-x-hidden px-2">
             {rows.map((row) => (
               <div
                 key={row.ticker}
