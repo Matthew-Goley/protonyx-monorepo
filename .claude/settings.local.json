@@ -20,5 +20,19 @@
       "Bash(node -e \"const p=require\\('./backend/package.json'\\); console.log\\(JSON.stringify\\(p.scripts,null,2\\)\\); console.log\\('better-sqlite3:', !!\\(p.dependencies&&p.dependencies['better-sqlite3']\\)||!!\\(p.devDependencies&&p.devDependencies['better-sqlite3']\\)\\)\")",
       "Bash(echo \"exit:$?\")"
     ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "line=$(grep -oE '\"file_path\" *: *\"[^\"]*\"' | head -n1); f=$(printf '%s' \"$line\" | sed -E 's/.*: *\"//; s/\"$//'); case \"$f\" in \"\"|*CLAUDE.md|*.md|*scratchpad*|*node_modules*) : ;; *) printf '{\"hookSpecificOutput\":{\"hookEventName\":\"PostToolUse\",\"additionalContext\":\"Reminder: if this edit changed documented behavior (routes, columns, widgets, env vars, conventions, versions, file layout), update the relevant CLAUDE.md in the same change.\"}}\\n' ;; esac",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
   }
 }

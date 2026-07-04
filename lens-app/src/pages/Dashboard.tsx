@@ -8,19 +8,11 @@ import { getPositions } from '@/lib/cookies'
 import { AppShell } from '@/components/layout/AppShell'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { PositionActions } from '@/components/dashboard/PositionActions'
+import { WidgetGrid } from '@/components/dashboard/WidgetGrid'
 import { Panel, CardLabel } from '@/components/common/Panel'
 import { BriefText } from '@/components/common/BriefText'
 import { UpgradePrompt } from '@/components/common/UpgradePrompt'
 import { Button } from '@/components/ui/button'
-import {
-  PortfolioVectorWidget,
-  PositionsWidget,
-  TotalEquityWidget,
-  SharpeWidget,
-  CompositionWidget,
-  BetaWidget,
-  DividendCalendarWidget,
-} from '@/components/widgets/DashboardWidgets'
 
 // No pulse animation (styling.md §Motion) — a static dim surface block.
 function Skeleton({ className }: { className?: string }) {
@@ -121,18 +113,9 @@ export function Dashboard() {
             </Panel>
           </div>
 
-          {/* Widget grid */}
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-            <PortfolioVectorWidget result={result} />
-            <PositionsWidget result={result} />
-            <TotalEquityWidget result={result} />
-            <SharpeWidget result={result} />
-            <CompositionWidget result={result} />
-            <BetaWidget result={result} />
-            <div className="lg:col-span-2">
-              <DividendCalendarWidget result={result} />
-            </div>
-          </div>
+          {/* Data-driven widget grid (registry + layout cookie). Static
+              placement for now; drag/edit mode is a later phase. */}
+          <WidgetGrid result={result} />
         </div>
       )}
     </AppShell>

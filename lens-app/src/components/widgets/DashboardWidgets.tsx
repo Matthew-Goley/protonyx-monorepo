@@ -54,6 +54,10 @@ const TH = 'text-[13px] font-medium uppercase tracking-[0.01em] text-secondary'
 // it here so the Dashboard's single widget import keeps working.
 export { PortfolioVectorWidget } from './PortfolioVector'
 
+// Caution Score (flagship differentiator) lives in its own file; re-exported here
+// so the Dashboard imports every widget from one place.
+export { CautionScoreWidget } from './CautionScoreWidget'
+
 // ---------------------------------------------------------------------------
 // Positions
 // ---------------------------------------------------------------------------
