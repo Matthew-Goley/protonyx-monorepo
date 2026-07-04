@@ -12,12 +12,11 @@ import { type LensResult } from '@/api/lens'
 import {
   GRID_COLUMNS,
   GRID_GAP,
-  compact,
   fitSpan,
-  moveElement,
   placeNew,
   placeWidgets,
   removeWidget,
+  tryMoveElement,
   widgetPxWidth,
   type LayoutItem,
 } from '@/lib/widgetLayout'
@@ -35,16 +34,18 @@ import { cn } from '@/lib/utils'
   two-pass render measures each widget's real height and packs square cells;
   h is ALWAYS measured, never trusted from persistence. The lens_layout cookie
   is authoritative for PLACEMENT (x, y, w) only - on load a saved layout is
-  rebuilt with freshly measured h and compact()ed to absorb any height drift; if
-  there is no saved layout the default first-fit pack runs (unchanged behavior).
+  rebuilt with freshly measured h at its exact saved position; if there is no
+  saved layout the default first-fit pack runs (unchanged behavior).
 
   EDIT MODE (opt-in via the header Pencil): each card becomes a whole-card drag
-  handle (native Pointer Events, no dependency) with auto-reflow, plus a remove
-  (X) control; widgets can be added from the header Add menu. Every mutation runs
-  the pure reflow engine (moveElement / placeNew / removeWidget in widgetLayout),
-  commits to state, and persists {x, y, w} to the cookie. No resize this phase
-  (w stays the registry value). All affordances exist ONLY in edit mode; a user
-  who never enables it sees zero change.
+  handle (native Pointer Events, no dependency), plus a remove (X) control;
+  widgets can be added from the header Add menu. Placement is MANUAL and
+  NON-DISPLACING - no widget ever moves to make room for another. A drag only
+  commits when the destination is open (tryMoveElement); dropping over another
+  widget snaps back. Add drops into the first free slot; delete leaves a gap.
+  Every mutation commits to state and persists {x, y, w} to the cookie. No
+  resize this phase (w stays the registry value). All affordances exist ONLY in
+  edit mode; a user who never enables it sees zero change.
 */
 
 const DRAG_THRESHOLD = 4 // px of movement before a pointerdown counts as a drag
@@ -83,24 +84,36 @@ export function WidgetGrid({ result }: { result: LensResult }) {
     sy: number
     moved: boolean
   } | null>(null)
-  const [drag, setDrag] = useState<{ id: string; tx: number; ty: number; preview: LayoutItem[] } | null>(null)
+  // `valid` is whether the current drop target is open; `next` is the layout to
+  // commit on release (null when the target overlaps another widget -> snap back).
+  const [drag, setDrag] = useState<{
+    id: string
+    tx: number
+    ty: number
+    valid: boolean
+    next: LayoutItem[] | null
+  } | null>(null)
 
-  // Measured row span for a widget: floor vs. its measured pixel height.
+  // Measured row span for a widget: floor vs. its measured pixel height. A
+  // lockHeight widget ignores measurement and uses its defaultSpan.h verbatim, so
+  // it never grows a row regardless of content (it handles its own overflow).
   const measuredH = useCallback(
     (id: string): number => {
       const entry = getWidget(id)
       if (!entry) return 0
+      if (entry.lockHeight) return entry.defaultSpan.h
       return fitSpan(entry.defaultSpan.h, measuredRef.current[id] ?? 0, cellSize, GRID_GAP)
     },
     [cellSize],
   )
 
-  // Build the layout from the saved placement (+ fresh measured h + compact) or,
-  // absent a save, the default first-fit pack.
+  // Build the layout from the saved placement (exact x/y/w + fresh measured h)
+  // or, absent a save, the default first-fit pack. No compaction: a saved
+  // arrangement is restored precisely where the user left it.
   const buildLayout = useCallback((): LayoutItem[] => {
     const saved = readSavedLayout()
     if (saved) {
-      const working = saved
+      return saved
         .filter((s) => getWidget(s.widgetId))
         .map((s) => ({
           widgetId: s.widgetId,
@@ -109,7 +122,6 @@ export function WidgetGrid({ result }: { result: LensResult }) {
           w: getWidget(s.widgetId)!.defaultSpan.w, // width is always the registry value
           h: measuredH(s.widgetId),
         }))
-      return compact(working)
     }
     const footprints = WIDGET_REGISTRY.filter((w) => w.defaultVisible).map((w) => ({
       widgetId: w.id,
@@ -129,7 +141,13 @@ export function WidgetGrid({ result }: { result: LensResult }) {
       map[w.id] = el ? el.getBoundingClientRect().height : 0
     }
     measuredRef.current = map
-    setLayoutState(buildLayout())
+    const hadSaved = readSavedLayout() !== null
+    const built = buildLayout()
+    setLayoutState(built)
+    // Persist the freshly computed default so the last layout is always the
+    // current one - the next load restores {x, y, w} from the cookie instead of
+    // recomputing a default (edits already persist via commit(); Reset clears it).
+    if (!hadSaved) writeSavedLayout(built)
   }, [cellSize, result, buildLayout])
 
   // Commit an edited layout: update state and persist {x, y, w}.
@@ -171,6 +189,7 @@ export function WidgetGrid({ result }: { result: LensResult }) {
   useEffect(() => {
     if (!import.meta.env.DEV || !layout) return
     for (const item of layout) {
+      if (getWidget(item.widgetId)?.lockHeight) continue // locked widgets scroll their own overflow
       const el = measureRefs.current.get(item.widgetId)
       const contentPx = el ? el.getBoundingClientRect().height : 0
       const cellPx = item.h * cellSize + (item.h - 1) * GRID_GAP
@@ -228,14 +247,19 @@ export function WidgetGrid({ result }: { result: LensResult }) {
     const cardTop = e.clientY - d.gy
     const col = Math.max(0, Math.min(Math.round((cardLeft - rect.left) / step), GRID_COLUMNS - item.w))
     const row = Math.max(0, Math.round((cardTop - rect.top) / step))
-    setDrag({ id: d.id, tx, ty, preview: moveElement(d.snapshot, d.id, col, row) })
+    // Non-displacing: the move only lands on open space. tryMoveElement returns
+    // null when the target overlaps another widget -> invalid drop (snap back).
+    const next = tryMoveElement(d.snapshot, d.id, col, row)
+    setDrag({ id: d.id, tx, ty, valid: next !== null, next })
   }
 
   function onPointerUp(e: ReactPointerEvent<HTMLDivElement>) {
     const d = dragStartRef.current
     dragStartRef.current = null
     if (e.currentTarget.hasPointerCapture?.(e.pointerId)) e.currentTarget.releasePointerCapture(e.pointerId)
-    if (d?.moved && drag) commit(drag.preview) // no movement past threshold -> treat as a click, no-op
+    // Commit only a real move onto open space; a sub-threshold move (click) or a
+    // drop over another widget (drag.next === null) leaves the layout untouched.
+    if (d?.moved && drag?.valid && drag.next) commit(drag.next)
     setDrag(null)
   }
 
@@ -245,8 +269,10 @@ export function WidgetGrid({ result }: { result: LensResult }) {
   }
 
   // --- render ---
+  // Other widgets never move (no reflow), so the grid always renders the
+  // committed layout; only the dragged card translates to follow the pointer.
   const active = drag
-  const items = active ? active.preview : (layout ?? [])
+  const items = layout ?? []
 
   return (
     <div ref={ref} className="relative w-full">
@@ -310,6 +336,8 @@ export function WidgetGrid({ result }: { result: LensResult }) {
                   'relative h-full w-full',
                   editMode && 'cursor-grab select-none rounded-lg ring-1 ring-accent-teal/40 transition-transform duration-200 ease-out',
                   isDragged && 'cursor-grabbing shadow-lg shadow-black/40',
+                  // Invalid drop target (over another widget): flag it red.
+                  isDragged && active && !active.valid && 'ring-2 ring-accent-red',
                 )}
               >
                 <div className={cn('h-full w-full [&>*]:h-full', editMode && 'pointer-events-none select-none')}>

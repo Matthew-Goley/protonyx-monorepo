@@ -2,15 +2,17 @@ import { useState } from 'react'
 import { Plus, SlidersHorizontal, Pencil, Trash2, X, Check } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Panel } from '@/components/common/Panel'
 import { AddPositionModal } from '@/components/common/AddPositionModal'
 import { formatCurrency } from '@/lib/lensData'
-import { type PositionsManager } from '@/hooks/usePositionsManager'
+import { usePositionsManagerContext } from '@/contexts/PositionsManagerContext'
 
 /*
-  Compact vertical action box for the dashboard, sitting to the left of the Lens
-  Brief: a big + (add a position, opens AddPositionModal) and a Manage button
-  (opens a slide-over drawer for editing/deleting holdings). No labels — just the
-  two controls.
+  Position Actions dashboard widget: a big + (add a position, opens
+  AddPositionModal) and a Manage button (opens a slide-over drawer for
+  editing/deleting holdings). Two stacked controls that fill the grid cell. The
+  holdings manager comes from PositionsManagerContext (created in DashboardBody).
+  Placeholder content for now - the real widget contents are TBD.
 */
 
 // Inline shares editor (number field + confirm/cancel), used inside the drawer.
@@ -53,37 +55,23 @@ function SharesEditor({
   )
 }
 
-export function PositionActions({
-  positions,
-  addPosition,
-  removePosition,
-  updateShares,
-  size,
-}: PositionsManager & { size: number }) {
+export function PositionActionsWidget() {
+  const { positions, addPosition, removePosition, updateShares } = usePositionsManagerContext()
   const [addOpen, setAddOpen] = useState(false)
   const [drawer, setDrawer] = useState(false)
   const [editing, setEditing] = useState<string | null>(null)
 
-  // Square side for each of the two stacked buttons: the container height (`size`)
-  // minus the p-4 padding (16 top + 16 bottom) and the gap-4 between them (16),
-  // split in half. Keep 48 in sync with the p-4 / gap-4 classes below.
-  const buttonSide = (size - 48) / 2
-
   return (
     <>
-      {/* Two square buttons stacked → the container is a 1x2 (tall) rectangle.
-          Container height = `size` (matches the Lens Brief). */}
-      <div
-        style={{ height: size }}
-        className="flex shrink-0 flex-col items-center gap-4 self-start rounded-lg border border-subtle bg-card p-4"
-      >
+      {/* Two stacked controls filling the 2x3 grid cell. Content is a placeholder
+          for now (add + manage); the real widget layout is TBD. */}
+      <Panel className="flex h-full w-full flex-col gap-4 p-4">
         <button
           type="button"
           onClick={() => setAddOpen(true)}
           aria-label="Add position"
           title="Add position"
-          style={{ width: buttonSide, height: buttonSide }}
-          className="bg-gradient-brand flex items-center justify-center rounded-xl text-[#0a0d12] transition-transform duration-200 ease-out hover:scale-[1.03]"
+          className="bg-gradient-brand flex flex-1 items-center justify-center rounded-xl text-[#0a0d12] transition-transform duration-200 ease-out hover:scale-[1.03]"
         >
           <Plus size={32} />
         </button>
@@ -92,12 +80,11 @@ export function PositionActions({
           onClick={() => setDrawer(true)}
           aria-label="Manage holdings"
           title="Manage holdings"
-          style={{ width: buttonSide, height: buttonSide }}
-          className="flex items-center justify-center rounded-xl border border-subtle text-secondary transition-colors duration-200 ease-out hover:border-[#3a3f4e] hover:bg-card-hover hover:text-primary"
+          className="flex flex-1 items-center justify-center rounded-xl border border-subtle text-secondary transition-colors duration-200 ease-out hover:border-[#3a3f4e] hover:bg-card-hover hover:text-primary"
         >
           <SlidersHorizontal size={28} />
         </button>
-      </div>
+      </Panel>
 
       {addOpen && (
         <AddPositionModal onClose={() => setAddOpen(false)} onAdd={(p) => { addPosition(p); setAddOpen(false) }} />

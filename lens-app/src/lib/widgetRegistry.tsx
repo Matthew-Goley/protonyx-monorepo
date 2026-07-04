@@ -1,6 +1,8 @@
 import { type ReactElement } from 'react'
 import { type LensResult } from '@/api/lens'
 import {
+  PositionActionsWidget,
+  LensBriefWidget,
   CautionScoreWidget,
   TotalEquityWidget,
   SharpeWidget,
@@ -47,15 +49,40 @@ export interface WidgetRegistryEntry {
   minSpan?: WidgetSpan
   maxSpan?: WidgetSpan
   defaultVisible: boolean
+  // When true, defaultSpan.h is an EXACT locked height, not a floor: the grid
+  // uses it verbatim and skips the measure-raise, so the widget never grows a row
+  // no matter how tall its content is (the widget must handle its own overflow).
+  lockHeight?: boolean
 }
 
 // Registry order == default dashboard order (fed to the first-fit packer). The
-// widths below tile 12 columns into three full-width bands (each band's row
-// height is set by measurement, not the floors here):
-//   caution (3) | total-equity (6) | sharpe (3)
-//   composition (4) | positions (5) | portfolio-momentum (3)
-//   beta (3) | dividend-calendar (4)
+// top band tiles cleanly to 12; later groupings overflow 12, so the first-fit
+// packer wraps those widgets onto their own rows rather than tiling clean bands:
+//   position-actions (2) | lens-brief (7) | caution (3)   = 12
+//   total-equity (6) | composition (6)
+//   positions (5) | portfolio-momentum (3) | sharpe (3) | beta (3)
+//   dividend-calendar (4)
 export const WIDGET_REGISTRY: WidgetRegistryEntry[] = [
+  {
+    id: 'position-actions',
+    title: 'Position Actions',
+    render: () => <PositionActionsWidget />,
+    defaultSpan: { w: 2, h: 3 },
+    minSpan: { w: 2, h: 3 },
+    maxSpan: { w: 4, h: 6 },
+    defaultVisible: true,
+    lockHeight: true, // fixed 2x3 shape; content is a placeholder for now
+  },
+  {
+    id: 'lens-brief',
+    title: 'Lens Brief',
+    render: (r) => <LensBriefWidget result={r} />,
+    defaultSpan: { w: 7, h: 3 },
+    minSpan: { w: 4, h: 2 },
+    maxSpan: { w: 12, h: 6 },
+    defaultVisible: true,
+    lockHeight: true, // always exactly 3 rows tall; the widget scrolls its brief
+  },
   {
     id: 'caution-score',
     title: 'Caution Score',
@@ -87,7 +114,7 @@ export const WIDGET_REGISTRY: WidgetRegistryEntry[] = [
     id: 'composition',
     title: 'Composition',
     render: (r) => <CompositionWidget result={r} />,
-    defaultSpan: { w: 4, h: 3 },
+    defaultSpan: { w: 6, h: 3 },
     minSpan: { w: 4, h: 4 },
     maxSpan: { w: 6, h: 6 },
     defaultVisible: true,

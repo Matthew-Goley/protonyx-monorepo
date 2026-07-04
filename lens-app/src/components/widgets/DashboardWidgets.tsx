@@ -1,7 +1,10 @@
 import { useMemo, useState } from 'react'
-import { AlertTriangle } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { AlertTriangle, ChevronRight } from 'lucide-react'
 import { type LensResult } from '@/api/lens'
 import { Panel } from '@/components/common/Panel'
+import { BriefText } from '@/components/common/BriefText'
+import { Button } from '@/components/ui/button'
 import {
   EquityChart,
   CyclablePieChart,
@@ -57,6 +60,37 @@ export { PortfolioVectorWidget } from './PortfolioVector'
 // Caution Score (flagship differentiator) lives in its own file; re-exported here
 // so the Dashboard imports every widget from one place.
 export { CautionScoreWidget } from './CautionScoreWidget'
+
+// Position Actions (add / manage holdings) lives in the dashboard folder with its
+// modal + drawer; re-exported here so the registry imports every widget from one place.
+export { PositionActionsWidget } from '@/components/dashboard/PositionActions'
+
+// ---------------------------------------------------------------------------
+// Lens Brief
+// ---------------------------------------------------------------------------
+
+// The plain-English brief, now a first-class grid widget (was a fixed top-row
+// Panel). Flex column so the Analysis button pins to the bottom of whatever cell
+// height the grid gives it; overflow-visible so long briefs spill rather than clip.
+export function LensBriefWidget({ result }: { result: LensResult }) {
+  const navigate = useNavigate()
+  return (
+    // Height is locked to the cell (lockHeight in the registry), so the widget
+    // must contain its own content: overflow-hidden + a scrollable text area, with
+    // the Analysis button pinned below.
+    <Panel className="flex h-full flex-col overflow-hidden">
+      <WidgetHeader title="Lens Brief" />
+      <div className="min-h-0 min-w-0 flex-1 overflow-y-auto">
+        <BriefText result={result} className="text-base leading-[1.6] text-primary" />
+      </div>
+      <div className="flex justify-end pt-4">
+        <Button variant="teal" size="sm" onClick={() => navigate('/analysis')}>
+          Analysis <ChevronRight size={16} />
+        </Button>
+      </div>
+    </Panel>
+  )
+}
 
 // ---------------------------------------------------------------------------
 // Positions
@@ -220,7 +254,7 @@ export function TotalEquityWidget({ result }: { result: LensResult }) {
           timeframe={timeframe}
           color={chartColor}
           valueFormatter={formatCurrency}
-          height={128}
+          height={190}
         />
       </div>
     </Panel>
@@ -327,12 +361,14 @@ export function CompositionWidget({ result }: { result: LensResult }) {
           Concentrated in one sector
         </p>
       )}
-      {/* Cycle control lives under the legend list now, so the pie can run larger. */}
+      {/* Cycle control lives under the legend list now, so the pie can run larger.
+          Sized up to fill the wider 6-column card; `height` sets the legend-column
+          height, so raising it drops the cycle control further down the card. */}
       <CyclablePieChart
         views={views}
-        height={210}
-        size={96}
-        innerRadius={62}
+        height={300}
+        size={124}
+        innerRadius={80}
         index={viewIndex}
         onIndexChange={setViewIndex}
       />

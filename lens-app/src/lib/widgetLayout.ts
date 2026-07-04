@@ -1,13 +1,16 @@
 /*
-  Grid geometry + layout model + reflow engine for the dynamic dashboard grid.
+  Grid geometry + layout model for the dynamic dashboard grid.
 
   Two layers:
    - the base model: grid geometry, the first-fit packer (default placement),
      and the pure fit math that turns a measured pixel height into a row span.
-   - the reflow engine: pure, side-effect-free functions (collides / getColliders
-     / pushBelow / compact / moveElement / placeNew / removeWidget) that power
-     edit-mode drag-to-reposition, add, and delete with auto-reflow. They operate
-     on cloned layouts and never mutate React state in place.
+   - the edit-mode helpers: pure, side-effect-free functions (collides /
+     getColliders / tryMoveElement / placeNew / removeWidget) that power
+     drag-to-reposition, add, and delete. Placement is manual and
+     non-displacing: widgets never move to make room for one another. A move
+     only lands if its destination is free, and add/delete leave every other
+     widget exactly where it was. They operate on cloned layouts and never
+     mutate React state in place.
 
   Width (w) is always the registry value (no resize this phase). Height (h) is
   always MEASURED, never trusted from persistence, so content growth can never
@@ -105,11 +108,11 @@ export function fitSpan(floorH: number, contentPx: number, cellSize: number, gap
 }
 
 // ---------------------------------------------------------------------------
-// Reflow engine - pure functions for edit-mode drag / add / delete with
-// auto-reflow. Ported verbatim from a verified model (zero overlaps across
-// drag/add/delete). Every mutating function clones its input first and returns a
-// new array; the internal helpers mutate that clone in place. Identity is the
-// widgetId. COLS = GRID_COLUMNS throughout.
+// Edit-mode helpers - pure functions for drag / add / delete. Placement is
+// MANUAL and NON-DISPLACING: no widget ever moves to make room for another. A
+// move only lands if its destination is free; add finds the first free slot and
+// disturbs nothing; delete just leaves a gap. Every mutating function clones its
+// input first and returns a new array. Identity is the widgetId.
 // ---------------------------------------------------------------------------
 
 function cloneLayout(layout: LayoutItem[]): LayoutItem[] {
@@ -128,65 +131,29 @@ export function getColliders(layout: LayoutItem[], item: LayoutItem): LayoutItem
   return layout.filter((other) => other.widgetId !== item.widgetId && collides(item, other))
 }
 
-const byTopLeft = (a: LayoutItem, b: LayoutItem): number => a.y - b.y || a.x - b.x
-
-// Cascade: push every item colliding with `top` down to just below it, recursing
-// so the shove ripples through the stack, recomputing colliders after each push.
-// Terminates because each push strictly increases a y. Mutates the working copy.
-function pushBelow(layout: LayoutItem[], top: LayoutItem): void {
-  for (;;) {
-    const colliders = getColliders(layout, top).sort(byTopLeft)
-    if (colliders.length === 0) break
-    const first = colliders[0]
-    first.y = top.y + top.h
-    pushBelow(layout, first)
-  }
-}
-
-// Vertical-only compaction: pull each item (top-left order) up as far as it can
-// go without colliding. Deliberately no horizontal compaction. Mutates in place.
-function compactInPlace(layout: LayoutItem[]): void {
-  for (const item of [...layout].sort(byTopLeft)) {
-    while (item.y > 0) {
-      item.y -= 1
-      if (getColliders(layout, item).length > 0) {
-        item.y += 1
-        break
-      }
-    }
-  }
-}
-
-// Pure compaction (clones first). Run on load to absorb drift when a widget's
-// re-measured height changed (a widget that grew can't overlap the one below
-// because compaction re-resolves the stack).
-export function compact(layout: LayoutItem[]): LayoutItem[] {
-  const working = cloneLayout(layout)
-  compactInPlace(working)
-  return working
-}
-
-// Move `movingId` to (tx, ty) clamped in bounds, push whatever it lands on down,
-// then compact. Returns the new layout.
-export function moveElement(
+// Try to move `movingId` to (tx, ty) clamped in bounds. Returns the new layout
+// ONLY if the destination footprint is free (no other widget moves); returns
+// null when the target overlaps another widget, so the caller can reject the
+// drop and snap the widget back. This is the whole "no auto-reflow" rule: you
+// must move a widget into open space, never over another.
+export function tryMoveElement(
   layout: LayoutItem[],
   movingId: string,
   tx: number,
   ty: number,
   columns = GRID_COLUMNS,
-): LayoutItem[] {
+): LayoutItem[] | null {
   const working = cloneLayout(layout)
   const moving = working.find((i) => i.widgetId === movingId)
-  if (!moving) return working
+  if (!moving) return null
   moving.x = Math.max(0, Math.min(tx, columns - moving.w))
   moving.y = Math.max(0, ty)
-  pushBelow(working, moving)
-  compactInPlace(working)
+  if (getColliders(working, moving).length > 0) return null
   return working
 }
 
 // First-fit place a new item (scan y from 0, x left to right) at the first slot
-// with no colliders, then compact. Returns the new layout.
+// with no colliders. Nothing else moves. Returns the new layout.
 export function placeNew(
   layout: LayoutItem[],
   item: LayoutItem,
@@ -202,13 +169,11 @@ export function placeNew(
     }
   }
   working.push(candidate)
-  compactInPlace(working)
   return working
 }
 
-// Remove an item by id, then compact. Returns the new layout.
+// Remove an item by id. The gap it leaves stays open (no compaction). Returns
+// the new layout.
 export function removeWidget(layout: LayoutItem[], id: string): LayoutItem[] {
-  const working = cloneLayout(layout).filter((i) => i.widgetId !== id)
-  compactInPlace(working)
-  return working
+  return cloneLayout(layout).filter((i) => i.widgetId !== id)
 }
