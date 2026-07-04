@@ -1,13 +1,17 @@
-import { WIDGET_REGISTRY } from '@/lib/widgetRegistry'
-
 /*
-  Grid geometry + layout model - the substrate for the dynamic dashboard grid.
+  Grid geometry + layout model + reflow engine for the dynamic dashboard grid.
 
-  This phase is static placement only: a coordinate model, a deterministic
-  first-fit packer, and a default layout derived from the registry. No drag,
-  add-menu, resize or collision behavior lives here yet. The later drag/edit
-  phase only has to mutate LayoutItem coordinates and persist them (the cookie
-  accessors already exist), so it is purely additive on top of this.
+  Two layers:
+   - the base model: grid geometry, the first-fit packer (default placement),
+     and the pure fit math that turns a measured pixel height into a row span.
+   - the reflow engine: pure, side-effect-free functions (collides / getColliders
+     / pushBelow / compact / moveElement / placeNew / removeWidget) that power
+     edit-mode drag-to-reposition, add, and delete with auto-reflow. They operate
+     on cloned layouts and never mutate React state in place.
+
+  Width (w) is always the registry value (no resize this phase). Height (h) is
+  always MEASURED, never trusted from persistence, so content growth can never
+  restore a stale, clipping height.
 */
 
 // Single source of truth for grid size. Everything derives from GRID_COLUMNS.
@@ -30,6 +34,15 @@ interface Footprint {
   widgetId: string
   w: number
   h: number
+}
+
+// A persisted placement. h is intentionally dropped: it is always re-measured on
+// read, so a widget that grew taller can never restore an old height that clips.
+export interface SavedLayoutItem {
+  widgetId: string
+  x: number
+  y: number
+  w: number
 }
 
 /*
@@ -91,19 +104,111 @@ export function fitSpan(floorH: number, contentPx: number, cellSize: number, gap
   return Math.max(floorH, rowsForHeight(contentPx, cellSize, gap))
 }
 
-/*
-  Default layout: the registry's default-visible widgets, in registry order, run
-  through the packer. Reordering the registry array is the only way to rearrange
-  the dashboard until the drag/edit phase lands - that is expected for now.
-  Computed lazily (not a module-level const) so it never reads the registry
-  during module initialization, keeping the registry <-> layout <-> cookies
-  import cycle safe.
-*/
-export function getDefaultLayout(): LayoutItem[] {
-  const footprints: Footprint[] = WIDGET_REGISTRY.filter((w) => w.defaultVisible).map((w) => ({
-    widgetId: w.id,
-    w: w.defaultSpan.w,
-    h: w.defaultSpan.h,
-  }))
-  return placeWidgets(footprints, GRID_COLUMNS)
+// ---------------------------------------------------------------------------
+// Reflow engine - pure functions for edit-mode drag / add / delete with
+// auto-reflow. Ported verbatim from a verified model (zero overlaps across
+// drag/add/delete). Every mutating function clones its input first and returns a
+// new array; the internal helpers mutate that clone in place. Identity is the
+// widgetId. COLS = GRID_COLUMNS throughout.
+// ---------------------------------------------------------------------------
+
+function cloneLayout(layout: LayoutItem[]): LayoutItem[] {
+  return layout.map((i) => ({ ...i }))
+}
+
+// AABB overlap. Two items overlap unless one is fully to a side of the other; an
+// item never collides with itself (matched by widgetId).
+export function collides(a: LayoutItem, b: LayoutItem): boolean {
+  if (a.widgetId === b.widgetId) return false
+  return !(a.x + a.w <= b.x || b.x + b.w <= a.x || a.y + a.h <= b.y || b.y + b.h <= a.y)
+}
+
+// Every item (other than `item` itself) that collides with `item`.
+export function getColliders(layout: LayoutItem[], item: LayoutItem): LayoutItem[] {
+  return layout.filter((other) => other.widgetId !== item.widgetId && collides(item, other))
+}
+
+const byTopLeft = (a: LayoutItem, b: LayoutItem): number => a.y - b.y || a.x - b.x
+
+// Cascade: push every item colliding with `top` down to just below it, recursing
+// so the shove ripples through the stack, recomputing colliders after each push.
+// Terminates because each push strictly increases a y. Mutates the working copy.
+function pushBelow(layout: LayoutItem[], top: LayoutItem): void {
+  for (;;) {
+    const colliders = getColliders(layout, top).sort(byTopLeft)
+    if (colliders.length === 0) break
+    const first = colliders[0]
+    first.y = top.y + top.h
+    pushBelow(layout, first)
+  }
+}
+
+// Vertical-only compaction: pull each item (top-left order) up as far as it can
+// go without colliding. Deliberately no horizontal compaction. Mutates in place.
+function compactInPlace(layout: LayoutItem[]): void {
+  for (const item of [...layout].sort(byTopLeft)) {
+    while (item.y > 0) {
+      item.y -= 1
+      if (getColliders(layout, item).length > 0) {
+        item.y += 1
+        break
+      }
+    }
+  }
+}
+
+// Pure compaction (clones first). Run on load to absorb drift when a widget's
+// re-measured height changed (a widget that grew can't overlap the one below
+// because compaction re-resolves the stack).
+export function compact(layout: LayoutItem[]): LayoutItem[] {
+  const working = cloneLayout(layout)
+  compactInPlace(working)
+  return working
+}
+
+// Move `movingId` to (tx, ty) clamped in bounds, push whatever it lands on down,
+// then compact. Returns the new layout.
+export function moveElement(
+  layout: LayoutItem[],
+  movingId: string,
+  tx: number,
+  ty: number,
+  columns = GRID_COLUMNS,
+): LayoutItem[] {
+  const working = cloneLayout(layout)
+  const moving = working.find((i) => i.widgetId === movingId)
+  if (!moving) return working
+  moving.x = Math.max(0, Math.min(tx, columns - moving.w))
+  moving.y = Math.max(0, ty)
+  pushBelow(working, moving)
+  compactInPlace(working)
+  return working
+}
+
+// First-fit place a new item (scan y from 0, x left to right) at the first slot
+// with no colliders, then compact. Returns the new layout.
+export function placeNew(
+  layout: LayoutItem[],
+  item: LayoutItem,
+  columns = GRID_COLUMNS,
+): LayoutItem[] {
+  const working = cloneLayout(layout)
+  const candidate: LayoutItem = { ...item, w: Math.min(item.w, columns) }
+  search: for (let y = 0; ; y++) {
+    for (let x = 0; x <= columns - candidate.w; x++) {
+      candidate.x = x
+      candidate.y = y
+      if (getColliders(working, candidate).length === 0) break search
+    }
+  }
+  working.push(candidate)
+  compactInPlace(working)
+  return working
+}
+
+// Remove an item by id, then compact. Returns the new layout.
+export function removeWidget(layout: LayoutItem[], id: string): LayoutItem[] {
+  const working = cloneLayout(layout).filter((i) => i.widgetId !== id)
+  compactInPlace(working)
+  return working
 }

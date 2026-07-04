@@ -1,50 +1,56 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type PointerEvent as ReactPointerEvent,
+} from 'react'
+import { X } from 'lucide-react'
 import { type LensResult } from '@/api/lens'
 import {
   GRID_COLUMNS,
   GRID_GAP,
+  compact,
   fitSpan,
+  moveElement,
+  placeNew,
   placeWidgets,
+  removeWidget,
   widgetPxWidth,
   type LayoutItem,
 } from '@/lib/widgetLayout'
 import { WIDGET_REGISTRY, getWidget } from '@/lib/widgetRegistry'
+import { getLayout as readSavedLayout, setLayout as writeSavedLayout, clearLayout } from '@/lib/cookies'
 import { useGridMetrics } from '@/hooks/useGridMetrics'
+import { useDashboardEdit } from '@/contexts/DashboardEditContext'
+import { cn } from '@/lib/utils'
 
 /*
-  Data-driven dashboard widget grid - measure-then-place (self-correcting).
+  Data-driven dashboard widget grid with an opt-in edit mode layered on top of
+  the existing measure-then-place system.
 
-  Row spans are no longer static guesses. Each load runs a two-pass render:
+  BASE (edit mode OFF, the default every load): pixel-identical to before. A
+  two-pass render measures each widget's real height and packs square cells;
+  h is ALWAYS measured, never trusted from persistence. The lens_layout cookie
+  is authoritative for PLACEMENT (x, y, w) only - on load a saved layout is
+  rebuilt with freshly measured h and compact()ed to absorb any height drift; if
+  there is no saved layout the default first-fit pack runs (unchanged behavior).
 
-    PASS 1 (measure): an off-screen layer renders every visible widget at its
-    true column pixel width with auto height, so each reports its natural
-    rendered content height (width matters: text wrap and responsive charts
-    change height).
-
-    COMPUTE: for each widget finalH = fitSpan(floor, measuredPx, cellSize, gap)
-    (floor = registry defaultSpan.h), finalW = defaultSpan.w. The existing
-    first-fit packer turns those footprints (in registry order) into x/y. The
-    coordinate + packer + square-cell model is unchanged, so the future
-    drag/add-menu phase stays additive; the ONLY new thing is that h is measured.
-
-    PASS 2 (place): the real grid renders that layout at explicit coordinates,
-    each cell wrapping render(result) in the h-full [&>*]:h-full stretch so the
-    outer Panel fills its now-correctly-sized cell without touching internals.
-
-  Placement is recomputed on every load and whenever cellSize (resize) or result
-  (content) changes, so it self-corrects for ANY portfolio with zero span
-  tuning. The lens_layout cookie is intentionally NOT read here: a persisted
-  layout would carry a stale measured h once content height changes, so
-  placement stays live-computed until the drag phase writes explicit user
-  layouts. The grid sets no fixed height, so it grows with content and inherits
-  the AppShell <main> scroll (a vertical scrollbar appears only when the page
-  exceeds the viewport).
+  EDIT MODE (opt-in via the header Pencil): each card becomes a whole-card drag
+  handle (native Pointer Events, no dependency) with auto-reflow, plus a remove
+  (X) control; widgets can be added from the header Add menu. Every mutation runs
+  the pure reflow engine (moveElement / placeNew / removeWidget in widgetLayout),
+  commits to state, and persists {x, y, w} to the cookie. No resize this phase
+  (w stays the registry value). All affordances exist ONLY in edit mode; a user
+  who never enables it sees zero change.
 */
 
-const VISIBLE_WIDGETS = WIDGET_REGISTRY.filter((w) => w.defaultVisible)
+const DRAG_THRESHOLD = 4 // px of movement before a pointerdown counts as a drag
 
-// Static dim placeholder shown for the single frame before the cell size is
-// measured and the layout is computed (styling.md §Motion: no pulse).
+// Static dim placeholder shown for the frame before the cell size is measured
+// and the first layout is computed (styling.md §Motion: no pulse).
 function GridSkeleton() {
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
@@ -57,30 +63,111 @@ function GridSkeleton() {
 
 export function WidgetGrid({ result }: { result: LensResult }) {
   const { ref, cellSize } = useGridMetrics()
-  // Measurement boxes keyed by widget id (PASS 1 targets).
-  const measureRefs = useRef<Map<string, HTMLDivElement>>(new Map())
-  const [layout, setLayout] = useState<LayoutItem[] | null>(null)
+  const { editMode, setGridActions } = useDashboardEdit()
 
-  // Measure + compute + place. useLayoutEffect so the computed layout commits
-  // before paint (no flicker of a wrong-sized grid). Keyed on cellSize + result
-  // so a resize or a content change re-measures and re-packs.
+  const gridRef = useRef<HTMLDivElement | null>(null)
+  const measureRefs = useRef<Map<string, HTMLDivElement>>(new Map())
+  const measuredRef = useRef<Record<string, number>>({}) // widget id -> measured px
+  const [layout, setLayoutState] = useState<LayoutItem[] | null>(null)
+
+  // Drag transients. dragStartRef holds pointerdown state (no re-render); `drag`
+  // holds the live preview + translate that drives the render during a drag.
+  const dragStartRef = useRef<{
+    id: string
+    snapshot: LayoutItem[]
+    px: number
+    py: number
+    gx: number
+    gy: number
+    sx: number
+    sy: number
+    moved: boolean
+  } | null>(null)
+  const [drag, setDrag] = useState<{ id: string; tx: number; ty: number; preview: LayoutItem[] } | null>(null)
+
+  // Measured row span for a widget: floor vs. its measured pixel height.
+  const measuredH = useCallback(
+    (id: string): number => {
+      const entry = getWidget(id)
+      if (!entry) return 0
+      return fitSpan(entry.defaultSpan.h, measuredRef.current[id] ?? 0, cellSize, GRID_GAP)
+    },
+    [cellSize],
+  )
+
+  // Build the layout from the saved placement (+ fresh measured h + compact) or,
+  // absent a save, the default first-fit pack.
+  const buildLayout = useCallback((): LayoutItem[] => {
+    const saved = readSavedLayout()
+    if (saved) {
+      const working = saved
+        .filter((s) => getWidget(s.widgetId))
+        .map((s) => ({
+          widgetId: s.widgetId,
+          x: s.x,
+          y: s.y,
+          w: getWidget(s.widgetId)!.defaultSpan.w, // width is always the registry value
+          h: measuredH(s.widgetId),
+        }))
+      return compact(working)
+    }
+    const footprints = WIDGET_REGISTRY.filter((w) => w.defaultVisible).map((w) => ({
+      widgetId: w.id,
+      w: w.defaultSpan.w,
+      h: measuredH(w.id),
+    }))
+    return placeWidgets(footprints, GRID_COLUMNS)
+  }, [measuredH])
+
+  // PASS 1 measure + build. useLayoutEffect so the layout commits before paint;
+  // re-runs on resize (cell height changes h) or content change (heights change).
   useLayoutEffect(() => {
     if (cellSize <= 0) return
-    const footprints = VISIBLE_WIDGETS.map((w) => {
+    const map: Record<string, number> = {}
+    for (const w of WIDGET_REGISTRY) {
       const el = measureRefs.current.get(w.id)
-      const measuredPx = el ? el.getBoundingClientRect().height : 0
-      return {
-        widgetId: w.id,
-        w: w.defaultSpan.w,
-        h: fitSpan(w.defaultSpan.h, measuredPx, cellSize, GRID_GAP),
-      }
-    })
-    setLayout(placeWidgets(footprints, GRID_COLUMNS))
-  }, [cellSize, result])
+      map[w.id] = el ? el.getBoundingClientRect().height : 0
+    }
+    measuredRef.current = map
+    setLayoutState(buildLayout())
+  }, [cellSize, result, buildLayout])
 
-  // DEV-only standing regression guard: verify no placed widget's content
-  // exceeds its cell (fit math correct) and the packer produced no overlaps.
-  // Never fires when the math is right; ships harmlessly (stripped in prod).
+  // Commit an edited layout: update state and persist {x, y, w}.
+  const commit = useCallback((next: LayoutItem[]) => {
+    setLayoutState(next)
+    writeSavedLayout(next)
+  }, [])
+
+  // Publish the add/reset actions + the addable-widget list up to the header.
+  useEffect(() => {
+    if (!layout) {
+      setGridActions(null)
+      return
+    }
+    const placed = new Set(layout.map((i) => i.widgetId))
+    const availableWidgets = WIDGET_REGISTRY.filter((w) => !placed.has(w.id)).map((w) => ({
+      id: w.id,
+      title: w.title,
+    }))
+    const addWidget = (id: string) => {
+      const entry = getWidget(id)
+      if (!entry || placed.has(id)) return
+      const item: LayoutItem = { widgetId: id, x: 0, y: 0, w: entry.defaultSpan.w, h: measuredH(id) }
+      commit(placeNew(layout, item))
+    }
+    const resetLayout = () => {
+      clearLayout()
+      setLayoutState(buildLayout()) // cookie now empty -> default measured pack
+    }
+    setGridActions({ availableWidgets, addWidget, resetLayout })
+  }, [layout, measuredH, buildLayout, commit, setGridActions])
+
+  // Clear published actions on unmount.
+  useEffect(() => () => setGridActions(null), [setGridActions])
+
+  // DEV-only standing guard: warn if any placed widget's content exceeds its cell
+  // (fit math) or the layout has overlaps (reflow engine). Runs on every commit
+  // via the layout dep. Never fires when correct; stripped from prod.
   useEffect(() => {
     if (!import.meta.env.DEV || !layout) return
     for (const item of layout) {
@@ -104,15 +191,70 @@ export function WidgetGrid({ result }: { result: LensResult }) {
     }
   }, [layout, cellSize])
 
+  // --- drag handlers (edit mode only) ---
+  const step = cellSize + GRID_GAP
+
+  function onPointerDown(e: ReactPointerEvent<HTMLDivElement>, id: string) {
+    if (!editMode || !layout) return
+    if ((e.target as HTMLElement).closest('[data-remove]')) return // X handles its own
+    const item = layout.find((i) => i.widgetId === id)
+    if (!item) return
+    const cardRect = e.currentTarget.getBoundingClientRect()
+    dragStartRef.current = {
+      id,
+      snapshot: layout,
+      px: e.clientX,
+      py: e.clientY,
+      gx: e.clientX - cardRect.left,
+      gy: e.clientY - cardRect.top,
+      sx: item.x,
+      sy: item.y,
+      moved: false,
+    }
+    e.currentTarget.setPointerCapture(e.pointerId)
+  }
+
+  function onPointerMove(e: ReactPointerEvent<HTMLDivElement>) {
+    const d = dragStartRef.current
+    if (!d || !gridRef.current) return
+    const tx = e.clientX - d.px
+    const ty = e.clientY - d.py
+    if (!d.moved && Math.hypot(tx, ty) < DRAG_THRESHOLD) return // ignore taps
+    d.moved = true
+    const item = d.snapshot.find((i) => i.widgetId === d.id)
+    if (!item) return
+    const rect = gridRef.current.getBoundingClientRect() // live rect accounts for scroll
+    const cardLeft = e.clientX - d.gx
+    const cardTop = e.clientY - d.gy
+    const col = Math.max(0, Math.min(Math.round((cardLeft - rect.left) / step), GRID_COLUMNS - item.w))
+    const row = Math.max(0, Math.round((cardTop - rect.top) / step))
+    setDrag({ id: d.id, tx, ty, preview: moveElement(d.snapshot, d.id, col, row) })
+  }
+
+  function onPointerUp(e: ReactPointerEvent<HTMLDivElement>) {
+    const d = dragStartRef.current
+    dragStartRef.current = null
+    if (e.currentTarget.hasPointerCapture?.(e.pointerId)) e.currentTarget.releasePointerCapture(e.pointerId)
+    if (d?.moved && drag) commit(drag.preview) // no movement past threshold -> treat as a click, no-op
+    setDrag(null)
+  }
+
+  function onPointerCancel() {
+    dragStartRef.current = null
+    setDrag(null) // drop the preview, revert to the committed layout
+  }
+
+  // --- render ---
+  const active = drag
+  const items = active ? active.preview : (layout ?? [])
+
   return (
     <div ref={ref} className="relative w-full">
-      {/* PASS 1 - hidden measurement layer. In layout (visibility:hidden, not
-          display:none) so boxes actually measure; each is exactly its column
-          pixel width with auto height. Kept mounted so resize/result recompute
-          can re-measure. */}
+      {/* PASS 1 - hidden measurement layer for EVERY registry widget (so any can
+          be added), each at its true column width with auto height. */}
       {cellSize > 0 && (
         <div aria-hidden className="pointer-events-none invisible absolute left-[-9999px] top-0">
-          {VISIBLE_WIDGETS.map((w) => (
+          {WIDGET_REGISTRY.map((w) => (
             <div
               key={w.id}
               ref={(el) => {
@@ -127,9 +269,10 @@ export function WidgetGrid({ result }: { result: LensResult }) {
         </div>
       )}
 
-      {/* PASS 2 - the real grid at computed coordinates. */}
+      {/* PASS 2 - the real grid. */}
       {layout ? (
         <div
+          ref={gridRef}
           className="grid"
           style={{
             gridTemplateColumns: `repeat(${GRID_COLUMNS}, minmax(0, 1fr))`,
@@ -137,19 +280,54 @@ export function WidgetGrid({ result }: { result: LensResult }) {
             gap: `${GRID_GAP}px`,
           }}
         >
-          {layout.map((item) => {
+          {items.map((item) => {
             const widget = getWidget(item.widgetId)
             if (!widget) return null
+            const isDragged = active?.id === item.widgetId
+            // The dragged card stays in its START cell and follows the pointer via
+            // translate; the others snap to their reflowed preview cells.
+            const start = dragStartRef.current
+            const x = isDragged && start ? start.sx : item.x
+            const y = isDragged && start ? start.sy : item.y
+            const style: CSSProperties = {
+              gridColumn: `${x + 1} / span ${item.w}`,
+              gridRow: `${y + 1} / span ${item.h}`,
+            }
+            if (isDragged && active) {
+              style.transform = `translate(${active.tx}px, ${active.ty}px)`
+              style.transition = 'none'
+              style.zIndex = 50
+            }
             return (
               <div
                 key={item.widgetId}
-                className="h-full w-full [&>*]:h-full"
-                style={{
-                  gridColumn: `${item.x + 1} / span ${item.w}`,
-                  gridRow: `${item.y + 1} / span ${item.h}`,
-                }}
+                style={style}
+                onPointerDown={editMode ? (e) => onPointerDown(e, item.widgetId) : undefined}
+                onPointerMove={editMode ? onPointerMove : undefined}
+                onPointerUp={editMode ? onPointerUp : undefined}
+                onPointerCancel={editMode ? onPointerCancel : undefined}
+                className={cn(
+                  'relative h-full w-full',
+                  editMode && 'cursor-grab select-none rounded-lg ring-1 ring-accent-teal/40 transition-transform duration-200 ease-out',
+                  isDragged && 'cursor-grabbing shadow-lg shadow-black/40',
+                )}
               >
-                {widget.render(result)}
+                <div className={cn('h-full w-full [&>*]:h-full', editMode && 'pointer-events-none select-none')}>
+                  {widget.render(result)}
+                </div>
+                {editMode && (
+                  <button
+                    type="button"
+                    data-remove
+                    aria-label={`Remove ${widget.title}`}
+                    title={`Remove ${widget.title}`}
+                    onPointerDown={(e) => e.stopPropagation()}
+                    onClick={() => commit(removeWidget(layout, item.widgetId))}
+                    className="absolute -right-2 -top-2 z-10 flex h-6 w-6 items-center justify-center rounded-full border border-base bg-accent-red text-white shadow-md transition-transform duration-200 ease-out hover:scale-110"
+                  >
+                    <X size={13} />
+                  </button>
+                )}
               </div>
             )
           })}

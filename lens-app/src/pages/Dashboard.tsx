@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate, Navigate } from 'react-router-dom'
 import { ChevronRight, Plus, Trash2, Pencil } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
@@ -9,10 +10,12 @@ import { AppShell } from '@/components/layout/AppShell'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { PositionActions } from '@/components/dashboard/PositionActions'
 import { WidgetGrid } from '@/components/dashboard/WidgetGrid'
+import { AddWidgetMenu } from '@/components/dashboard/AddWidgetMenu'
 import { Panel, CardLabel } from '@/components/common/Panel'
 import { BriefText } from '@/components/common/BriefText'
 import { UpgradePrompt } from '@/components/common/UpgradePrompt'
 import { Button } from '@/components/ui/button'
+import { DashboardEditProvider, useDashboardEdit } from '@/contexts/DashboardEditContext'
 
 // No pulse animation (styling.md §Motion) — a static dim surface block.
 function Skeleton({ className }: { className?: string }) {
@@ -23,33 +26,125 @@ function Skeleton({ className }: { className?: string }) {
 // itself to this exact value (width = height = BRIEF_HEIGHT). Tweak freely.
 const BRIEF_HEIGHT = 320
 
-export function Dashboard() {
-  const navigate = useNavigate()
-  const { user } = useAuth()
+/*
+  Widget-management header controls (the Plus / Trash2 / Pencil buttons, now
+  wired). Pencil toggles edit mode (accent when on); Plus opens the Add Widget
+  menu (enabling edit mode first if needed); Trash2 resets the layout behind a
+  small inline confirm. All the actual layout work lives in WidgetGrid and is
+  reached through the DashboardEdit context's gridActions.
+*/
+function WidgetHeaderControls() {
+  const { editMode, toggleEditMode, addMenuOpen, openAddMenu, closeAddMenu, gridActions } =
+    useDashboardEdit()
+  const [confirmReset, setConfirmReset] = useState(false)
+  const containerRef = useRef<HTMLDivElement>(null)
 
-  const manager = usePositionsManager()
-  const hasPositions = getPositions().length > 0
-  const query = useLensAnalysis()
+  // Dismiss the add menu / reset confirm on an outside click.
+  useEffect(() => {
+    if (!addMenuOpen && !confirmReset) return
+    function onDown(e: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        closeAddMenu()
+        setConfirmReset(false)
+      }
+    }
+    document.addEventListener('mousedown', onDown)
+    return () => document.removeEventListener('mousedown', onDown)
+  }, [addMenuOpen, confirmReset, closeAddMenu])
 
-  if (!hasPositions) return <Navigate to="/onboard" replace />
+  const available = gridActions?.availableWidgets ?? []
 
-  // Widget-management actions (no behavior yet — placeholders).
-  const headerActions = (
-    <>
-      <Button variant="outline" size="icon" className="h-8 w-8" title="Add widget" aria-label="Add widget">
-        <Plus size={16} />
-      </Button>
-      <Button variant="outline" size="icon" className="h-8 w-8" title="Remove widget" aria-label="Remove widget">
-        <Trash2 size={16} />
-      </Button>
-      <Button variant="outline" size="icon" className="h-8 w-8" title="Edit layout" aria-label="Edit layout">
+  return (
+    <div ref={containerRef} className="flex items-center gap-2">
+      {/* Add widget */}
+      <div className="relative">
+        <Button
+          variant={addMenuOpen ? 'teal' : 'outline'}
+          size="icon"
+          className="h-8 w-8"
+          title="Add widget"
+          aria-label="Add widget"
+          onClick={() => {
+            setConfirmReset(false)
+            if (addMenuOpen) closeAddMenu()
+            else openAddMenu()
+          }}
+        >
+          <Plus size={16} />
+        </Button>
+        {addMenuOpen && (
+          <AddWidgetMenu
+            available={available}
+            onAdd={(id) => {
+              gridActions?.addWidget(id)
+              // Close once the last available widget has been added.
+              if (available.length <= 1) closeAddMenu()
+            }}
+          />
+        )}
+      </div>
+
+      {/* Reset layout (inline confirm, not a browser confirm) */}
+      <div className="relative">
+        <Button
+          variant="outline"
+          size="icon"
+          className="h-8 w-8"
+          title="Reset layout"
+          aria-label="Reset layout"
+          onClick={() => {
+            closeAddMenu()
+            setConfirmReset((v) => !v)
+          }}
+        >
+          <Trash2 size={16} />
+        </Button>
+        {confirmReset && (
+          <div className="absolute right-0 top-[calc(100%+0.5rem)] z-50 w-56 rounded-xl border border-subtle bg-surface/90 p-3 shadow-lg shadow-black/40 backdrop-blur-md">
+            <p className="mb-3 text-xs text-secondary">Reset the dashboard to its default layout?</p>
+            <div className="flex justify-end gap-2">
+              <Button variant="ghost" size="sm" onClick={() => setConfirmReset(false)}>
+                Cancel
+              </Button>
+              <Button
+                variant="red"
+                size="sm"
+                onClick={() => {
+                  gridActions?.resetLayout()
+                  setConfirmReset(false)
+                }}
+              >
+                Reset
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Toggle edit mode */}
+      <Button
+        variant={editMode ? 'teal' : 'outline'}
+        size="icon"
+        className="h-8 w-8"
+        title={editMode ? 'Done editing' : 'Edit layout'}
+        aria-label="Edit layout"
+        aria-pressed={editMode}
+        onClick={toggleEditMode}
+      >
         <Pencil size={16} />
       </Button>
-    </>
+    </div>
   )
+}
+
+function DashboardBody() {
+  const navigate = useNavigate()
+  const { user } = useAuth()
+  const manager = usePositionsManager()
+  const query = useLensAnalysis()
 
   const header = (
-    <PageHeader title="Dashboard" breadcrumb="Lens / Dashboard" right={headerActions} />
+    <PageHeader title="Dashboard" breadcrumb="Lens / Dashboard" right={<WidgetHeaderControls />} />
   )
 
   if (!isSubscribed(user)) {
@@ -113,11 +208,21 @@ export function Dashboard() {
             </Panel>
           </div>
 
-          {/* Data-driven widget grid (registry + layout cookie). Static
-              placement for now; drag/edit mode is a later phase. */}
+          {/* Data-driven widget grid with opt-in edit mode (drag / add / delete). */}
           <WidgetGrid result={result} />
         </div>
       )}
     </AppShell>
+  )
+}
+
+export function Dashboard() {
+  const hasPositions = getPositions().length > 0
+  if (!hasPositions) return <Navigate to="/onboard" replace />
+
+  return (
+    <DashboardEditProvider>
+      <DashboardBody />
+    </DashboardEditProvider>
   )
 }

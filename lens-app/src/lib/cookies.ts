@@ -1,6 +1,5 @@
 import type { Position } from '@/api/lens'
-import type { LayoutItem } from '@/lib/widgetLayout'
-import { getDefaultLayout } from '@/lib/widgetLayout'
+import type { LayoutItem, SavedLayoutItem } from '@/lib/widgetLayout'
 
 // Persisted client state lives in cookies (30-day expiry, SameSite=Lax) so the
 // onboarding output survives reloads without a positions table on the backend.
@@ -60,35 +59,43 @@ export function setSettings(settings: StoredSettings): void {
   writeCookie(SETTINGS_COOKIE, JSON.stringify(settings))
 }
 
-// Dashboard widget layout (grid coordinates per widget). No UI mutates this yet;
-// the accessors exist so the later drag/edit phase gets persistence for free.
-function isLayoutItem(v: unknown): v is LayoutItem {
+// Dashboard widget layout: user PLACEMENT only ({ widgetId, x, y, w }). Height is
+// never persisted - WidgetGrid always re-measures h on load - so content growth
+// can never restore a stale, clipping height. Written only on an actual edit
+// (drag drop, add, delete); cleared by "Reset layout".
+function isSavedLayoutItem(v: unknown): v is SavedLayoutItem {
   if (!v || typeof v !== 'object') return false
   const o = v as Record<string, unknown>
   return (
     typeof o.widgetId === 'string' &&
     typeof o.x === 'number' &&
     typeof o.y === 'number' &&
-    typeof o.w === 'number' &&
-    typeof o.h === 'number'
+    typeof o.w === 'number'
   )
 }
 
-export function getLayout(): LayoutItem[] {
+// Returns the saved placement, or null when there is none / it is malformed
+// (WidgetGrid then falls back to the default measured pack).
+export function getLayout(): SavedLayoutItem[] | null {
   const raw = readCookie(LAYOUT_COOKIE)
-  if (raw) {
-    try {
-      const parsed: unknown = JSON.parse(raw)
-      if (Array.isArray(parsed) && parsed.every(isLayoutItem)) {
-        return parsed as LayoutItem[]
-      }
-    } catch {
-      /* fall through to default */
+  if (!raw) return null
+  try {
+    const parsed: unknown = JSON.parse(raw)
+    if (Array.isArray(parsed) && parsed.length > 0 && parsed.every(isSavedLayoutItem)) {
+      return parsed as SavedLayoutItem[]
     }
+  } catch {
+    /* fall through to null */
   }
-  return getDefaultLayout()
+  return null
 }
 
 export function setLayout(layout: LayoutItem[]): void {
-  writeCookie(LAYOUT_COOKIE, JSON.stringify(layout))
+  const saved: SavedLayoutItem[] = layout.map(({ widgetId, x, y, w }) => ({ widgetId, x, y, w }))
+  writeCookie(LAYOUT_COOKIE, JSON.stringify(saved))
+}
+
+export function clearLayout(): void {
+  // Expire the cookie immediately.
+  document.cookie = `${LAYOUT_COOKIE}=; path=/; max-age=0; SameSite=Lax`
 }
