@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef } from 'react'
 import { Navigate } from 'react-router-dom'
-import { Plus, Trash2, Pencil } from 'lucide-react'
+import { Plus, Pencil } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { isSubscribed } from '@/lib/subscription'
 import { useLensAnalysis } from '@/hooks/useLensAnalysis'
@@ -22,30 +22,28 @@ function Skeleton({ className }: { className?: string }) {
 }
 
 /*
-  Widget-management header controls (the Plus / Trash2 / Pencil buttons, now
-  wired). Pencil toggles edit mode (accent when on); Plus opens the Add Widget
-  menu (enabling edit mode first if needed); Trash2 resets the layout behind a
-  small inline confirm. All the actual layout work lives in WidgetGrid and is
-  reached through the DashboardEdit context's gridActions.
+  Widget-management header controls (Plus / Pencil). Pencil toggles edit mode
+  (accent when on); Plus opens the Add Widget menu (enabling edit mode first if
+  needed). Deleting a widget is done inline via the X on each card in edit mode,
+  so there is no separate delete/reset button here. All the actual layout work
+  lives in WidgetGrid and is reached through the DashboardEdit context's gridActions.
 */
 function WidgetHeaderControls() {
   const { editMode, toggleEditMode, addMenuOpen, openAddMenu, closeAddMenu, gridActions } =
     useDashboardEdit()
-  const [confirmReset, setConfirmReset] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
 
-  // Dismiss the add menu / reset confirm on an outside click.
+  // Dismiss the add menu on an outside click.
   useEffect(() => {
-    if (!addMenuOpen && !confirmReset) return
+    if (!addMenuOpen) return
     function onDown(e: MouseEvent) {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
         closeAddMenu()
-        setConfirmReset(false)
       }
     }
     document.addEventListener('mousedown', onDown)
     return () => document.removeEventListener('mousedown', onDown)
-  }, [addMenuOpen, confirmReset, closeAddMenu])
+  }, [addMenuOpen, closeAddMenu])
 
   const available = gridActions?.availableWidgets ?? []
 
@@ -60,7 +58,6 @@ function WidgetHeaderControls() {
           title="Add widget"
           aria-label="Add widget"
           onClick={() => {
-            setConfirmReset(false)
             if (addMenuOpen) closeAddMenu()
             else openAddMenu()
           }}
@@ -76,43 +73,6 @@ function WidgetHeaderControls() {
               if (available.length <= 1) closeAddMenu()
             }}
           />
-        )}
-      </div>
-
-      {/* Reset layout (inline confirm, not a browser confirm) */}
-      <div className="relative">
-        <Button
-          variant="outline"
-          size="icon"
-          className="h-8 w-8"
-          title="Reset layout"
-          aria-label="Reset layout"
-          onClick={() => {
-            closeAddMenu()
-            setConfirmReset((v) => !v)
-          }}
-        >
-          <Trash2 size={16} />
-        </Button>
-        {confirmReset && (
-          <div className="absolute right-0 top-[calc(100%+0.5rem)] z-50 w-56 rounded-xl border border-subtle bg-surface/90 p-3 shadow-lg shadow-black/40 backdrop-blur-md">
-            <p className="mb-3 text-xs text-secondary">Reset the dashboard to its default layout?</p>
-            <div className="flex justify-end gap-2">
-              <Button variant="ghost" size="sm" onClick={() => setConfirmReset(false)}>
-                Cancel
-              </Button>
-              <Button
-                variant="red"
-                size="sm"
-                onClick={() => {
-                  gridActions?.resetLayout()
-                  setConfirmReset(false)
-                }}
-              >
-                Reset
-              </Button>
-            </div>
-          </div>
         )}
       </div>
 

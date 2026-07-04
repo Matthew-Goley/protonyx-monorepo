@@ -351,7 +351,7 @@ export function WidgetGrid({ result }: { result: LensResult }) {
                     title={`Remove ${widget.title}`}
                     onPointerDown={(e) => e.stopPropagation()}
                     onClick={() => commit(removeWidget(layout, item.widgetId))}
-                    className="absolute -right-2 -top-2 z-10 flex h-6 w-6 items-center justify-center rounded-full border border-base bg-accent-red text-white shadow-md transition-transform duration-200 ease-out hover:scale-110"
+                    className="absolute right-2 top-2 z-10 flex h-6 w-6 items-center justify-center rounded-full border border-base bg-accent-red text-white shadow-md transition-transform duration-200 ease-out hover:scale-110"
                   >
                     <X size={13} />
                   </button>

@@ -26,7 +26,8 @@ interface GaugeGeometry {
 
 const GEOMETRY: Record<GaugeSize, GaugeGeometry> = {
   lg: { w: 260, h: 150, r: 100, sw: 18, cx: 130, cy: 130, font: 56 },
-  sm: { w: 176, h: 104, r: 68, sw: 13, cx: 88, cy: 88, font: 40 },
+  // sm is used only by the Caution Score dashboard widget; sized up to fill its 3x3 tile.
+  sm: { w: 224, h: 132, r: 88, sw: 16, cx: 112, cy: 112, font: 52 },
 }
 
 export function CautionGauge({
@@ -99,7 +100,10 @@ export function CautionGauge({
           {clamped}
         </text>
       </svg>
-      <p style={{ color: cls.color }} className="-mt-1 text-sm font-medium">
+      <p
+        style={{ color: cls.color }}
+        className={`-mt-1 font-medium ${size === 'sm' ? 'text-base' : 'text-sm'}`}
+      >
         {cls.label}
       </p>
       {caption ? (

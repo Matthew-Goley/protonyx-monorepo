@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { AlertTriangle, ChevronRight } from 'lucide-react'
 import { type LensResult } from '@/api/lens'
 import { Panel } from '@/components/common/Panel'
-import { BriefText } from '@/components/common/BriefText'
+import { GeneratingBrief } from '@/components/widgets/GeneratingBrief'
 import { Button } from '@/components/ui/button'
 import {
   EquityChart,
@@ -75,15 +75,13 @@ export { PositionActionsWidget } from '@/components/dashboard/PositionActions'
 export function LensBriefWidget({ result }: { result: LensResult }) {
   const navigate = useNavigate()
   return (
-    // Height is locked to the cell (lockHeight in the registry), so the widget
-    // must contain its own content: overflow-hidden + a scrollable text area, with
-    // the Analysis button pinned below.
+    // Height is locked to the cell (lockHeight in the registry). The brief fills
+    // all the space down to the divider line, auto-sizing as it "generates"; the
+    // Analysis button sits on that line at the bottom.
     <Panel className="flex h-full flex-col overflow-hidden">
       <WidgetHeader title="Lens Brief" />
-      <div className="min-h-0 min-w-0 flex-1 overflow-y-auto">
-        <BriefText result={result} className="text-base leading-[1.6] text-primary" />
-      </div>
-      <div className="flex justify-end pt-4">
+      <GeneratingBrief result={result} />
+      <div className="mt-3 flex justify-end border-t border-subtle pt-3">
         <Button variant="teal" size="sm" onClick={() => navigate('/analysis')}>
           Analysis <ChevronRight size={16} />
         </Button>
