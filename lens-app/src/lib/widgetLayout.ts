@@ -23,6 +23,14 @@
 export const GRID_COLUMNS = 12
 export const GRID_GAP = 24 // px
 
+// Reference cell size (px) that widget CONTENT is authored against. Every locked
+// widget renders its content into a fixed reference-size box (w/h cells at this
+// cell size) and FitScale uniformly scales that box to the actual cell, so the
+// same content fills its widget identically at any viewport width. Calibrate this
+// to the environment where the content currently looks right (see the DEV
+// `[grid] cellSize` log); lower = content renders larger relative to the widget.
+export const REFERENCE_CELL_SIZE = 80 // px
+
 // A placed widget in grid-cell units: top-left (x, y) and footprint (w, h).
 export interface LayoutItem {
   widgetId: string

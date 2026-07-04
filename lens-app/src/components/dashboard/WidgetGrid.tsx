@@ -22,6 +22,7 @@ import {
 } from '@/lib/widgetLayout'
 import { WIDGET_REGISTRY, getWidget } from '@/lib/widgetRegistry'
 import { getLayout as readSavedLayout, setLayout as writeSavedLayout, clearLayout } from '@/lib/cookies'
+import { FitScale } from './FitScale'
 import { useGridMetrics } from '@/hooks/useGridMetrics'
 import { useDashboardEdit } from '@/contexts/DashboardEditContext'
 import { cn } from '@/lib/utils'
@@ -183,6 +184,12 @@ export function WidgetGrid({ result }: { result: LensResult }) {
   // Clear published actions on unmount.
   useEffect(() => () => setGridActions(null), [setGridActions])
 
+  // DEV: log the measured cell size so REFERENCE_CELL_SIZE (FitScale) can be
+  // calibrated to the environment where widget content looks right.
+  useEffect(() => {
+    if (import.meta.env.DEV && cellSize > 0) console.log('[grid] cellSize =', Math.round(cellSize))
+  }, [cellSize])
+
   // DEV-only standing guard: warn if any placed widget's content exceeds its cell
   // (fit math) or the layout has overlaps (reflow engine). Runs on every commit
   // via the layout dep. Never fires when correct; stripped from prod.
@@ -340,8 +347,9 @@ export function WidgetGrid({ result }: { result: LensResult }) {
                   isDragged && active && !active.valid && 'ring-2 ring-accent-red',
                 )}
               >
-                <div className={cn('h-full w-full [&>*]:h-full', editMode && 'pointer-events-none select-none')}>
-                  {widget.render(result)}
+                <div className={cn('h-full w-full', editMode && 'pointer-events-none select-none')}>
+                  {/* Scale the widget's content to fill the locked cell at any viewport. */}
+                  <FitScale w={item.w} h={item.h}>{widget.render(result)}</FitScale>
                 </div>
                 {editMode && (
                   <button
