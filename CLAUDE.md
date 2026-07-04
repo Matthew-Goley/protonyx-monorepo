@@ -114,7 +114,7 @@ _monorepo/
 │   │   │   ├── layout/           # Sidebar, AppShell (sidebar + main), PageHeader
 │   │   │   ├── charts/           # Recharts wrapper layer — the ONLY place that imports recharts. LensLineChart, LensAreaChart, LensAreaFanChart, LensPieChart, CyclablePieChart; shared internals in chartUtils.tsx (CHART_COLORS, PIE_COLORS, GradientDefs, LensTooltip, useAnimateOnce). See lens-app/CLAUDE.md §6/§7.
 │   │   │   ├── common/           # Logo (Lens Arc brand mark), Panel, BriefText (rich-colored brief), SectorPie, RiskProfileCards, AddPositionModal, CycleControl (arrow-pair cycler), UpgradePrompt
-│   │   │   ├── widgets/          # DashboardWidgets.tsx (Positions, Total Equity, Sharpe, Diversification, Beta, Dividend Calendar) + PortfolioVector.tsx (Portfolio Momentum status-ladder widget, re-exported from DashboardWidgets)
+│   │   │   ├── widgets/          # DashboardWidgets.tsx (Positions, Total Equity, Sharpe, Composition, Beta, Dividend Calendar) + PortfolioVector.tsx (Portfolio Momentum status-ladder widget, re-exported from DashboardWidgets)
 │   │   │   ├── analysis/         # CautionGauge (SVG), CtaList, MonteCarloChart (wraps LensAreaFanChart)
 │   │   │   └── ui/               # button + input (restyled dark); card/label/textarea/badge are now unused leftovers
 │   │   ├── assets/lens-arc/      # Lens Arc logo PNGs, bundled via import (mirror of ../assets/lens-arc)

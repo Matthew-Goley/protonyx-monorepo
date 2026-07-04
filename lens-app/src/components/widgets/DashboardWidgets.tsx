@@ -1,13 +1,17 @@
+import { useMemo, useState } from 'react'
 import { AlertTriangle } from 'lucide-react'
 import { type LensResult } from '@/api/lens'
 import { Panel } from '@/components/common/Panel'
 import {
-  LensAreaChart,
+  EquityChart,
   CyclablePieChart,
   CHART_COLORS,
   PIE_COLORS,
   type PieView,
+  type Timeframe,
+  type EquityChartPoint,
 } from '@/components/charts'
+import { VerticalCycleControl } from '@/components/common/CycleControl'
 import {
   portfolioSlopePct,
   portfolioBeta,
@@ -60,7 +64,7 @@ export function PositionsWidget({ result }: { result: LensResult }) {
   return (
     <Panel>
       <WidgetHeader title="Positions" right={`${positions.length} positions`} />
-      <div className={`grid grid-cols-[1.6fr_0.8fr_0.9fr_1fr_0.9fr] gap-2 border-b border-subtle pb-2 pr-2 ${TH}`}>
+      <div className={`grid grid-cols-[1.6fr_0.8fr_0.9fr_1fr_0.9fr] gap-2 border-b border-subtle pb-2 px-2 ${TH}`}>
         <span>Ticker</span>
         <span className="text-right">Shares</span>
         <span className="text-right">Price</span>
@@ -68,8 +72,9 @@ export function PositionsWidget({ result }: { result: LensResult }) {
         <span className="text-right">6mo</span>
       </div>
       {/* Scrolls after 4 rows using the app-wide dark scrollbar (index.css). The
-          pr-2 here + on the header keeps the columns aligned against the gutter. */}
-      <div className="max-h-[232px] divide-y divide-subtle overflow-y-auto overflow-x-hidden pr-2">
+          px-2 here + on the header keeps the columns aligned against the gutter and
+          gives the row hover box's -mx-2 bleed room so its left edge isn't clipped. */}
+      <div className="max-h-[232px] divide-y divide-subtle overflow-y-auto overflow-x-hidden px-2">
         {positions.map((p) => {
           const price = tickerCurrentPrice(result, p.ticker) || p.price
           const equity = price * p.shares
@@ -105,65 +110,115 @@ export function PositionsWidget({ result }: { result: LensResult }) {
 // Total Equity
 // ---------------------------------------------------------------------------
 
+const TIMEFRAMES: Timeframe[] = ['1D', '1W', '1M', '3M', '1Y', 'ALL']
+// Lookback window per timeframe, in calendar days (ALL = the whole curve).
+const TF_DAYS: Record<Timeframe, number> = {
+  '1D': 1,
+  '1W': 7,
+  '1M': 31,
+  '3M': 93,
+  '1Y': 366,
+  ALL: Infinity,
+}
+// Stable empty array so useMemo below doesn't re-run every render while loading.
+const NO_POINTS: EquityChartPoint[] = []
+
+function dateMs(s: string): number {
+  const [y, m, d] = s.split('-').map(Number)
+  return new Date(y, (m ?? 1) - 1, d ?? 1).getTime()
+}
+
+// Slice the full (5y) equity curve down to the selected timeframe window. Data is
+// daily-close only, so 1D / 1W are coarse (a handful of closes). Falls back to a
+// straight slope-synthesized line with generated dates when real history is
+// unavailable (still loading or the ticker history calls failed).
+function windowPoints(
+  all: EquityChartPoint[],
+  tf: Timeframe,
+  equity: number,
+  slope: number,
+): EquityChartPoint[] {
+  if (all.length >= 2) {
+    if (tf === 'ALL') return all
+    const end = dateMs(all[all.length - 1].date)
+    const cutoff = end - TF_DAYS[tf] * 86400000
+    const win = all.filter((p) => dateMs(p.date) >= cutoff)
+    return win.length >= 2 ? win : all.slice(-2)
+  }
+  return synthPoints(tf, equity, slope)
+}
+
+function synthPoints(tf: Timeframe, equity: number, slope: number): EquityChartPoint[] {
+  const days = TF_DAYS[tf] === Infinity ? 730 : TF_DAYS[tf]
+  const n = Math.max(8, Math.min(60, Math.round(days / 5)))
+  const periodReturn = (slope / 100) * (days / 365)
+  const now = Date.now()
+  return Array.from({ length: n }, (_, i) => {
+    const frac = i / (n - 1)
+    const d = new Date(now - days * 86400000 * (1 - frac))
+    const date = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(
+      d.getDate(),
+    ).padStart(2, '0')}`
+    return { date, equity: equity * (1 - periodReturn * (1 - frac)) }
+  })
+}
+
 export function TotalEquityWidget({ result }: { result: LensResult }) {
   const equity = totalEquity(result)
   const slope = portfolioSlopePct(result)
-  const history = usePortfolioHistory('6mo')
-  const real = history.data ?? []
-  const hasReal = real.length >= 2
+  // One fetch of the max range; timeframe switching then just re-slices locally.
+  const history = usePortfolioHistory('5y')
+  const all = (history.data ?? NO_POINTS) as EquityChartPoint[]
 
-  let spark: { x: number; y: number }[]
-  let changeDollars: number
-  let changePct: number
-  let footnote: string
+  const [tfIndex, setTfIndex] = useState(4) // default 1Y
+  const timeframe = TIMEFRAMES[tfIndex]
 
-  if (hasReal) {
-    // Real daily equity curve (jagged). Sparkline shows the recent window; the
-    // 5-day change compares the last close to ~5 trading days prior.
-    const recent = real.slice(-40)
-    spark = recent.map((pt, i) => ({ x: i, y: pt.equity }))
-    const last = recent[recent.length - 1].equity
-    const ref = recent[Math.max(0, recent.length - 6)].equity
-    changeDollars = last - ref
-    changePct = ref !== 0 ? (changeDollars / ref) * 100 : 0
-    footnote = 'Live daily closes'
-  } else {
-    // Fallback until history loads (or if it fails): synthesize from the slope.
-    changePct = (slope / 252) * 5
-    changeDollars = (equity * changePct) / 100
-    spark = Array.from({ length: 12 }, (_, i) => ({
-      x: i,
-      y: equity * (1 + (changePct / 100) * ((i - 11) / 11)),
-    }))
-    footnote = 'Estimated from 6-month trend'
-  }
+  const points = useMemo(
+    () => windowPoints(all, timeframe, equity, slope),
+    [all, timeframe, equity, slope],
+  )
 
-  const positive = changeDollars >= 0
-  const color = positive ? 'text-accent-green' : 'text-accent-red'
+  const firstEq = points[0]?.equity ?? equity
+  const lastEq = points[points.length - 1]?.equity ?? equity
+  const changeDollars = lastEq - firstEq
+  const changePct = firstEq ? (changeDollars / firstEq) * 100 : 0
+  const up = changeDollars >= 0
+  const numberColor = up ? 'text-accent-green' : 'text-accent-red'
+  const chartColor = up ? CHART_COLORS.green : CHART_COLORS.red
+
+  const stepTf = (delta: number) =>
+    setTfIndex((i) => (i + delta + TIMEFRAMES.length) % TIMEFRAMES.length)
 
   return (
     <Panel>
-      <WidgetHeader title="Total Equity" right="5-day change" />
-      <p className={`text-[28px] font-semibold tracking-[-0.02em] ${color}`}>
-        {formatCurrency(equity)}
-      </p>
-      <p className={`mt-1 text-sm ${color}`}>
-        {formatSignedCurrency(changeDollars)} &nbsp; {formatPercent(changePct)}
-      </p>
-      <div className="mt-3">
-        <LensAreaChart
-          data={spark}
-          xKey="x"
-          areas={[{ key: 'y', color: CHART_COLORS.green, strokeWidth: 2 }]}
-          showGrid={false}
-          showAxes={false}
-          showTooltip
-          tooltipFormatter={(v) => formatCurrency(Number(v))}
-          hideTooltipLabel
-          height={64}
+      <div className="flex items-start justify-between">
+        <div>
+          <h3 className="text-xl font-semibold text-primary">Total Equity</h3>
+          <p className={`mt-2 text-[28px] font-semibold tracking-[-0.02em] ${numberColor}`}>
+            {formatCurrency(equity)}
+          </p>
+          {/* Net change over the selected timeframe window. */}
+          <p className={`mt-1 text-sm ${numberColor}`}>
+            {formatSignedCurrency(changeDollars)} &nbsp; {formatPercent(changePct)}
+          </p>
+        </div>
+        {/* Vertical up/down cycler steps the timeframe (default 1Y). */}
+        <VerticalCycleControl
+          label={timeframe}
+          onPrev={() => stepTf(-1)}
+          onNext={() => stepTf(1)}
         />
       </div>
-      <p className="mt-1 text-[11px] text-secondary">{footnote}</p>
+
+      <div className="mt-3">
+        <EquityChart
+          points={points}
+          timeframe={timeframe}
+          color={chartColor}
+          valueFormatter={formatCurrency}
+          height={128}
+        />
+      </div>
     </Panel>
   )
 }
@@ -224,7 +279,7 @@ export function SharpeWidget({ result }: { result: LensResult }) {
 }
 
 // ---------------------------------------------------------------------------
-// Diversification
+// Composition
 // ---------------------------------------------------------------------------
 
 // Assign brand palette colors to a sorted breakdown by index.
@@ -236,9 +291,17 @@ function colorize(slices: SectorSlice[]) {
   }))
 }
 
-export function DiversificationWidget({ result }: { result: LensResult }) {
+// Singular unit shown in the header for each breakdown, pluralized by count.
+const COMPOSITION_UNITS: Record<string, string> = {
+  'By Sector': 'sector',
+  'By Ticker': 'stock',
+  'By Type': 'type',
+}
+
+export function CompositionWidget({ result }: { result: LensResult }) {
   const positions = getPositions()
   const concentrated = ['moderate', 'high', 'critical'].includes(concentrationSeverity(result))
+  const [viewIndex, setViewIndex] = useState(0)
 
   const views: PieView[] = [
     { label: 'By Sector', data: colorize(sectorWeights(result)) },
@@ -246,16 +309,29 @@ export function DiversificationWidget({ result }: { result: LensResult }) {
     { label: 'By Type', data: colorize(assetTypeWeights(positions)) },
   ].filter((v) => v.data.length > 0)
 
+  // Header count tracks the visible view: "5 sectors" / "8 stocks" / "3 types".
+  const activeView = views.length > 0 ? views[viewIndex % views.length] : null
+  const unit = activeView ? COMPOSITION_UNITS[activeView.label] ?? 'item' : 'sector'
+  const count = activeView ? activeView.data.length : sectorCount(result)
+
   return (
     <Panel>
-      <WidgetHeader title="Diversification" right={`${sectorCount(result)} sectors`} />
+      <WidgetHeader title="Composition" right={`${count} ${unit}${count === 1 ? '' : 's'}`} />
       {concentrated && (
         <p className="mb-3 flex items-center gap-1.5 text-xs text-accent-yellow">
           <AlertTriangle size={14} />
           Concentrated in one sector
         </p>
       )}
-      <CyclablePieChart views={views} height={180} />
+      {/* Cycle control lives under the legend list now, so the pie can run larger. */}
+      <CyclablePieChart
+        views={views}
+        height={210}
+        size={96}
+        innerRadius={62}
+        index={viewIndex}
+        onIndexChange={setViewIndex}
+      />
     </Panel>
   )
 }

@@ -67,7 +67,7 @@ export function portfolioBeta(result: LensResult): number {
   return num(details.beta, num(portfolioResult(result, 'beta').value, 1))
 }
 
-// Sector weights (percentages) for the diversification pie.
+// Sector weights (percentages) for the composition pie.
 export interface SectorSlice {
   name: string
   value: number
@@ -85,7 +85,7 @@ export function sectorCount(result: LensResult): number {
   return sectorWeights(result).length
 }
 
-// Equity weight (percentage) per ticker, for the by-ticker diversification view.
+// Equity weight (percentage) per ticker, for the by-ticker composition view.
 // Uses the live per-ticker price from the result when available, else the stored
 // cookie price.
 export function tickerWeights(result: LensResult, positions: Position[]): SectorSlice[] {
@@ -121,7 +121,7 @@ export function classifyAssetType(p: Position): AssetType {
   return 'Stock'
 }
 
-// Equity weight (percentage) per asset type, for the by-type diversification view.
+// Equity weight (percentage) per asset type, for the by-type composition view.
 export function assetTypeWeights(positions: Position[]): SectorSlice[] {
   const totals: Record<string, number> = {}
   let grand = 0

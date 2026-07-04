@@ -1,7 +1,7 @@
 import { LensPieChart, PIE_COLORS } from '@/components/charts'
 import { type SectorSlice } from '@/lib/lensData'
 
-/** Donut pie + vertical legend, shared by the Diversification widget and the
+/** Donut pie + vertical legend, shared by the Composition widget and the
  *  Analysis allocation-comparison pies. Thin wrapper over the chart layer's
  *  LensPieChart; assigns colors from the brand PIE_COLORS palette. */
 export function SectorPie({ slices, height = 200 }: { slices: SectorSlice[]; height?: number }) {

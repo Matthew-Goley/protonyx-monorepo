@@ -17,7 +17,7 @@ import {
   PositionsWidget,
   TotalEquityWidget,
   SharpeWidget,
-  DiversificationWidget,
+  CompositionWidget,
   BetaWidget,
   DividendCalendarWidget,
 } from '@/components/widgets/DashboardWidgets'
@@ -127,7 +127,7 @@ export function Dashboard() {
             <PositionsWidget result={result} />
             <TotalEquityWidget result={result} />
             <SharpeWidget result={result} />
-            <DiversificationWidget result={result} />
+            <CompositionWidget result={result} />
             <BetaWidget result={result} />
             <div className="lg:col-span-2">
               <DividendCalendarWidget result={result} />

@@ -19,6 +19,9 @@ export interface LensPieChartProps {
   legendPosition?: 'right' | 'bottom'
   height?: number
   className?: string
+  /** Optional node rendered directly beneath the legend list (e.g. a cycle
+   *  control), so it is centered under the list rather than the whole widget. */
+  legendFooter?: React.ReactNode
 }
 
 // Hovered sector lifts by this many px. The chart box is padded by the same
@@ -28,7 +31,8 @@ const BOX_PAD = ACTIVE_LIFT + 3
 
 /**
  * Donut pie with a custom legend (no recharts <Legend>). Slice colors come from
- * the data, not a hardcoded palette. Empty center, no slice labels.
+ * the data, not a hardcoded palette. Hovering the pie or a legend row lifts the
+ * matching slice and highlights the legend row; the donut itself has no labels.
  */
 export function LensPieChart({
   data,
@@ -38,12 +42,13 @@ export function LensPieChart({
   legendPosition = 'right',
   height = 200,
   className,
+  legendFooter,
 }: LensPieChartProps) {
   const animate = useAnimateOnce()
   // Shared hover index, so the pie and the legend highlight in sync and EITHER
   // one can drive the slice lift. null = nothing hovered.
   const [activeIndex, setActiveIndex] = useState<number | null>(null)
-  const activeName = activeIndex != null ? data[activeIndex]?.name : null
+  const activeName = activeIndex != null ? (data[activeIndex]?.name ?? null) : null
 
   // Per-slice outer radius: the active slice lifts, all others stay put. recharts
   // v3 calls this per data point, so the lift is driven by our own state (works
@@ -54,9 +59,10 @@ export function LensPieChart({
   // Box is the diameter plus padding on every side, so a lifted slice has room
   // to grow without clipping against the SVG viewport edge.
   const box = size * 2 + BOX_PAD * 2
+  const boxHeight = Math.max(height, box)
 
   const pie = (
-    <div style={{ width: box, height: Math.max(height, box) }} className="shrink-0">
+    <div style={{ width: box, height: boxHeight }} className="relative shrink-0">
       <ResponsiveContainer width="100%" height="100%">
         <PieChart>
           <Pie
@@ -85,44 +91,62 @@ export function LensPieChart({
   )
 
   const legend = showLegend && (
-    <ul
-      className={
-        legendPosition === 'right'
-          ? 'flex flex-1 flex-col gap-2 pl-2'
-          : 'flex flex-wrap gap-x-4 gap-y-2'
-      }
+    <div
+      className={legendPosition === 'right' ? 'flex flex-1 flex-col' : 'flex flex-col'}
+      // With a footer, the column is fixed to the pie height so the footer (the
+      // cycle control) is pinned to the bottom at a constant vertical position,
+      // regardless of item count. The list fills the space above it and scrolls.
+      style={legendPosition === 'right' && legendFooter ? { height: boxHeight } : undefined}
     >
-      {data.map((s, i) => {
-        const active = i === activeIndex
-        return (
-          <li
-            key={s.name}
-            onMouseEnter={() => setActiveIndex(i)}
-            onMouseLeave={() => setActiveIndex(null)}
-            className="flex cursor-default items-center gap-2 text-[13px]"
-          >
-            <span
-              className="h-1.5 w-1.5 shrink-0 rounded-full transition-transform duration-200 ease-out"
-              style={{ backgroundColor: s.color, transform: active ? 'scale(1.4)' : 'scale(1)' }}
-            />
-            <span
-              className={`flex-1 transition-colors duration-200 ease-out ${
-                active ? 'font-semibold text-white' : 'text-secondary'
-              }`}
+      {/* px-2 gives the row hover box's -mx-2 bleed room on both sides so the
+          overflow-x clip (from overflow-y-auto) doesn't shave off its left edge. */}
+      <ul
+        className={
+          legendPosition === 'right'
+            ? `flex flex-col gap-1 overflow-y-auto overflow-x-hidden px-2${
+                legendFooter ? ' min-h-0 flex-1' : ''
+              }`
+            : 'flex flex-wrap gap-x-2 gap-y-1'
+        }
+        // Without a footer, the list simply caps at the pie height and scrolls.
+        style={legendPosition === 'right' && !legendFooter ? { maxHeight: boxHeight } : undefined}
+      >
+        {data.map((s, i) => {
+          const active = i === activeIndex
+          return (
+            <li
+              key={s.name}
+              onMouseEnter={() => setActiveIndex(i)}
+              onMouseLeave={() => setActiveIndex(null)}
+              // Hover box mirrors the Portfolio Momentum rungs: a rounded, tinted
+              // panel in the slice's own color on hover.
+              className="-mx-2 flex cursor-default items-center gap-2 rounded-md px-2 py-1 text-[13px] transition-colors duration-200 ease-out"
+              style={{ backgroundColor: active ? `${s.color}1f` : 'transparent' }}
             >
-              {s.name}
-            </span>
-            <span
-              className={`transition-colors duration-200 ease-out ${
-                active ? 'font-semibold text-white' : 'font-medium text-primary'
-              }`}
-            >
-              {s.value.toFixed(1)}%
-            </span>
-          </li>
-        )
-      })}
-    </ul>
+              <span
+                className="h-1.5 w-1.5 shrink-0 rounded-full transition-transform duration-200 ease-out"
+                style={{ backgroundColor: s.color, transform: active ? 'scale(1.4)' : 'scale(1)' }}
+              />
+              <span
+                className={`flex-1 transition-colors duration-200 ease-out ${
+                  active ? 'font-semibold text-white' : 'text-secondary'
+                }`}
+              >
+                {s.name}
+              </span>
+              <span
+                className={`transition-colors duration-200 ease-out ${
+                  active ? 'font-semibold text-white' : 'font-medium text-primary'
+                }`}
+              >
+                {s.value.toFixed(1)}%
+              </span>
+            </li>
+          )
+        })}
+      </ul>
+      {legendFooter}
+    </div>
   )
 
   return (
