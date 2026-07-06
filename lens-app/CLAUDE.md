@@ -80,6 +80,7 @@ There is **no test framework**. Do not introduce one unless explicitly asked. Ve
 | `/profile` | `Profile` | `ProtectedRoute` |
 | `/settings` | `Settings` | `ProtectedRoute` |
 | `/success` | `Success` | `ProtectedRoute` (Stripe redirect target) |
+| `/commodity/:symbol` | `Commodity` | `ProtectedRoute` (instrument detail; placeholder data, see §7) |
 | `*` | — | `<Navigate to="/login" replace />` |
 
 ### AuthContext (`src/contexts/AuthContext.tsx`)
@@ -211,7 +212,7 @@ The product's full name is **Lens Arc**. Anywhere a brand mark is shown, render 
 
 ## 7. Screen-by-screen map
 
-All authed screens render inside `AppShell` (`src/components/layout/AppShell.tsx`): a fixed 220px `Sidebar` + a scrollable `<main className="ml-[220px] ... p-8">`. The sidebar (`Sidebar.tsx`) has the gradient "Lens" wordmark, four `NavLink`s (Dashboard, Analysis, Profile, Settings) with an active teal state, and a logout button at the bottom that calls `logout()` then navigates to `/login`. `PageHeader` is a **slim inline bar**: title and breadcrumb on one line (`Title · path`), an optional `right` actions slot, and a thin `border-b` divider beneath — kept compact so it frames the page without dominating it. The Dashboard passes three widget-management icon buttons (Plus = add widget, Trash2 = reset to default layout, Pencil = toggle edit mode) into `right`; individual widgets are removed via the X on each card in edit mode.
+All authed screens render inside `AppShell` (`src/components/layout/AppShell.tsx`): a fixed 220px `Sidebar` + a scrollable `<main className="ml-[220px] ... p-8">`. The sidebar (`Sidebar.tsx`) renders the `Logo` (`variant="full"`, not a text wordmark), four `NavLink`s (Dashboard, Analysis, Profile, Settings) with an active teal state (2px brand-gradient left bar), and a logout button at the bottom that calls `logout()` then navigates to `/login`. `PageHeader` is a **slim inline bar**: title and breadcrumb on one line (`Title · path`), an optional `right` actions slot, and a thin `border-b` divider beneath — kept compact so it frames the page without dominating it. The Dashboard passes three widget-management icon buttons (Plus = add widget, Trash2 = reset to default layout, Pencil = toggle edit mode) into `right`; individual widgets are removed via the X on each card in edit mode.
 
 | Page | File | Behavior |
 |---|---|---|
@@ -222,6 +223,7 @@ All authed screens render inside `AppShell` (`src/components/layout/AppShell.tsx
 | **Profile** | `pages/Profile.tsx` | Avatar (first initial), username, member-since, total equity (from `useLensAnalysis`), and an info table (username/email/plan badge/member since/beta access). Read-only. |
 | **Settings** | `pages/Settings.tsx` | General (Theme/Date format dropdowns — **display-only, not persisted**), Investment Style (`RiskProfileCards`, persists + invalidates query), Subscription (Pro badge + "Manage Billing" via `POST /stripe/portal` when subscribed, else "Upgrade to Lens Pro" via `POST /stripe/create-checkout-session`), six **placeholder** `Collapsible` sections ("coming soon"), Positions CRUD (add/remove, "Edit" is disabled), and an About section that pings `lensApi.health()` for live API status. |
 | **Success** | `pages/Success.tsx` | Stripe post-checkout landing. Shows a checkmark + "Subscription active", auto-redirects to `/dashboard` after 3s. |
+| **Commodity** | `pages/Commodity.tsx` | Instrument/commodity detail screen (titled "Markets"): identity + live-price header, range-switchable price chart (`LensLineChart`, `1D..5Y`), a key-statistics panel, an About panel, and a "For new investors" explainer. **All numbers are placeholder/example data** (deterministic pseudo-random series); not yet wired to real quotes. Reachable today only by typing "example" in the `TopBar` search, which routes to `/commodity/example`. Any `:symbol` resolves to the same placeholder instrument. |
 
 ### Components
 
