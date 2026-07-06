@@ -21,7 +21,7 @@ export { CyclablePieChart } from './CyclablePieChart'
 export type { CyclablePieChartProps, PieView } from './CyclablePieChart'
 
 export { EquityChart } from './EquityChart'
-export type { EquityChartProps, EquityChartPoint, Timeframe } from './EquityChart'
+export type { EquityChartProps, EquityChartPoint, EquityRange, Timeframe } from './EquityChart'
 
 export {
   CHART_COLORS,

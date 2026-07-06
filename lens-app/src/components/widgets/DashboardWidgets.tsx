@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { AlertTriangle, ChevronRight } from 'lucide-react'
 import { type LensResult } from '@/api/lens'
@@ -13,6 +13,7 @@ import {
   type PieView,
   type Timeframe,
   type EquityChartPoint,
+  type EquityRange,
 } from '@/components/charts'
 import { VerticalCycleControl } from '@/components/common/CycleControl'
 import {
@@ -216,11 +217,23 @@ export function TotalEquityWidget({ result }: { result: LensResult }) {
 
   const firstEq = points[0]?.equity ?? equity
   const lastEq = points[points.length - 1]?.equity ?? equity
-  const changeDollars = lastEq - firstEq
-  const changePct = firstEq ? (changeDollars / firstEq) * 100 : 0
-  const up = changeDollars >= 0
-  const numberColor = up ? 'text-accent-green' : 'text-accent-red'
-  const chartColor = up ? CHART_COLORS.green : CHART_COLORS.red
+  // The big number + chart color track the full-window change and stay stable.
+  const windowUp = lastEq - firstEq >= 0
+  const numberColor = windowUp ? 'text-accent-green' : 'text-accent-red'
+  const chartColor = windowUp ? CHART_COLORS.green : CHART_COLORS.red
+
+  // Span the user is inspecting on the chart (hover -> start..point, or a
+  // click-drag selection -> start..end); null falls back to the full window.
+  const [activeRange, setActiveRange] = useState<EquityRange | null>(null)
+  const handleActiveRange = useCallback((r: EquityRange | null) => setActiveRange(r), [])
+  // Drop a stale inspection span when the timeframe (and thus points) changes.
+  useEffect(() => setActiveRange(null), [timeframe])
+
+  const fromEq = activeRange ? points[activeRange.fromIndex]?.equity ?? firstEq : firstEq
+  const toEq = activeRange ? points[activeRange.toIndex]?.equity ?? lastEq : lastEq
+  const readoutDollars = toEq - fromEq
+  const readoutPct = fromEq ? (readoutDollars / fromEq) * 100 : 0
+  const readoutColor = readoutDollars >= 0 ? 'text-accent-green' : 'text-accent-red'
 
   const stepTf = (delta: number) =>
     setTfIndex((i) => (i + delta + TIMEFRAMES.length) % TIMEFRAMES.length)
@@ -233,9 +246,10 @@ export function TotalEquityWidget({ result }: { result: LensResult }) {
           <p className={`mt-2 text-[28px] font-semibold tracking-[-0.02em] ${numberColor}`}>
             {formatCurrency(equity)}
           </p>
-          {/* Net change over the selected timeframe window. */}
-          <p className={`mt-1 text-sm ${numberColor}`}>
-            {formatSignedCurrency(changeDollars)} &nbsp; {formatPercent(changePct)}
+          {/* Change over the span the user is inspecting on the chart (hovered
+              point or click-drag selection), else the full timeframe window. */}
+          <p className={`mt-1 text-sm ${readoutColor}`}>
+            {formatSignedCurrency(readoutDollars)} &nbsp; {formatPercent(readoutPct)}
           </p>
         </div>
         {/* Vertical up/down cycler steps the timeframe (default 1Y). */}
@@ -253,6 +267,7 @@ export function TotalEquityWidget({ result }: { result: LensResult }) {
           color={chartColor}
           valueFormatter={formatCurrency}
           height={190}
+          onActiveRangeChange={handleActiveRange}
         />
       </div>
     </Panel>

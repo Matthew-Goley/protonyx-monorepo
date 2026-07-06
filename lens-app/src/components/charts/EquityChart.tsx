@@ -1,4 +1,13 @@
-import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
+import { useEffect, useRef, useState } from 'react'
+import {
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ReferenceArea,
+  ResponsiveContainer,
+} from 'recharts'
 import { CHART_COLORS, ANIM_DURATION, ANIM_EASING, useAnimateOnce } from './chartUtils'
 
 export type Timeframe = '1D' | '1W' | '1M' | '3M' | '1Y' | 'ALL'
@@ -9,6 +18,12 @@ export interface EquityChartPoint {
   equity: number
 }
 
+/** A contiguous span of the series the user is inspecting, as data indices. */
+export interface EquityRange {
+  fromIndex: number
+  toIndex: number
+}
+
 export interface EquityChartProps {
   points: EquityChartPoint[]
   timeframe: Timeframe
@@ -17,6 +32,13 @@ export interface EquityChartProps {
   /** Formats an equity value for the tooltip. */
   valueFormatter: (v: number) => string
   height?: number
+  /**
+   * Reports the span the user is currently inspecting so the parent can show its
+   * return: while hovering, [start of chart -> hovered point]; while a click-drag
+   * selection is active, [selection start -> selection end]. `null` when neither
+   * (parent falls back to the full-window change). Must be a stable callback.
+   */
+  onActiveRangeChange?: (range: EquityRange | null) => void
 }
 
 // ---------------------------------------------------------------------------
@@ -91,12 +113,26 @@ function DateTooltip({ active, payload, color, valueFormatter }: DateTooltipProp
 // through the plot with a date label at the base of each.
 // ---------------------------------------------------------------------------
 
+// Pull the hovered data index out of a recharts categorical-chart event state.
+// Our dataKey `i` equals the array index, so activeLabel (the x value) is the
+// index; activeTooltipIndex is a fallback.
+function idxFromState(s: unknown, n: number): number | null {
+  const st = s as { activeTooltipIndex?: number | string; activeLabel?: number | string } | null
+  if (!st) return null
+  const raw = st.activeLabel ?? st.activeTooltipIndex
+  if (raw == null || raw === '') return null
+  const i = Number(raw)
+  if (!Number.isFinite(i)) return null
+  return Math.max(0, Math.min(n - 1, Math.round(i)))
+}
+
 export function EquityChart({
   points,
   timeframe,
   color = CHART_COLORS.green,
   valueFormatter,
   height = 128,
+  onActiveRangeChange,
 }: EquityChartProps) {
   const animate = useAnimateOnce()
 
@@ -105,6 +141,70 @@ export function EquityChart({
   const ticks = tickIndices(n)
   // Percent position of point i across the plot (matches the numeric x-domain).
   const pos = (i: number) => (n > 1 ? (i / (n - 1)) * 100 : 50)
+
+  // Hover index (feature 1) and click-drag selection (feature 2). The selection
+  // is a persistent band the user drags out; a plain click (no drag) clears it.
+  const [hoverIndex, setHoverIndex] = useState<number | null>(null)
+  const [sel, setSel] = useState<{ start: number; end: number } | null>(null)
+  const dragging = useRef(false)
+  const moved = useRef(false)
+
+  // Finalize a drag: keep a real (moved) selection, discard a bare click.
+  const endDrag = () => {
+    if (!dragging.current) return
+    dragging.current = false
+    setSel((cur) => (moved.current && cur && cur.start !== cur.end ? cur : null))
+  }
+
+  // A drag can end outside the plot; catch the release anywhere.
+  useEffect(() => {
+    window.addEventListener('mouseup', endDrag)
+    return () => window.removeEventListener('mouseup', endDrag)
+  }, [])
+
+  // Reset interaction when the underlying series changes (e.g. timeframe switch),
+  // so stale indices never point past the new data.
+  useEffect(() => {
+    setHoverIndex(null)
+    setSel(null)
+    dragging.current = false
+  }, [points])
+
+  // Report the inspected span up to the parent: a real selection wins over hover.
+  useEffect(() => {
+    if (!onActiveRangeChange) return
+    if (sel && sel.start !== sel.end) {
+      onActiveRangeChange({
+        fromIndex: Math.min(sel.start, sel.end),
+        toIndex: Math.max(sel.start, sel.end),
+      })
+    } else if (hoverIndex != null && hoverIndex > 0) {
+      onActiveRangeChange({ fromIndex: 0, toIndex: hoverIndex })
+    } else {
+      onActiveRangeChange(null)
+    }
+  }, [sel, hoverIndex, onActiveRangeChange])
+
+  const handleDown = (s: unknown) => {
+    const i = idxFromState(s, n)
+    if (i == null) return
+    dragging.current = true
+    moved.current = false
+    setSel({ start: i, end: i })
+  }
+  const handleMove = (s: unknown) => {
+    const i = idxFromState(s, n)
+    if (i == null) return
+    setHoverIndex(i)
+    if (dragging.current) {
+      moved.current = true
+      setSel((cur) => (cur ? { start: cur.start, end: i } : { start: i, end: i }))
+    }
+  }
+  const handleLeave = () => {
+    setHoverIndex(null)
+    endDrag()
+  }
 
   if (n < 2) {
     return (
@@ -116,7 +216,7 @@ export function EquityChart({
 
   return (
     <div>
-      <div className="relative" style={{ height }}>
+      <div className="relative select-none" style={{ height }}>
         {/* Full-height guide lines behind the chart at each tick position. */}
         {ticks.map((ti) => (
           <span
@@ -126,7 +226,15 @@ export function EquityChart({
           />
         ))}
         <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={data} margin={{ top: 6, right: 0, bottom: 0, left: 0 }}>
+          <AreaChart
+            data={data}
+            margin={{ top: 6, right: 0, bottom: 0, left: 0 }}
+            onMouseDown={handleDown}
+            onMouseMove={handleMove}
+            onMouseUp={endDrag}
+            onMouseLeave={handleLeave}
+            style={{ cursor: 'crosshair' }}
+          >
             <defs>
               <linearGradient id="lens-equity-fill" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0%" stopColor={color} stopOpacity={0.18} />
@@ -141,6 +249,16 @@ export function EquityChart({
               content={<DateTooltip color={color} valueFormatter={valueFormatter} />}
               cursor={{ stroke: CHART_COLORS.subtle, strokeDasharray: '3 3' }}
             />
+            {/* Shaded band marking the click-drag selection (feature 2). */}
+            {sel && sel.start !== sel.end && (
+              <ReferenceArea
+                x1={Math.min(sel.start, sel.end)}
+                x2={Math.max(sel.start, sel.end)}
+                fill={color}
+                fillOpacity={0.14}
+                stroke="none"
+              />
+            )}
             <Area
               type="monotone"
               dataKey="equity"
