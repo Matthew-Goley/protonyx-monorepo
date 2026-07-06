@@ -99,3 +99,12 @@ export function clearLayout(): void {
   // Expire the cookie immediately.
   document.cookie = `${LAYOUT_COOKIE}=; path=/; max-age=0; SameSite=Lax`
 }
+
+// Wipes all persisted client state (positions, settings, dashboard layout) by
+// expiring every app cookie. With positions gone, Dashboard redirects to
+// /onboard, so this is effectively a "start onboarding over" reset.
+export function clearAllData(): void {
+  for (const name of [POSITIONS_COOKIE, SETTINGS_COOKIE, LAYOUT_COOKIE]) {
+    document.cookie = `${name}=; path=/; max-age=0; SameSite=Lax`
+  }
+}

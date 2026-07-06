@@ -1,4 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import { ChevronRight } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
@@ -10,6 +11,7 @@ import {
   setPositions,
   getSettings,
   setSettings,
+  clearAllData,
   type RiskTier,
 } from '@/lib/cookies'
 import { AppShell } from '@/components/layout/AppShell'
@@ -84,6 +86,7 @@ function Dropdown({
 
 export function Settings() {
   const queryClient = useQueryClient()
+  const navigate = useNavigate()
   const { user } = useAuth()
   const { theme, setTheme } = useTheme()
   const pro = isSubscribed(user)
@@ -93,6 +96,7 @@ export function Settings() {
   const [selected, setSelected] = useState<string | null>(null)
   const [modalOpen, setModalOpen] = useState(false)
 
+  const [clearConfirm, setClearConfirm] = useState(false)
   const [portalLoading, setPortalLoading] = useState(false)
   const [billingError, setBillingError] = useState<string | null>(null)
   const [apiStatus, setApiStatus] = useState<string>('checking...')
@@ -125,6 +129,14 @@ export function Settings() {
     if (!selected) return
     persistPositions(positions.filter((p) => p.ticker !== selected))
     setSelected(null)
+  }
+
+  function handleClearData() {
+    clearAllData()
+    // Drop any cached analysis so nothing stale survives, then send the user
+    // back through onboarding (Dashboard also redirects once positions are gone).
+    queryClient.removeQueries({ queryKey: ['lens-analysis'] })
+    navigate('/onboard', { replace: true })
   }
 
   async function handleManageBilling() {
@@ -213,7 +225,27 @@ export function Settings() {
           </div>
         </Section>
 
-        <Collapsible title="Data & Refresh" />
+        <Collapsible title="Data & Refresh">
+          <p className="mb-4">
+            Clears all locally stored data (positions, risk profile, and dashboard
+            layout) and restarts onboarding. This does not affect your account.
+          </p>
+          {clearConfirm ? (
+            <div className="flex flex-wrap items-center gap-3">
+              <span className="text-sm text-primary">Clear all local data and re-run onboarding?</span>
+              <Button variant="red" onClick={handleClearData}>
+                Yes, clear it
+              </Button>
+              <Button variant="ghost" onClick={() => setClearConfirm(false)}>
+                Cancel
+              </Button>
+            </div>
+          ) : (
+            <Button variant="outline" onClick={() => setClearConfirm(true)}>
+              Clear Data & Restart Onboarding
+            </Button>
+          )}
+        </Collapsible>
         <Collapsible title="Portfolio Direction Thresholds" />
         <Collapsible title="Volatility" />
         <Collapsible title="Lens Signal Thresholds" />
