@@ -238,3 +238,15 @@
 :root.light *::-webkit-scrollbar-thumb {
   background-color: #cbd0d8;
 }
+
+/* Recharts makes its wrapper/surface AND individual marks (pie sectors, active
+   dots, layers) focusable, so clicking a chart or a segment draws the browser's
+   default focus outline (a stray box around the graph or slice). Charts are
+   presentational, not interactive controls, so suppress the outline on the
+   wrapper and every element recharts renders inside it. */
+.recharts-wrapper,
+.recharts-wrapper *,
+.recharts-surface,
+.recharts-surface * {
+  outline: none;
+}
