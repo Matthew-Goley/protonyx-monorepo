@@ -382,7 +382,9 @@ Never use `ease-in` on UI elements.
 Sweeps from `0` to actual value on page load only.
 Duration: `600ms`
 Timing: `cubic-bezier(0.16, 1, 0.3, 1)`
-This is the only load animation in the app.
+This is the only *content* load animation. The one looping animation allowed is
+the `PageLoader` waiting state (a rotating brand-gradient ring around a breathing
+Lens Arc icon), shown while an analysis is still being fetched.
 
 **Page transitions:**
 `opacity: 0` to `opacity: 1` at `150ms ease-out`. No slide, scale, or blur.

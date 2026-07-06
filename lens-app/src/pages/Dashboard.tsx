@@ -11,15 +11,11 @@ import { PageHeader } from '@/components/layout/PageHeader'
 import { WidgetGrid } from '@/components/dashboard/WidgetGrid'
 import { AddWidgetMenu } from '@/components/dashboard/AddWidgetMenu'
 import { Panel } from '@/components/common/Panel'
+import { PageLoader } from '@/components/common/PageLoader'
 import { UpgradePrompt } from '@/components/common/UpgradePrompt'
 import { Button } from '@/components/ui/button'
 import { DashboardEditProvider, useDashboardEdit } from '@/contexts/DashboardEditContext'
 import { PositionsManagerProvider } from '@/contexts/PositionsManagerContext'
-
-// No pulse animation (styling.md §Motion) — a static dim surface block.
-function Skeleton({ className }: { className?: string }) {
-  return <div className={`rounded-lg bg-card opacity-60 ${className ?? ''}`} />
-}
 
 /*
   Widget-management header controls (the Plus / Trash2 / Pencil buttons, now
@@ -160,17 +156,7 @@ function DashboardBody() {
       <AppShell>
         {header}
 
-        {query.isLoading && (
-          <div className="space-y-8">
-            <Skeleton className="h-40" />
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-              <Skeleton className="h-72" />
-              <Skeleton className="h-72" />
-              <Skeleton className="h-56" />
-              <Skeleton className="h-56" />
-            </div>
-          </div>
-        )}
+        {query.isLoading && <PageLoader />}
 
         {query.isError && (
           <Panel>
