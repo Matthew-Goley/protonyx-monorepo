@@ -67,6 +67,11 @@ export interface TickerHistoryPoint {
   volume: number
 }
 
+export interface TickerClosePoint {
+  date: string
+  close: number
+}
+
 export interface TickerInfo {
   name: string | null
   sector: string | null
@@ -116,6 +121,21 @@ export const lensApi = {
       `${LENS_API_URL}/ticker/${encodeURIComponent(symbol)}/history?period=${period}`,
       { headers: apiHeaders() },
     ).then((r) => handleResponse<TickerHistoryPoint[]>(r))
+  },
+
+  /** GET /tickers/history - daily closes for many tickers in one batched request.
+   *  Backs the portfolio equity curve: one round trip instead of N per-symbol
+   *  /history calls. Returns { SYMBOL: [{date, close}], ... }; unknown symbols
+   *  are simply absent from the map. */
+  getTickersHistory(
+    symbols: string[],
+    period: HistoryPeriod = '6mo',
+  ): Promise<Record<string, TickerClosePoint[]>> {
+    const qs = encodeURIComponent(symbols.join(','))
+    return fetch(
+      `${LENS_API_URL}/tickers/history?symbols=${qs}&period=${period}`,
+      { headers: apiHeaders() },
+    ).then((r) => handleResponse<Record<string, TickerClosePoint[]>>(r))
   },
 
   /** GET /health - check service availability (no auth required). */

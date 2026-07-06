@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
+from concurrent.futures import ThreadPoolExecutor
 from copy import deepcopy
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -16,6 +18,7 @@ from .constants import (
     DEFAULT_APP_STATE,
     DEFAULT_POSITIONS,
     DEFAULT_SETTINGS,
+    INDEX_ETFS,
     MARKET_DATA_FILE,
     POSITIONS_FILE,
     LAYOUT_FILE,
@@ -27,6 +30,8 @@ from .constants import (
     TTL_META_MINUTES,
     VOLATILITY_LOOKBACK_PERIODS,
 )
+
+_log = logging.getLogger(__name__)
 
 
 class DataStore:
@@ -207,28 +212,20 @@ class DataStore:
     # get_snapshot — quote data with TTL (compatibility with analytics flow)
     # ------------------------------------------------------------------
 
-    def get_snapshot(self, ticker: str, refresh_interval: str) -> dict[str, Any]:
-        """
-        Return a snapshot of {ticker, price, sector, name} with TTL caching.
-        On cache miss or stale, fetches from yfinance and stores rich quote + meta.
-        """
-        mdata = self._load_market_data()
-        entry = mdata.setdefault(ticker, {})
+    def _fetch_quote_and_meta(
+        self, ticker: str,
+    ) -> tuple[dict[str, Any] | None, dict[str, Any] | None]:
+        """Pure network fetch of the rich quote + meta dicts for one ticker.
 
-        if self._is_quote_fresh(entry.get('quote_updated_at'), refresh_interval):
-            quote = entry.get('quote', {})
-            meta = entry.get('meta', {})
-            return {
-                'ticker': ticker,
-                'price': quote.get('price', 0.0),
-                'sector': meta.get('sector', 'Unknown'),
-                'name': meta.get('name', ticker),
-            }
-
+        Returns ``(quote, meta)``, or ``(None, None)`` when no price could be
+        resolved. **Does not read or write the cache**, so it is safe to call
+        from worker threads (used by ``prefetch_for_analysis``). Cache freshness
+        and persistence are the caller's job.
+        """
         instrument = yf.Ticker(ticker)
         price = _get_price(instrument)
         if not price:
-            raise ValueError(f'Could not fetch price for {ticker}.')
+            return None, None
 
         info: dict[str, Any] = {}
         try:
@@ -244,10 +241,9 @@ class DataStore:
         except Exception:  # noqa: BLE001
             pass
 
-        now_iso = self._now().isoformat()
         prev_close = _sf(fi.get('regularMarketPreviousClose')) or _sf(info.get('regularMarketPreviousClose')) or price
 
-        entry['quote'] = {
+        quote = {
             'price':          price,
             'open':           _sf(fi.get('open')) or _sf(info.get('open')),
             'day_high':       _sf(fi.get('dayHigh')) or _sf(info.get('dayHigh')),
@@ -269,23 +265,50 @@ class DataStore:
             'dividend_yield': _sf(info.get('dividendYield')),  # already in % (e.g. 0.42 = 0.42%)
             'eps_ttm':        _sf(info.get('trailingEps')),
         }
+        meta = {
+            'name':        info.get('shortName') or ticker,
+            'long_name':   info.get('longName') or info.get('shortName') or ticker,
+            'sector':      _resolve_sector(info),
+            'industry':    info.get('industry') or info.get('industryDisp'),
+            'exchange':    info.get('exchange') or _ss(fi.get('exchange')),
+            'currency':    info.get('currency') or _ss(fi.get('currency')),
+            'country':     info.get('country'),
+            'employees':   _si(info.get('fullTimeEmployees')),
+            'description': info.get('longBusinessSummary'),
+            'website':     info.get('website'),
+            'market_cap':  _sf(fi.get('marketCap')) or _sf(info.get('marketCap')),
+        }
+        return quote, meta
+
+    def get_snapshot(self, ticker: str, refresh_interval: str) -> dict[str, Any]:
+        """
+        Return a snapshot of {ticker, price, sector, name} with TTL caching.
+        On cache miss or stale, fetches from yfinance and stores rich quote + meta.
+        """
+        mdata = self._load_market_data()
+        entry = mdata.setdefault(ticker, {})
+
+        if self._is_quote_fresh(entry.get('quote_updated_at'), refresh_interval):
+            quote = entry.get('quote', {})
+            meta = entry.get('meta', {})
+            return {
+                'ticker': ticker,
+                'price': quote.get('price', 0.0),
+                'sector': meta.get('sector', 'Unknown'),
+                'name': meta.get('name', ticker),
+            }
+
+        quote, meta = self._fetch_quote_and_meta(ticker)
+        if quote is None:
+            raise ValueError(f'Could not fetch price for {ticker}.')
+
+        now_iso = self._now().isoformat()
+        entry['quote'] = quote
         entry['quote_updated_at'] = now_iso
 
         # Update meta if stale or missing
         if not self._is_fresh(entry.get('meta_updated_at'), TTL_META_MINUTES):
-            entry['meta'] = {
-                'name':        info.get('shortName') or ticker,
-                'long_name':   info.get('longName') or info.get('shortName') or ticker,
-                'sector':      _resolve_sector(info),
-                'industry':    info.get('industry') or info.get('industryDisp'),
-                'exchange':    info.get('exchange') or _ss(fi.get('exchange')),
-                'currency':    info.get('currency') or _ss(fi.get('currency')),
-                'country':     info.get('country'),
-                'employees':   _si(info.get('fullTimeEmployees')),
-                'description': info.get('longBusinessSummary'),
-                'website':     info.get('website'),
-                'market_cap':  _sf(fi.get('marketCap')) or _sf(info.get('marketCap')),
-            }
+            entry['meta'] = meta
             entry['meta_updated_at'] = now_iso
 
         self._save_market_data(mdata)
@@ -293,7 +316,7 @@ class DataStore:
         meta = entry.get('meta', {})
         return {
             'ticker': ticker,
-            'price': price,
+            'price': quote['price'],
             'sector': meta.get('sector', 'Unknown'),
             'name': meta.get('name', ticker),
         }
@@ -407,14 +430,9 @@ class DataStore:
     # Dividends — with 24h TTL
     # ------------------------------------------------------------------
 
-    def get_dividends(self, ticker: str) -> list[dict[str, Any]]:
-        """Return list of {date, amount} dicts for all historical dividends."""
-        mdata = self._load_market_data()
-        entry = mdata.setdefault(ticker, {})
-
-        if entry.get('dividends') is not None and self._is_fresh(entry.get('dividends_updated_at'), TTL_DIVIDENDS_MINUTES):
-            return entry['dividends']
-
+    @staticmethod
+    def _fetch_dividends_list(ticker: str) -> list[dict[str, Any]]:
+        """Pure network fetch of historical dividends. No cache access — safe in threads."""
         divs: list[dict[str, Any]] = []
         try:
             yf_count()
@@ -426,6 +444,17 @@ class DataStore:
                 ]
         except Exception:  # noqa: BLE001
             pass
+        return divs
+
+    def get_dividends(self, ticker: str) -> list[dict[str, Any]]:
+        """Return list of {date, amount} dicts for all historical dividends."""
+        mdata = self._load_market_data()
+        entry = mdata.setdefault(ticker, {})
+
+        if entry.get('dividends') is not None and self._is_fresh(entry.get('dividends_updated_at'), TTL_DIVIDENDS_MINUTES):
+            return entry['dividends']
+
+        divs = self._fetch_dividends_list(ticker)
 
         entry['dividends'] = divs
         entry['dividends_updated_at'] = self._now().isoformat()
@@ -436,17 +465,13 @@ class DataStore:
     # Earnings — calendar + history, with 24h TTL
     # ------------------------------------------------------------------
 
-    def get_earnings(self, ticker: str) -> list[dict[str, Any]]:
-        """
-        Return upcoming earnings dates + estimates from yfinance calendar.
+    @staticmethod
+    def _fetch_earnings_list(ticker: str) -> list[dict[str, Any]]:
+        """Pure network fetch of upcoming earnings from the yfinance calendar.
+
         In yfinance 1.2.0, t.earnings is None — use t.calendar dict instead.
+        No cache access — safe to call from worker threads.
         """
-        mdata = self._load_market_data()
-        entry = mdata.setdefault(ticker, {})
-
-        if entry.get('earnings') is not None and self._is_fresh(entry.get('earnings_updated_at'), TTL_EARNINGS_MINUTES):
-            return entry['earnings']
-
         earnings: list[dict[str, Any]] = []
         try:
             yf_count()
@@ -463,6 +488,20 @@ class DataStore:
                 })
         except Exception:  # noqa: BLE001
             pass
+        return earnings
+
+    def get_earnings(self, ticker: str) -> list[dict[str, Any]]:
+        """
+        Return upcoming earnings dates + estimates from yfinance calendar.
+        In yfinance 1.2.0, t.earnings is None — use t.calendar dict instead.
+        """
+        mdata = self._load_market_data()
+        entry = mdata.setdefault(ticker, {})
+
+        if entry.get('earnings') is not None and self._is_fresh(entry.get('earnings_updated_at'), TTL_EARNINGS_MINUTES):
+            return entry['earnings']
+
+        earnings = self._fetch_earnings_list(ticker)
 
         entry['earnings'] = earnings
         entry['earnings_updated_at'] = self._now().isoformat()
@@ -526,6 +565,176 @@ class DataStore:
             }
             for ticker in tickers
         }
+
+    # ------------------------------------------------------------------
+    # Prefetch for /analyze — batched history + parallel per-ticker fetches
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _batch_history_closes(syms: list[str], period: str) -> dict[str, list[float]]:
+        """Fetch daily closes for many tickers in a SINGLE yf.download() call.
+
+        Replaces N serial ``yf.Ticker(t).history()`` round trips with one batched
+        request (yfinance parallelises the download internally). Returns
+        ``{ticker: [closes]}``; tickers with no data are simply absent. Never
+        raises — on failure returns ``{}`` and the caller falls back to the lazy
+        per-ticker path. ``auto_adjust=False`` matches ``get_history`` so cached
+        closes are identical whether warmed here or fetched lazily.
+        """
+        if not syms:
+            return {}
+        try:
+            yf_count()
+            raw = yf.download(
+                syms, period=period, interval='1d',
+                progress=False, auto_adjust=False, actions=False,
+                group_by='column', threads=True,
+            )
+        except Exception:  # noqa: BLE001
+            _log.debug('batch history download failed for %s (%s)', syms, period, exc_info=True)
+            return {}
+        if raw is None or raw.empty:
+            return {}
+
+        try:
+            close = raw['Close']
+        except Exception:  # noqa: BLE001
+            return {}
+
+        result: dict[str, list[float]] = {}
+        if hasattr(close, 'columns'):  # multi-ticker → DataFrame of ticker columns
+            for t in syms:
+                if t in close.columns:
+                    series = close[t].dropna()
+                    if not series.empty:
+                        result[t] = [float(v) for v in series.tolist()]
+        else:  # single ticker → plain Series
+            series = close.dropna()
+            if not series.empty:
+                result[syms[0]] = [float(v) for v in series.tolist()]
+        return result
+
+    def prefetch_for_analysis(self, tickers: list[str], settings: dict[str, Any]) -> None:
+        """Warm the market-data cache for a full /analyze run concurrently.
+
+        The analyzers each loop over positions calling ``get_history`` /
+        ``get_snapshot`` / ``get_dividends`` / ``get_earnings`` serially, so a
+        cold N-ticker portfolio makes ~6-7N blocking yfinance round trips. This
+        method front-loads all of that work in parallel so the analyzers then hit
+        the warm in-memory cache:
+
+          * history (6mo for slope, 1y for volatility/beta, + SPY 1y) is pulled
+            with one batched ``yf.download`` per period (#2);
+          * the per-ticker calls that cannot be batched (``.info`` snapshot,
+            dividends, earnings) run across a thread pool (#1).
+
+        Existing TTLs are respected: anything already fresh is skipped, so a warm
+        cache makes this a near no-op. Worker threads only do *pure network*
+        fetches (``_fetch_*`` helpers); every cache mutation and the single disk
+        write happen serially on this thread, so there is no shared-state race.
+        Best-effort: any failure is swallowed and the analyzers fall back to their
+        existing lazy per-ticker fetch.
+        """
+        refresh = settings.get('refresh_interval', '5 min')
+        syms = list(dict.fromkeys(
+            s for s in (str(t).strip().upper() for t in tickers) if s
+        ))
+        if not syms:
+            return
+
+        mdata = self._load_market_data()
+
+        def _hist_stale(t: str, period: str) -> bool:
+            ts = mdata.get(t, {}).get('history_updated_at', {}).get(period)
+            return not self._is_fresh(ts, TTL_HISTORY_DAILY_MINUTES)
+
+        def _quote_stale(t: str) -> bool:
+            return not self._is_quote_fresh(mdata.get(t, {}).get('quote_updated_at'), refresh)
+
+        def _div_stale(t: str) -> bool:
+            e = mdata.get(t, {})
+            return e.get('dividends') is None or not self._is_fresh(
+                e.get('dividends_updated_at'), TTL_DIVIDENDS_MINUTES)
+
+        def _earn_stale(t: str) -> bool:
+            e = mdata.get(t, {})
+            return e.get('earnings') is None or not self._is_fresh(
+                e.get('earnings_updated_at'), TTL_EARNINGS_MINUTES)
+
+        need_6mo = [t for t in syms if _hist_stale(t, '6mo')]
+        # beta compares every holding against SPY over 1y, so SPY needs a 1y series too.
+        one_year_syms = list(dict.fromkeys(syms + ['SPY']))
+        need_1y = [t for t in one_year_syms if _hist_stale(t, '1y')]
+        need_quote = [t for t in syms if _quote_stale(t)]
+        need_div = [t for t in syms if _div_stale(t)]
+        # earnings analyzer skips index ETFs, so don't burn a call warming them.
+        need_earn = [t for t in syms if _earn_stale(t) and t not in INDEX_ETFS]
+
+        if not any((need_6mo, need_1y, need_quote, need_div, need_earn)):
+            return  # cache already warm
+
+        # --- Batched history (one HTTP request per period) ---
+        hist_6mo = self._batch_history_closes(need_6mo, '6mo')
+        hist_1y = self._batch_history_closes(need_1y, '1y')
+
+        # --- Parallel per-ticker fetches that cannot be batched ---
+        quotes: dict[str, tuple[dict | None, dict | None]] = {}
+        divs: dict[str, list] = {}
+        earns: dict[str, list] = {}
+        max_workers = min(8, max(1, len(need_quote) + len(need_div) + len(need_earn)))
+        with ThreadPoolExecutor(max_workers=max_workers) as ex:
+            quote_futs = {t: ex.submit(self._fetch_quote_and_meta, t) for t in need_quote}
+            div_futs = {t: ex.submit(self._fetch_dividends_list, t) for t in need_div}
+            earn_futs = {t: ex.submit(self._fetch_earnings_list, t) for t in need_earn}
+            for t, f in quote_futs.items():
+                try:
+                    quotes[t] = f.result()
+                except Exception:  # noqa: BLE001
+                    quotes[t] = (None, None)
+            for t, f in div_futs.items():
+                try:
+                    divs[t] = f.result()
+                except Exception:  # noqa: BLE001
+                    divs[t] = []
+            for t, f in earn_futs.items():
+                try:
+                    earns[t] = f.result()
+                except Exception:  # noqa: BLE001
+                    earns[t] = []
+
+        # --- Merge into cache serially, then a single disk write ---
+        now_iso = self._now().isoformat()
+
+        for t, closes in {**hist_6mo}.items():
+            e = mdata.setdefault(t, {})
+            e.setdefault('history', {})['6mo'] = closes
+            e.setdefault('history_updated_at', {})['6mo'] = now_iso
+        for t, closes in {**hist_1y}.items():
+            e = mdata.setdefault(t, {})
+            e.setdefault('history', {})['1y'] = closes
+            e.setdefault('history_updated_at', {})['1y'] = now_iso
+
+        for t, (quote, meta) in quotes.items():
+            if quote is None:
+                continue
+            e = mdata.setdefault(t, {})
+            e['quote'] = quote
+            e['quote_updated_at'] = now_iso
+            if not self._is_fresh(e.get('meta_updated_at'), TTL_META_MINUTES):
+                e['meta'] = meta
+                e['meta_updated_at'] = now_iso
+
+        for t, d in divs.items():
+            e = mdata.setdefault(t, {})
+            e['dividends'] = d
+            e['dividends_updated_at'] = now_iso
+
+        for t, en in earns.items():
+            e = mdata.setdefault(t, {})
+            e['earnings'] = en
+            e['earnings_updated_at'] = now_iso
+
+        self._save_market_data(mdata)
 
     # ------------------------------------------------------------------
     # Dashboard layout persistence

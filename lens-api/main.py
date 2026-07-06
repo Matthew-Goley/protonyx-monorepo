@@ -119,13 +119,21 @@ async def analyze(
     """
     merged_settings = {**DEFAULT_SETTINGS, **(request.settings or {})}
 
+    def _run() -> Any:
+        # Warm the market-data cache concurrently (batched history + parallel
+        # per-ticker fetches) before the analyzers run their serial loops. This
+        # turns ~6-7N cold blocking yfinance round trips into a handful of
+        # parallel waves. Best-effort: on failure the analyzers fall back to the
+        # existing lazy per-ticker fetch, so analysis still succeeds.
+        try:
+            tickers = [p["ticker"] for p in request.positions if p.get("ticker")]
+            _store.prefetch_for_analysis(tickers, merged_settings)
+        except Exception:
+            _log.exception("prefetch_for_analysis failed; continuing with lazy fetch")
+        return generate_lens_full(request.positions, _store, merged_settings)
+
     try:
-        result = await run_in_threadpool(
-            generate_lens_full,
-            request.positions,
-            _store,
-            merged_settings,
-        )
+        result = await run_in_threadpool(_run)
     except Exception as exc:
         _log.exception("Lens pipeline failed")
         raise HTTPException(status_code=500, detail=str(exc)) from exc
@@ -209,6 +217,79 @@ async def ticker_history(
     # NaN and inf to None; the json round-trip with default=str also defuses any
     # stray non-serializable type. Mirror /analyze exactly.
     return JSONResponse(content=_finitize(json.loads(json.dumps(rows, default=str))))
+
+
+@app.get("/tickers/history")
+async def tickers_history(
+    symbols: str = Query(default=""),
+    period: str = Query(default="6mo"),
+    _: None = Security(_require_api_key),
+) -> JSONResponse:
+    """Daily closes for MANY tickers in a single batched request.
+
+    symbols — comma-separated list, e.g. AAPL,MSFT,KO
+    period  — one of: 1mo, 3mo, 6mo, 1y, 2y, 5y (default: 6mo)
+
+    Returns { "AAPL": [{date, close}, ...], ... }. Backs the lens-app portfolio
+    equity curve (usePortfolioHistory): one round trip + one yfinance download
+    instead of N separate /ticker/{symbol}/history calls. Missing/unknown symbols
+    are simply absent from the map. NaN/inf closes are dropped (finitize + skip).
+    """
+    if period not in _VALID_PERIODS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid period '{period}'. Must be one of: {', '.join(sorted(_VALID_PERIODS))}",
+        )
+
+    syms = list(dict.fromkeys(s.strip().upper() for s in symbols.split(",") if s.strip()))
+    if not syms:
+        raise HTTPException(status_code=400, detail="No symbols provided")
+
+    try:
+        raw = await run_in_threadpool(
+            lambda: yf.download(
+                syms, period=period, interval="1d",
+                auto_adjust=False, actions=False,
+                progress=False, group_by="column", threads=True,
+            )
+        )
+    except Exception as exc:
+        _log.exception("yfinance batch download failed for %s", syms)
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+    if raw is None or raw.empty:
+        return JSONResponse(content={})
+
+    try:
+        close = raw["Close"]
+    except Exception:  # noqa: BLE001
+        return JSONResponse(content={})
+
+    def _series_rows(series: pd.Series) -> list[dict[str, Any]]:
+        rows: list[dict[str, Any]] = []
+        for idx, val in series.dropna().items():
+            try:
+                f = float(val)
+            except (TypeError, ValueError):
+                continue
+            if not math.isfinite(f):
+                continue
+            rows.append({"date": pd.Timestamp(idx).strftime("%Y-%m-%d"), "close": round(f, 4)})
+        return rows
+
+    result: dict[str, list[dict[str, Any]]] = {}
+    if hasattr(close, "columns"):  # multi-ticker → DataFrame of ticker columns
+        for t in syms:
+            if t in close.columns:
+                rows = _series_rows(close[t])
+                if rows:
+                    result[t] = rows
+    else:  # single ticker → plain Series
+        rows = _series_rows(close)
+        if rows:
+            result[syms[0]] = rows
+
+    return JSONResponse(content=_finitize(result))
 
 
 @app.get("/ticker/{symbol}/info")

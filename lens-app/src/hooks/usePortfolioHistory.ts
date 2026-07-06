@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { lensApi, type HistoryPeriod, type TickerHistoryPoint } from '@/api/lens'
+import { lensApi, type HistoryPeriod } from '@/api/lens'
 import { getPositions } from '@/lib/cookies'
 
 export interface EquityPoint {
@@ -8,15 +8,16 @@ export interface EquityPoint {
 }
 
 /**
- * Builds the real portfolio equity curve from the lens-api `/ticker/{symbol}/history`
- * endpoint (daily closes). For each trading day present across all positions,
- * equity = Σ (shares × close). This is real, jagged market data — unlike the
- * Total Equity / Monte Carlo lead-in surfaces, which otherwise synthesize a
- * straight line from the single annualized-slope scalar in the /analyze response.
+ * Builds the real portfolio equity curve from the lens-api `/tickers/history`
+ * endpoint (daily closes for all holdings in ONE batched request). For each
+ * trading day present across all positions, equity = Σ (shares × close). This is
+ * real, jagged market data — unlike the Total Equity / Monte Carlo lead-in
+ * surfaces, which otherwise synthesize a straight line from the single
+ * annualized-slope scalar in the /analyze response.
  *
- * Resilient: tickers whose history fails are dropped (Promise.allSettled); only
- * dates present in every surviving series are summed, so the curve never jumps.
- * Returns [] while loading or on total failure, letting callers fall back.
+ * Resilient: any ticker absent from the response (unknown/failed) is dropped;
+ * only dates present in every surviving series are summed, so the curve never
+ * jumps. Returns [] while loading or on total failure, letting callers fall back.
  */
 export function usePortfolioHistory(period: HistoryPeriod = '6mo') {
   const positions = getPositions()
@@ -27,25 +28,22 @@ export function usePortfolioHistory(period: HistoryPeriod = '6mo') {
     staleTime: 30 * 60 * 1000,
     retry: 1,
     queryFn: async () => {
-      const settled = await Promise.allSettled(
-        positions.map((p) =>
-          lensApi
-            .getTickerHistory(p.ticker, period)
-            .then((hist) => ({ shares: p.shares, hist })),
-        ),
+      const byTicker = await lensApi.getTickersHistory(
+        positions.map((p) => p.ticker),
+        period,
       )
 
-      const series = settled
-        .filter(
-          (r): r is PromiseFulfilledResult<{ shares: number; hist: TickerHistoryPoint[] }> =>
-            r.status === 'fulfilled',
+      // Keep only positions the API returned data for; pair each with its shares.
+      const series = positions
+        .map((p) => ({ shares: p.shares, rows: byTicker[p.ticker.toUpperCase()] }))
+        .filter((s): s is { shares: number; rows: { date: string; close: number }[] } =>
+          Array.isArray(s.rows) && s.rows.length > 0,
         )
-        .map((r) => r.value)
       if (series.length === 0) return []
 
       const maps = series.map((s) => {
         const m = new Map<string, number>()
-        for (const row of s.hist) m.set(row.date, row.close)
+        for (const row of s.rows) m.set(row.date, row.close)
         return { shares: s.shares, m }
       })
 

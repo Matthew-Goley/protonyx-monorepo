@@ -18,7 +18,8 @@
       "PowerShell(New-Item *)",
       "Bash(grep *)",
       "Bash(node -e \"const p=require\\('./backend/package.json'\\); console.log\\(JSON.stringify\\(p.scripts,null,2\\)\\); console.log\\('better-sqlite3:', !!\\(p.dependencies&&p.dependencies['better-sqlite3']\\)||!!\\(p.devDependencies&&p.devDependencies['better-sqlite3']\\)\\)\")",
-      "Bash(echo \"exit:$?\")"
+      "Bash(echo \"exit:$?\")",
+      "Bash(python -c \"import ast; ast.parse\\(open\\('engine/store.py'\\).read\\(\\)\\); ast.parse\\(open\\('main.py'\\).read\\(\\)\\); print\\('syntax OK'\\)\")"
     ]
   },
   "hooks": {

@@ -1,5 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { QueryClient } from '@tanstack/react-query'
+import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client'
+import { createSyncStoragePersister } from '@tanstack/query-sync-storage-persister'
 import { AuthProvider } from '@/contexts/AuthContext'
 import { ThemeProvider } from '@/contexts/ThemeContext'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
@@ -12,11 +14,39 @@ import { Settings } from '@/pages/Settings'
 import { Success } from '@/pages/Success'
 import { Commodity } from '@/pages/Commodity'
 
-const queryClient = new QueryClient()
+// gcTime must outlive the persister maxAge so restored entries aren't garbage
+// collected before they can be rehydrated on the next load.
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      gcTime: 1000 * 60 * 60 * 24, // 24h
+    },
+  },
+})
+
+// Persist the query cache to localStorage so a page refresh / return visit
+// paints instantly from cache instead of re-running /analyze + /tickers/history.
+// Bump `buster` to invalidate all persisted caches after a breaking cache-shape
+// change.
+const persister = createSyncStoragePersister({
+  storage: window.localStorage,
+  key: 'lens-query-cache',
+})
 
 export default function App() {
   return (
-    <QueryClientProvider client={queryClient}>
+    <PersistQueryClientProvider
+      client={queryClient}
+      persistOptions={{
+        persister,
+        maxAge: 1000 * 60 * 60 * 24, // 24h
+        buster: 'v1',
+        dehydrateOptions: {
+          // Only persist successful queries — never cache an error/loading state.
+          shouldDehydrateQuery: (query) => query.state.status === 'success',
+        },
+      }}
+    >
       <ThemeProvider>
       <AuthProvider>
         <BrowserRouter>
@@ -83,6 +113,6 @@ export default function App() {
         </BrowserRouter>
       </AuthProvider>
       </ThemeProvider>
-    </QueryClientProvider>
+    </PersistQueryClientProvider>
   )
 }

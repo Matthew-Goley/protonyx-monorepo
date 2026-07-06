@@ -54,7 +54,7 @@ There is **no test framework**. Do not introduce one unless explicitly asked. Ve
 - **Vite 8** + `@vitejs/plugin-react`. Path alias `@/` -> `src/` is set in **both** `vite.config.ts` (runtime) and `tsconfig.app.json` (types). Always import via `@/...`, not relative `../../`.
 - **Tailwind CSS v4** via `@tailwindcss/postcss` (see `postcss.config.js`). Design tokens are defined in `src/index.css` with the v4 `@theme` block, **not** a JS config. See §6.
 - **react-router-dom v7** for routing.
-- **@tanstack/react-query v5** for the single `/analyze` cache.
+- **@tanstack/react-query v5** for the `/analyze` + `/tickers/history` caches, **persisted to `localStorage`** via `@tanstack/react-query-persist-client` + `@tanstack/query-sync-storage-persister` (see §4) so a refresh / return visit paints instantly from cache instead of re-hitting the Railway engine.
 - **recharts v3** for all charts (line/area/pie), but **only via the wrapper layer in `src/components/charts/`** — no file outside that directory may import from `recharts`. The wrappers (`LensLineChart`, `LensAreaChart`, `LensAreaFanChart`, `LensPieChart`, plus the higher-level `CyclablePieChart` that composes `LensPieChart`) bake in the styling.md §Charts rules (horizontal grid only, 11px tertiary axis ticks, brand-gradient strokes, custom tooltip, animate-once on mount) so chart styling cannot drift. Shared internals (`CHART_COLORS`, `PIE_COLORS`, `GradientDefs`, `LensTooltip`, `AXIS_TICK_PROPS`, `GRID_PROPS`, `useAnimateOnce`) live in `src/components/charts/chartUtils.tsx`. See §7.
 - **lucide-react** for icons.
 - **class-variance-authority** + **clsx** + **tailwind-merge** for the `cn()` helper and the button variants.
@@ -69,7 +69,7 @@ There is **no test framework**. Do not introduce one unless explicitly asked. Ve
 
 ## 4. Routing and auth flow
 
-`src/App.tsx` wires the whole tree: `QueryClientProvider` -> `AuthProvider` -> `BrowserRouter` -> `Routes`.
+`src/App.tsx` wires the whole tree: `PersistQueryClientProvider` -> `ThemeProvider` -> `AuthProvider` -> `BrowserRouter` -> `Routes`. The query client sets `gcTime: 24h` (must outlive the persister `maxAge` or restored entries get garbage-collected before rehydration) and persists to `localStorage` under key `lens-query-cache` (`maxAge: 24h`, `buster: 'v1'`, only successful queries dehydrated). **Bump `buster` after any change to a cached query's response shape** to invalidate stale persisted caches across all users.
 
 | Path | Component | Guard |
 |---|---|---|
@@ -152,7 +152,7 @@ This file is the boundary between the raw `/analyze` response and the UI. **Read
    - **Equity chart / timeframe** — `TotalEquityWidget` renders the **real** portfolio equity curve from `usePortfolioHistory('5y')` (jagged daily closes) through the `EquityChart` wrapper. A vertical up/down cycler (`VerticalCycleControl`) steps the timeframe (1D / 1W / 1M / 3M / 1Y / ALL, **default 1Y**); the widget fetches the max range once and re-slices to the selected window client-side (`windowPoints`). Because the lens-api serves **daily** closes only, 1D / 1W are coarse (a handful of points). It falls back to a slope-synthesized straight line (`synthPoints`, with generated dates) only while history is loading or if it fails. The big equity number and the area color green/red by the selected window's net change. The Portfolio Vector chart stays a straight line **by design** — it is the literal linear-regression line, not a price series.
      - **X-axis is the "Ruler"**: faint full-height guide lines through the plot at ~5 evenly spaced points with a date label at the base of each (formatted per timeframe by `fmtShort`). Positions are computed against a hidden numeric x-domain (`[0, n-1]`) so the HTML guide lines/labels align to the data points. The hover tooltip always shows the full date + equity. (Four other axis styles were prototyped and removed once Ruler was chosen.)
 
-   **Why these were "flat/linear":** the `/analyze` response is all scalars (no time series), so anything synthesized from a single scalar is a straight line. Real jaggedness comes from the separate `/ticker/{symbol}/history` endpoint via `usePortfolioHistory` (see §5 → that hook). Do not try to make these jagged by adding noise; use real history.
+   **Why these were "flat/linear":** the `/analyze` response is all scalars (no time series), so anything synthesized from a single scalar is a straight line. Real jaggedness comes from the separate batched `/tickers/history` endpoint via `usePortfolioHistory` (see §5 → that hook), which fetches daily closes for all holdings in one request. Do not try to make these jagged by adding noise; use real history.
 
 Other helpers in this file: classification bands (`sharpeClass`, `betaClass`, `cautionClass`), CTA presentation (`ctaActionLabel`, `ctaAccent`), the **brief tokenizer** (`tokenizeBrief` — regex-colors tickers/money/percent/action words for `BriefText`), `sectorWeightsFromPositions` (for the projected-allocation pie), formatters (`formatCurrency`, `formatSignedCurrency`, `formatPercent`), and `PIE_COLORS`. Colors are referenced as CSS custom properties (`var(--color-accent-green)` etc.), which resolve against the `@theme` tokens.
 

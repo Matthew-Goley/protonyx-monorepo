@@ -238,7 +238,10 @@ Each CTA in `ctas`:
 Requires `X-API-Key`. Company snapshot from yfinance `.info`: `{ name, sector, market_cap, pe_ratio, dividend_yield, "52_week_high", "52_week_low", current_price }`. Unknown tickers (no `currentPrice`/`regularMarketPrice`) → 404. Numeric fields are NaN-sanitized to `null` (see NaN note below). Used by the lens-app `AddPositionModal` to validate a ticker and pull live price/sector/name.
 
 #### `GET /ticker/{symbol}/history`
-Requires `X-API-Key`. `?period=` one of `1mo|3mo|6mo|1y|2y|5y` (default `1y`); anything else → 400. Returns a JSON array of `{ date, open, high, low, close, volume }` daily bars (`yf.history(interval="1d", auto_adjust=False)`). Empty/no usable rows → 404. Used by the lens-app `usePortfolioHistory` hook to build the real portfolio equity curve (Total Equity sparkline + Monte Carlo historical lead-in). Rows are built defensively: any bar with no `close` is skipped and NaN `volume` is coerced to `0`. The assembled rows are then passed through `_finitize()` (same as `/analyze`) right before the `JSONResponse` is constructed (see NaN note) — the per-row `pd.isna()` guards catch `NaN` but **not** `±inf`, and an inf OHLC value slipping through to the eager render was the cause of every history call 500ing in production while `/compare` (default `auto_adjust`) kept working.
+Requires `X-API-Key`. `?period=` one of `1mo|3mo|6mo|1y|2y|5y` (default `1y`); anything else → 400. Returns a JSON array of `{ date, open, high, low, close, volume }` daily bars (`yf.history(interval="1d", auto_adjust=False)`). Empty/no usable rows → 404. **No longer called by the lens-app** (the equity curve now uses the batched `/tickers/history` below); the single-ticker `getTickerHistory` client wrapper still exists but is unused. Rows are built defensively: any bar with no `close` is skipped and NaN `volume` is coerced to `0`. The assembled rows are then passed through `_finitize()` (same as `/analyze`) right before the `JSONResponse` is constructed (see NaN note) — the per-row `pd.isna()` guards catch `NaN` but **not** `±inf`, and an inf OHLC value slipping through to the eager render was the cause of every history call 500ing in production while `/compare` (default `auto_adjust`) kept working.
+
+#### `GET /tickers/history`
+Requires `X-API-Key`. `?symbols=AAPL,MSFT,KO&period=6mo` (period same options as `/history`, default `6mo`; bad period or empty `symbols` → 400). Returns daily closes for **all requested tickers in one batched `yf.download([...])`** as `{ "AAPL": [{ date, close }, ...], ... }`. Handles both the multi-ticker (`Close` is a DataFrame of ticker columns) and single-ticker (`Close` is a Series) shapes yfinance returns. Symbols with no data are simply absent from the map (no 404). Closes are `_finitize()`d and NaN/inf points dropped. **This backs the lens-app `usePortfolioHistory` equity curve** (Total Equity sparkline + Monte Carlo historical lead-in): one round trip + one download instead of N separate `/ticker/{symbol}/history` calls. Like `/analyze`, this download bypasses the DataStore cache (goes straight to `yf.download`).
 
 #### `GET /ticker/{symbol}/compare`
 Requires `X-API-Key`. `?symbols=NVDA,SPY&period=1y`. Returns each series normalized to 100 at its first trading day for overlay charts. Not currently called by the lens-app.
@@ -248,8 +251,10 @@ Requires `X-API-Key`. `?symbols=NVDA,SPY&period=1y`. Returns each series normali
 ### How the pipeline works (inside `/analyze`)
 
 1. `DEFAULT_SETTINGS` is merged with any caller-provided `settings` (caller overrides win).
-2. `generate_lens_full(positions, store, merged_settings)` is called via `run_in_threadpool` (the pipeline is synchronous and makes network calls to yfinance; running it in a thread keeps the async event loop free).
-3. `generate_lens_full` calls `build_lens_output` in `engine/lens/lens_output.py`, which runs the full pipeline: analyzers → CTA engine → sentence composers → caution score → result dict.
+2. A local `_run()` closure is dispatched via `run_in_threadpool` (the pipeline is synchronous and makes network calls to yfinance; running it in a thread keeps the async event loop free). Inside it:
+   1. **`_store.prefetch_for_analysis(tickers, merged_settings)` warms the cache concurrently first** (see §7). Wrapped in try/except — a prefetch failure is logged and the analyzers fall back to their lazy per-ticker fetch, so analysis still succeeds.
+   2. `generate_lens_full(positions, store, merged_settings)` then runs the pipeline against the now-warm cache.
+3. `generate_lens_full` calls `build_lens_output` in `engine/lens/lens_output.py`, which runs the full pipeline: analyzers → CTA engine → sentence composers → caution score → result dict. The analyzers still loop over positions serially, but every `store.get_*` call is now an in-memory cache hit because the prefetch already fetched everything.
 4. The DataStore (`_store`) is a module-level singleton — one instance per worker process. It maintains an in-memory market data cache (`_market_cache`) backed by `market_data.json` on disk. This means repeated calls for the same tickers will hit the in-memory cache after the first fetch.
 5. The result is serialized via `json.dumps(result, default=str)`, passed through `_finitize()` (to strip any NaN/inf — see the NaN-safety note in §6), and returned as a `JSONResponse`, bypassing Pydantic. This is necessary because `pool_results` contains engine-internal types (specifically `DataStore`) that Pydantic cannot serialize — it would throw `PydanticSerializationError` and cause a 500 before the response is sent. The `default=str` fallback converts any non-serializable object to its repr string. If a future refactor cleans those types out of the result dict, the `JSONResponse` approach can stay (it is not harmful) or be replaced with a typed Pydantic response model.
 
@@ -257,10 +262,15 @@ Requires `X-API-Key`. `?symbols=NVDA,SPY&period=1y`. Returns each series normali
 
 ## 7. DataStore and Market Data Caching
 
-`engine/store.py` is unchanged from the original Vector desktop code. It:
+`engine/store.py` is close to the original Vector desktop code (see the prefetch note below for the one addition). It:
 - Wraps all yfinance calls with TTL-based JSON caching
 - Writes cache to `LENS_DATA_DIR/market_data.json`
 - Holds an in-memory `_market_cache` dict that persists across requests within a single worker
+
+**Concurrent prefetch (`prefetch_for_analysis`) — the /analyze speedup.** A cold N-ticker portfolio otherwise makes ~6-7N *serial* blocking yfinance round trips (each analyzer loops over positions calling `get_history`/`get_snapshot`/`get_dividends`/`get_earnings` one ticker at a time). `prefetch_for_analysis(tickers, settings)` front-loads all of that concurrently before the analyzers run, so their `store.get_*` calls become in-memory cache hits:
+- **Batched history (#2):** `_batch_history_closes()` pulls the periods the analyzers need (`6mo` for slope, `1y` for volatility/beta, plus `SPY` `1y` for beta) with **one `yf.download([...])` per period** instead of N serial `.history()` calls. `auto_adjust=False` matches `get_history`, so warmed closes are byte-identical to lazily-fetched ones.
+- **Parallel per-ticker (#1):** the calls that can't be batched (`.info` snapshot, dividends, earnings) run across a `ThreadPoolExecutor` (max 8 workers). To keep this thread-safe, the network fetch is split from cache mutation: the pure `_fetch_quote_and_meta` / `_fetch_dividends_list` / `_fetch_earnings_list` helpers touch **no shared state**, and all cache writes + the single disk write happen serially on the calling thread after the pool joins. `get_snapshot`/`get_dividends`/`get_earnings` were refactored to reuse these same pure helpers.
+- **TTL-respecting + best-effort:** anything already fresh is skipped (a warm cache makes it a near no-op); index ETFs are skipped for earnings (the earnings analyzer ignores them). Any failure is swallowed and the analyzers fall back to the lazy path. Measured: ~3.9x faster on a cold 10-ticker portfolio (14.8s → 3.8s), with identical caution score / CTAs. Speedup grows with ticker count.
 
 **TTLs:**
 | Data | TTL |
