@@ -8,7 +8,6 @@ import { AddPositionModal } from '@/components/common/AddPositionModal'
 import { useHotkey } from '@/hooks/useHotkey'
 import { Button } from '@/components/ui/button'
 import { formatCurrency } from '@/lib/lensData'
-import { cn } from '@/lib/utils'
 
 // Editorial onboarding: a thin full-width progress line pinned to the top edge,
 // a bold left-aligned heading, and the primary action locked to the bottom of
@@ -20,7 +19,7 @@ const STEPS = [
   },
   {
     title: 'Add Your Positions',
-    description: 'Add one or more holdings. Lens validates each ticker before saving.',
+    description: 'Add one or more holdings.',
   },
 ]
 
@@ -29,7 +28,6 @@ export function Onboard() {
   const [step, setStep] = useState<1 | 2>(1)
   const [risk, setRisk] = useState<RiskTier | null>(null)
   const [positions, setPositionsState] = useState<Position[]>([])
-  const [selected, setSelected] = useState<Set<string>>(new Set())
   const [modalOpen, setModalOpen] = useState(false)
 
   // Press "a" on the portfolio-setup step to open the add-position modal.
@@ -45,25 +43,6 @@ export function Onboard() {
 
   function removePosition(ticker: string) {
     setPositionsState((prev) => prev.filter((p) => p.ticker !== ticker))
-    setSelected((prev) => {
-      const next = new Set(prev)
-      next.delete(ticker)
-      return next
-    })
-  }
-
-  function toggleSelect(ticker: string) {
-    setSelected((prev) => {
-      const next = new Set(prev)
-      if (next.has(ticker)) next.delete(ticker)
-      else next.add(ticker)
-      return next
-    })
-  }
-
-  function removeSelected() {
-    setPositionsState((prev) => prev.filter((p) => !selected.has(p.ticker)))
-    setSelected(new Set())
   }
 
   function launch() {
@@ -104,51 +83,42 @@ export function Onboard() {
                   <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-subtle py-14 text-center">
                     <LayoutGrid className="text-muted" size={32} />
                     <p className="mt-3 font-medium text-primary">No positions yet</p>
-                    <p className="mt-1 text-sm text-secondary">Add at least one holding to get started.</p>
                   </div>
                 ) : (
-                  <div className="space-y-3">
-                    {positions.map((p) => {
-                      const isSel = selected.has(p.ticker)
-                      return (
-                        <div
-                          key={p.ticker}
-                          onClick={() => toggleSelect(p.ticker)}
-                          className={cn(
-                            'relative cursor-pointer rounded-lg border p-6 transition-all duration-200 ease-out',
-                            isSel
-                              ? 'border-accent-teal bg-accent-teal/5'
-                              : 'border-subtle bg-card hover:border-accent-teal/40',
-                          )}
-                        >
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              removePosition(p.ticker)
-                            }}
-                            className="absolute top-4 right-4 text-muted hover:text-accent-red"
-                          >
-                            <X size={18} />
-                          </button>
-                          <p className="text-2xl font-semibold text-primary">{p.ticker}</p>
-                          <p className="mt-1 text-sm text-secondary">
-                            {p.shares} shares · {formatCurrency(p.price)} · {formatCurrency(p.equity)} ·{' '}
-                            {p.sector}
+                  // Caps at 3 rows, then scrolls (inherits the app-wide scrollbar).
+                  <div className="max-h-[276px] space-y-3 overflow-y-auto overflow-x-hidden pr-1">
+                    {positions.map((p) => (
+                      <div
+                        key={p.ticker}
+                        className="relative flex items-center justify-between rounded-lg border border-subtle bg-card p-4"
+                      >
+                        <div>
+                          <p className="text-2xl font-semibold leading-none text-primary">{p.ticker}</p>
+                          <p className="mt-1.5 text-lg font-semibold text-secondary">
+                            {formatCurrency(p.equity)}
                           </p>
                         </div>
-                      )
-                    })}
+                        <div className="pr-6 text-right">
+                          <p className="text-lg font-semibold text-primary">{p.shares}</p>
+                          <p className="text-xs text-secondary">shares</p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => removePosition(p.ticker)}
+                          aria-label={`Remove ${p.ticker}`}
+                          className="absolute top-3 right-3 text-muted transition-colors hover:text-accent-red"
+                        >
+                          <X size={16} />
+                        </button>
+                      </div>
+                    ))}
                   </div>
                 )}
               </div>
 
-              <div className="mt-5 flex gap-3">
+              <div className="mt-5">
                 <Button variant="teal" onClick={() => setModalOpen(true)}>
                   Add Position
-                </Button>
-                <Button variant="red" onClick={removeSelected} disabled={selected.size === 0}>
-                  Remove Selected
                 </Button>
               </div>
             </div>
