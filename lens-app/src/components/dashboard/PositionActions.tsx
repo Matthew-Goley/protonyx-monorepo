@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { Plus, SlidersHorizontal, Pencil, Trash2, X, Check } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -6,6 +7,7 @@ import { Panel } from '@/components/common/Panel'
 import { AddPositionModal } from '@/components/common/AddPositionModal'
 import { formatCurrency } from '@/lib/lensData'
 import { usePositionsManagerContext } from '@/contexts/PositionsManagerContext'
+import { useHotkey } from '@/hooks/useHotkey'
 
 /*
   Position Actions dashboard widget: a big + (add a position, opens
@@ -61,6 +63,24 @@ export function PositionActionsWidget() {
   const [drawer, setDrawer] = useState(false)
   const [editing, setEditing] = useState<string | null>(null)
 
+  // Dashboard hotkeys: "a" opens the add-position modal, "m" opens the manage
+  // drawer. Both disabled while either overlay is already open.
+  useHotkey('a', () => setAddOpen(true), !addOpen && !drawer)
+  useHotkey('m', () => setDrawer(true), !addOpen && !drawer)
+
+  // Esc in the manage drawer cancels an active share edit first, else closes it.
+  // (The add-position modal handles its own Esc.)
+  useEffect(() => {
+    if (!drawer) return
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key !== 'Escape') return
+      if (editing) setEditing(null)
+      else setDrawer(false)
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [drawer, editing])
+
   return (
     <>
       {/* Two stacked controls filling the 2x3 grid cell. Content is a placeholder
@@ -90,7 +110,7 @@ export function PositionActionsWidget() {
         <AddPositionModal onClose={() => setAddOpen(false)} onAdd={(p) => { addPosition(p); setAddOpen(false) }} />
       )}
 
-      {drawer && (
+      {drawer && createPortal(
         <div
           className="fixed inset-0 z-50 flex justify-end bg-black/60"
           onClick={() => { setDrawer(false); setEditing(null) }}
@@ -133,7 +153,8 @@ export function PositionActionsWidget() {
               {positions.length === 0 && <p className="py-6 text-center text-sm text-secondary">No holdings yet.</p>}
             </div>
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
     </>
   )

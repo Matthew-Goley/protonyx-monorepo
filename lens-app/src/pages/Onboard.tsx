@@ -5,6 +5,7 @@ import { type Position } from '@/api/lens'
 import { setPositions, setSettings, type RiskTier } from '@/lib/cookies'
 import { RiskProfileCards } from '@/components/common/RiskProfileCards'
 import { AddPositionModal } from '@/components/common/AddPositionModal'
+import { useHotkey } from '@/hooks/useHotkey'
 import { Button } from '@/components/ui/button'
 import { formatCurrency } from '@/lib/lensData'
 import { cn } from '@/lib/utils'
@@ -56,6 +57,9 @@ export function Onboard() {
   const [positions, setPositionsState] = useState<Position[]>([])
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [modalOpen, setModalOpen] = useState(false)
+
+  // Press "a" on the portfolio-setup step to open the add-position modal.
+  useHotkey('a', () => setModalOpen(true), step === 2 && !modalOpen)
 
   function addPosition(p: Position) {
     setPositionsState((prev) => {

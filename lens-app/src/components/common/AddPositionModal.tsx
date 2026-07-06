@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { Loader2 } from 'lucide-react'
 import { lensApi, type Position } from '@/api/lens'
 import { Button } from '@/components/ui/button'
@@ -17,6 +18,22 @@ export function AddPositionModal({
   const [shares, setShares] = useState('')
   const [validating, setValidating] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  // Esc closes the modal (app-wide), unless a validation is in flight.
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape' && !validating) onClose()
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [validating, onClose])
+
+  function onFieldKeyDown(e: React.KeyboardEvent) {
+    if (e.key === 'Enter' && !validating) {
+      e.preventDefault()
+      handleAdd()
+    }
+  }
 
   async function handleAdd() {
     setError(null)
@@ -52,7 +69,10 @@ export function AddPositionModal({
     }
   }
 
-  return (
+  // Portaled to document.body so `fixed` positioning resolves against the
+  // viewport, not a transformed ancestor (dashboard widgets render inside a
+  // FitScale transform, which would otherwise trap this inside the widget box).
+  return createPortal(
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
       onClick={onClose}
@@ -74,6 +94,7 @@ export function AddPositionModal({
             <Input
               value={ticker}
               onChange={(e) => setTicker(e.target.value.toUpperCase())}
+              onKeyDown={onFieldKeyDown}
               placeholder="AAPL"
               autoFocus
               disabled={validating}
@@ -87,6 +108,7 @@ export function AddPositionModal({
               type="number"
               value={shares}
               onChange={(e) => setShares(e.target.value)}
+              onKeyDown={onFieldKeyDown}
               placeholder="10"
               min="0"
               step="any"
@@ -111,6 +133,7 @@ export function AddPositionModal({
           </Button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }
