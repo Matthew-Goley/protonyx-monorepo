@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { AlertTriangle, ChevronRight } from 'lucide-react'
+import { ChevronRight } from 'lucide-react'
 import { type LensResult } from '@/api/lens'
 import { Panel } from '@/components/common/Panel'
 import { GeneratingBrief } from '@/components/widgets/GeneratingBrief'
@@ -27,7 +27,6 @@ import {
   tickerWeights,
   assetTypeWeights,
   sectorCount,
-  concentrationSeverity,
   dividendRows,
   tickerTrendPct,
   tickerCurrentPrice,
@@ -351,7 +350,6 @@ const COMPOSITION_UNITS: Record<string, string> = {
 
 export function CompositionWidget({ result }: { result: LensResult }) {
   const positions = getPositions()
-  const concentrated = ['moderate', 'high', 'critical'].includes(concentrationSeverity(result))
   const [viewIndex, setViewIndex] = useState(0)
 
   const views: PieView[] = [
@@ -368,21 +366,12 @@ export function CompositionWidget({ result }: { result: LensResult }) {
   return (
     <Panel>
       <WidgetHeader title="Composition" right={`${count} ${unit}${count === 1 ? '' : 's'}`} />
-      {concentrated && (
-        <p className="mb-3 flex items-center gap-1.5 text-xs text-accent-yellow">
-          <AlertTriangle size={14} />
-          Concentrated in one sector
-        </p>
-      )}
       {/* Cycle control lives under the legend list now, so the pie can run larger.
           Sized up to fill the wider 6-column card; `height` sets the legend-column
-          height, so raising it drops the cycle control further down the card.
-          The card height is locked, so when the concentration banner is present it
-          eats ~28px of vertical space; shrink the chart by the same amount so the
-          cycle control never clips past the bottom edge. */}
+          height, so raising it drops the cycle control further down the card. */}
       <CyclablePieChart
         views={views}
-        height={concentrated ? 272 : 300}
+        height={300}
         size={124}
         innerRadius={80}
         index={viewIndex}
