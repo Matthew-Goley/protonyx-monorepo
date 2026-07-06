@@ -275,6 +275,37 @@ Single typed client object `lensApi`:
 
 ---
 
-## 10. When you change things, update this doc
+## 10. Versioning
 
-New page or route -> §4/§7. New widget (add a registry entry with a low `h` floor + a `title`; measurement sizes it, edit mode can add/move/remove it) or derived metric -> §5/§7. Change to the grid model (columns, gap, packer, fit helpers, non-displacing edit helpers, measure/place passes, edit mode, layout cookie, cell sizing) -> §5/§7. New design token -> §6. New lens-api method or changed response -> §8 (+ `../lens-api/CLAUDE.md`). New Fastify call or auth change -> §4/§9 (+ `../CLAUDE.md`). New dependency or build/lint change -> §2/§3. Treat the doc as part of the diff.
+The app uses **semver `MAJOR.MINOR.PATCH`**, starting at `1.0.0`. The **single source of truth is the `version` field in `package.json`.** There is no separate version file.
+
+**Semantics:**
+
+- **PATCH** is the "number of Claude Code updates" counter. **Claude Code auto-increments it once per task in which it actually modified app files** (anything under `src/`). Nothing else changes it.
+- **MINOR** and **MAJOR** are **Matthew-only**. Claude Code must **never** change them unless Matthew explicitly says so (e.g. "bump to v1.1.0"). Bumping minor resets patch to `0`; bumping major resets minor **and** patch to `0`.
+
+**Scripts** (`lens-app/scripts/`, Node ESM), wired to `package.json`:
+
+| Command | Script | Effect |
+|---|---|---|
+| `npm run bump` | `scripts/bump.mjs` | PATCH + 1. **Structurally incapable of touching MAJOR/MINOR** (it parses the three segments and only ever writes the third). |
+| `npm run bump:minor` | `scripts/bump-minor.mjs` | MINOR + 1, PATCH -> 0. **Matthew-only.** |
+| `npm run bump:major` | `scripts/bump-major.mjs` | MAJOR + 1, MINOR -> 0, PATCH -> 0. **Matthew-only.** |
+
+**Auto-bump (Stop hook).** A Claude Code **Stop hook** (registered in the monorepo-root `.claude/settings.local.json`, driven by `scripts/bump-hook.mjs`) runs `bump.mjs` when a turn finishes, **only if there are real uncommitted changes under `src/`**. It is diff-gated: it hashes the current `src/` diff (tracked + untracked) and records it in `node_modules/.cache/version-bump-state`, so a code turn bumps once and a following question-only turn (no `src/` change) does **not** re-bump. Committing clears the `src/` diff and resets the gate. The version file (`package.json`) lives outside `src/`, so bumping never re-triggers a bump; any git failure exits 0 so the hook can never break a turn. **If the hook is ever unavailable, run `npm run bump` yourself as the final step of any task where you changed app files.** Never run `bump:minor` / `bump:major`.
+
+**Exposure to the frontend.** `vite.config.ts` imports `package.json` (`with { type: 'json' }`) and injects the version via `define: { __APP_VERSION__: JSON.stringify(pkg.version) }`. `src/vite-env.d.ts` declares `declare const __APP_VERSION__: string`, and `tsconfig.node.json` has `resolveJsonModule: true` for the config's JSON import. It **renders in Settings -> About** beside the API status line (`v{__APP_VERSION__} · API {status}`), as 12px `text-secondary`, no gradient (per §6).
+
+**Report the version at the end of every reply.** After finishing any prompt in `lens-app`, end the reply with the current version on its own line:
+
+```
+App version: v1.0.1
+```
+
+Read the actual value from the `version` field in `lens-app/package.json` each time (do **not** hardcode it), so it reflects the latest number, including after an auto-bump ran this turn. Show it on **every** task, including question-only turns where no bump happened. Note: the auto-bump Stop hook runs *after* the reply is emitted, so on a turn that changed `src/`, the number shown is the value *before* this turn's bump (it lands on the next reply).
+
+---
+
+## 11. When you change things, update this doc
+
+New page or route -> §4/§7. New widget (add a registry entry with a low `h` floor + a `title`; measurement sizes it, edit mode can add/move/remove it) or derived metric -> §5/§7. Change to the grid model (columns, gap, packer, fit helpers, non-displacing edit helpers, measure/place passes, edit mode, layout cookie, cell sizing) -> §5/§7. New design token -> §6. New lens-api method or changed response -> §8 (+ `../lens-api/CLAUDE.md`). New Fastify call or auth change -> §4/§9 (+ `../CLAUDE.md`). New dependency or build/lint change -> §2/§3. Versioning scheme/scripts/hook change -> §10. Treat the doc as part of the diff.

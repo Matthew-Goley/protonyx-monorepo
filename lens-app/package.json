@@ -1,13 +1,16 @@
 {
   "name": "lens-app",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "bump": "node scripts/bump.mjs",
+    "bump:minor": "node scripts/bump-minor.mjs",
+    "bump:major": "node scripts/bump-major.mjs"
   },
   "dependencies": {
     "@radix-ui/react-label": "^2.1.10",

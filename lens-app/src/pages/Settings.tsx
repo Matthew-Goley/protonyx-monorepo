@@ -293,7 +293,9 @@ export function Settings() {
           <div className="space-y-3 text-sm">
             <div className="flex items-center justify-between">
               <span className="text-secondary">App Version</span>
-              <span className="text-primary">Lens Arc 1.0 · API {apiStatus}</span>
+              <span className="text-[12px] text-secondary">
+                v{__APP_VERSION__} · API {apiStatus}
+              </span>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-secondary">Brand</span>

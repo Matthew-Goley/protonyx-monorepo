@@ -111,7 +111,7 @@ export function Analysis() {
               <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
                 <Panel className="lg:col-span-5">
                   <h3 className="mb-4 text-xl font-semibold text-primary">Caution Score</h3>
-                  <CautionGauge score={result.caution_score} />
+                  <CautionGauge score={result.caution_score} caption="" />
                 </Panel>
                 <Panel className="lg:col-span-7">
                   <h3 className="mb-4 text-xl font-semibold text-primary">All Projections</h3>
