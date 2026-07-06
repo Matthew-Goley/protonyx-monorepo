@@ -361,10 +361,13 @@ export function CompositionWidget({ result }: { result: LensResult }) {
       )}
       {/* Cycle control lives under the legend list now, so the pie can run larger.
           Sized up to fill the wider 6-column card; `height` sets the legend-column
-          height, so raising it drops the cycle control further down the card. */}
+          height, so raising it drops the cycle control further down the card.
+          The card height is locked, so when the concentration banner is present it
+          eats ~28px of vertical space; shrink the chart by the same amount so the
+          cycle control never clips past the bottom edge. */}
       <CyclablePieChart
         views={views}
-        height={300}
+        height={concentrated ? 272 : 300}
         size={124}
         innerRadius={80}
         index={viewIndex}
