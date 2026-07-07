@@ -27,7 +27,7 @@ APP_VERSION = '0.5.0'
 # change to Lens logic (analyzers, CTA engine, sentence composers, caution
 # score, risk profiles, sector resolution, templates that alter output). It is
 # not shown in the UI. See CLAUDE.md → "Lens Engine Version".
-LENS_VERSION = '0.1.3'
+LENS_VERSION = '1.3.32'
 # Base URL for all web redirects (forgot password, EULA, TOS). Change this single
 # value to repoint every web link at a different host — each redirect below just
 # appends its path. e.g. BASE_URL = 'protonyxdata.com' makes FORGOT_PASSWORD_URL
