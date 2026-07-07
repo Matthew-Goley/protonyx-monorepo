@@ -1,6 +1,5 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react'
-
-const BACKEND_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3000'
+import { BACKEND_URL } from '@/lib/backend'
 
 interface User {
   id: number

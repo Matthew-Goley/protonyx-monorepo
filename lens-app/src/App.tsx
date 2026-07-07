@@ -5,6 +5,7 @@ import { createSyncStoragePersister } from '@tanstack/query-sync-storage-persist
 import { AuthProvider } from '@/contexts/AuthContext'
 import { ThemeProvider } from '@/contexts/ThemeContext'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
+import { PositionsMigrationGate } from '@/components/PositionsMigrationGate'
 import { Login } from '@/pages/Login'
 import { Onboard } from '@/pages/Onboard'
 import { Dashboard } from '@/pages/Dashboard'
@@ -43,13 +44,20 @@ export default function App() {
         buster: 'v1',
         dehydrateOptions: {
           // Only persist successful queries — never cache an error/loading state.
-          shouldDehydrateQuery: (query) => query.state.status === 'success',
+          // Exclude ['positions'] so raw holdings are never written to localStorage
+          // at rest; they are refetched from the server on load. The derived
+          // ['lens-analysis'] result stays persisted (instant paint, by design) and
+          // still matches after refetch because react-query hashes query keys by
+          // value, so an identical positions array reproduces the same key.
+          shouldDehydrateQuery: (query) =>
+            query.state.status === 'success' && query.queryKey[0] !== 'positions',
         },
       }}
     >
       <ThemeProvider>
       <AuthProvider>
         <BrowserRouter>
+          <PositionsMigrationGate />
           <Routes>
             <Route path="/login" element={<Login />} />
             <Route

@@ -1,7 +1,7 @@
 import { useAuth } from '@/contexts/AuthContext'
 import { isSubscribed } from '@/lib/subscription'
 import { useLensAnalysis } from '@/hooks/useLensAnalysis'
-import { getPositions } from '@/lib/cookies'
+import { usePositions } from '@/hooks/usePositions'
 import { AppShell } from '@/components/layout/AppShell'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Panel } from '@/components/common/Panel'
@@ -30,7 +30,8 @@ function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
 
 export function Profile() {
   const { user } = useAuth()
-  const hasPositions = getPositions().length > 0
+  const { data: positions = [] } = usePositions()
+  const hasPositions = positions.length > 0
   const query = useLensAnalysis()
 
   const pro = isSubscribed(user)

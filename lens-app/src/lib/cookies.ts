@@ -27,7 +27,12 @@ function writeCookie(name: string, value: string) {
   document.cookie = `${name}=${encodeURIComponent(value)}; path=/; max-age=${MAX_AGE}; SameSite=Lax`
 }
 
-export function getPositions(): Position[] {
+// Positions now live in Postgres (per user) via the Fastify /positions endpoints,
+// not in a cookie. The two helpers below exist ONLY for the one-time migration of
+// any legacy lens_positions cookie into the server on first authenticated load
+// (see src/components/PositionsMigrationGate.tsx). Delete them once no beta user
+// could still be carrying the old cookie.
+export function readLegacyPositions(): Position[] {
   const raw = readCookie(POSITIONS_COOKIE)
   if (!raw) return []
   try {
@@ -38,8 +43,8 @@ export function getPositions(): Position[] {
   }
 }
 
-export function setPositions(positions: Position[]): void {
-  writeCookie(POSITIONS_COOKIE, JSON.stringify(positions))
+export function clearLegacyPositions(): void {
+  document.cookie = `${POSITIONS_COOKIE}=; path=/; max-age=0; SameSite=Lax`
 }
 
 export function getSettings(): StoredSettings {
@@ -100,11 +105,11 @@ export function clearLayout(): void {
   document.cookie = `${LAYOUT_COOKIE}=; path=/; max-age=0; SameSite=Lax`
 }
 
-// Wipes all persisted client state (positions, settings, dashboard layout) by
-// expiring every app cookie. With positions gone, Dashboard redirects to
-// /onboard, so this is effectively a "start onboarding over" reset.
+// Wipes the persisted client-side state (settings + dashboard layout) by expiring
+// those cookies. Positions live on the server now, so clearing them is a separate
+// call (positionsApi.replacePositions([])) - see Settings "Clear Data".
 export function clearAllData(): void {
-  for (const name of [POSITIONS_COOKIE, SETTINGS_COOKIE, LAYOUT_COOKIE]) {
+  for (const name of [SETTINGS_COOKIE, LAYOUT_COOKIE]) {
     document.cookie = `${name}=; path=/; max-age=0; SameSite=Lax`
   }
 }

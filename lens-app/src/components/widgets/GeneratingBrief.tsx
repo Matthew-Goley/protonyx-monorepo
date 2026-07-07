@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { type LensResult } from '@/api/lens'
-import { getPositions } from '@/lib/cookies'
+import { usePositions } from '@/hooks/usePositions'
 import { tokenizeBrief, type BriefKind } from '@/lib/lensData'
 
 /*
@@ -34,9 +34,10 @@ const DURATION_MS = 1400
 export function GeneratingBrief({ result }: { result: LensResult }) {
   const text = result.brief
 
+  const { data: positions = [] } = usePositions()
   const tickers = useMemo(
-    () => [...getPositions().map((p) => p.ticker), ...(result.recommended_tickers ?? [])],
-    [result.recommended_tickers],
+    () => [...positions.map((p) => p.ticker), ...(result.recommended_tickers ?? [])],
+    [positions, result.recommended_tickers],
   )
 
   // Flatten the colored brief into per-character cells so each char can fade in

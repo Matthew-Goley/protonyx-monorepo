@@ -2,13 +2,14 @@ import { Navigate } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
 import { isSubscribed } from '@/lib/subscription'
 import { useLensAnalysis } from '@/hooks/useLensAnalysis'
+import { usePositions } from '@/hooks/usePositions'
 import { usePortfolioHistory } from '@/hooks/usePortfolioHistory'
-import { getPositions } from '@/lib/cookies'
 import { type Position } from '@/api/lens'
 import { AppShell } from '@/components/layout/AppShell'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Panel, CardLabel } from '@/components/common/Panel'
 import { BriefText } from '@/components/common/BriefText'
+import { PageLoader } from '@/components/common/PageLoader'
 import { UpgradePrompt } from '@/components/common/UpgradePrompt'
 import { SectorPie } from '@/components/common/SectorPie'
 import { Button } from '@/components/ui/button'
@@ -29,11 +30,9 @@ function Skeleton({ className }: { className?: string }) {
 
 export function Analysis() {
   const { user } = useAuth()
-  const hasPositions = getPositions().length > 0
+  const positionsQuery = usePositions()
   const query = useLensAnalysis()
   const history = usePortfolioHistory('6mo')
-
-  if (!hasPositions) return <Navigate to="/onboard" replace />
 
   const header = (
     <PageHeader
@@ -46,6 +45,20 @@ export function Analysis() {
       }
     />
   )
+
+  // Wait for positions before redirecting, so a refresh does not bounce the user.
+  if (positionsQuery.isLoading) {
+    return (
+      <AppShell>
+        {header}
+        <PageLoader />
+      </AppShell>
+    )
+  }
+
+  if (positionsQuery.isSuccess && positionsQuery.data.length === 0) {
+    return <Navigate to="/onboard" replace />
+  }
 
   if (!isSubscribed(user)) {
     return (
@@ -87,7 +100,7 @@ export function Analysis() {
       {result &&
         (() => {
           const mc = buildMonteCarlo(result, (history.data ?? []).map((p) => p.equity))
-          const currentAlloc = sectorWeightsFromPositions(getPositions())
+          const currentAlloc = sectorWeightsFromPositions(positionsQuery.data ?? [])
           const projectedAlloc = sectorWeightsFromPositions(
             (result.projected_positions as Position[]) ?? [],
           )

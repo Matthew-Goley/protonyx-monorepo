@@ -36,7 +36,7 @@ import {
   formatPercent,
   type SectorSlice,
 } from '@/lib/lensData'
-import { getPositions } from '@/lib/cookies'
+import { usePositions } from '@/hooks/usePositions'
 import { usePortfolioHistory } from '@/hooks/usePortfolioHistory'
 
 // Card title = styling.md --text-heading-md (20px / 600, tightened tracking).
@@ -95,7 +95,7 @@ export function LensBriefWidget({ result }: { result: LensResult }) {
 // ---------------------------------------------------------------------------
 
 export function PositionsWidget({ result }: { result: LensResult }) {
-  const positions = getPositions()
+  const { data: positions = [] } = usePositions()
 
   return (
     <Panel>
@@ -349,7 +349,7 @@ const COMPOSITION_UNITS: Record<string, string> = {
 }
 
 export function CompositionWidget({ result }: { result: LensResult }) {
-  const positions = getPositions()
+  const { data: positions = [] } = usePositions()
   const [viewIndex, setViewIndex] = useState(0)
 
   const views: PieView[] = [

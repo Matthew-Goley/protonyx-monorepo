@@ -6,9 +6,13 @@ const pool = new Pool({
 });
 
 const setup = async () => {
-    // Dev-only: wipe the users table on boot so schema changes take effect.
-    // Guarded so production never drops data.
+    // Dev-only: wipe the tables on boot so schema changes take effect.
+    // Guarded so production never drops data. positions is dropped explicitly
+    // (before users): a plain DROP TABLE users CASCADE only removes the FK
+    // constraint, leaving orphaned positions rows whose user_id would re-bind to
+    // a freshly reseeded testuser once SERIAL restarts at 1.
     if (process.env.NODE_ENV === "development") {
+        await pool.query("DROP TABLE IF EXISTS positions CASCADE");
         await pool.query("DROP TABLE IF EXISTS users CASCADE");
     }
 
@@ -32,6 +36,27 @@ const setup = async () => {
             eula_accepted_at TIMESTAMP DEFAULT NULL,
             subscription_status TEXT NOT NULL DEFAULT 'inactive',
             member_since TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+        )
+    `);
+
+    // Portfolio positions, one row per (user, ticker). Created with
+    // CREATE TABLE IF NOT EXISTS (same idempotent pattern as the ALTERs below) so
+    // it runs in every environment and persists in prod. In dev it is dropped and
+    // recreated on every boot alongside users (see the drop block above). Placed
+    // after users because of the FK. NUMERIC amounts come back from node-postgres
+    // as strings; the route layer coerces them (see routes/positions.ts).
+    await pool.query(`
+        CREATE TABLE IF NOT EXISTS positions (
+            id SERIAL PRIMARY KEY,
+            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            ticker TEXT NOT NULL,
+            shares NUMERIC NOT NULL,
+            equity NUMERIC NOT NULL,
+            price NUMERIC NOT NULL,
+            sector TEXT DEFAULT NULL,
+            name TEXT DEFAULT NULL,
+            added_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE (user_id, ticker)
         )
     `);
 
@@ -95,6 +120,24 @@ const setup = async () => {
              ON CONFLICT DO NOTHING`,
             ["testuser", "test@protonyx.dev", hashedPassword, "free", true, "active"]
         );
+
+        // Dev-only: seed testuser with a few sample positions so a fresh dev boot
+        // lands on a populated dashboard instead of onboarding. Guarded the same
+        // way as the testuser seed (dev-only, ON CONFLICT DO NOTHING). Prices are
+        // plausible placeholders; the analyze path fetches live data by ticker.
+        const seeded = await pool.query("SELECT id FROM users WHERE username = $1", ["testuser"]);
+        const testUserId = seeded.rows[0]?.id;
+        if (testUserId) {
+            await pool.query(
+                `INSERT INTO positions (user_id, ticker, shares, equity, price, sector, name)
+                 VALUES
+                    ($1, 'AAPL', 10, 2300, 230, 'Technology', 'Apple Inc.'),
+                    ($1, 'MSFT', 5, 2150, 430, 'Technology', 'Microsoft Corporation'),
+                    ($1, 'JPM', 8, 1600, 200, 'Financial Services', 'JPMorgan Chase & Co.')
+                 ON CONFLICT (user_id, ticker) DO NOTHING`,
+                [testUserId]
+            );
+        }
     }
 };
 

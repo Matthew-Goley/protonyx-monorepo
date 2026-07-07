@@ -1,8 +1,10 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useQueryClient } from '@tanstack/react-query'
 import { X, LayoutGrid, ArrowRight } from 'lucide-react'
 import { type Position } from '@/api/lens'
-import { setPositions, setSettings, type RiskTier } from '@/lib/cookies'
+import { positionsApi } from '@/api/positions'
+import { setSettings, type RiskTier } from '@/lib/cookies'
 import { RiskProfileCards } from '@/components/common/RiskProfileCards'
 import { AddPositionModal } from '@/components/common/AddPositionModal'
 import { useHotkey } from '@/hooks/useHotkey'
@@ -25,10 +27,12 @@ const STEPS = [
 
 export function Onboard() {
   const navigate = useNavigate()
+  const qc = useQueryClient()
   const [step, setStep] = useState<1 | 2>(1)
   const [risk, setRisk] = useState<RiskTier | null>(null)
   const [positions, setPositionsState] = useState<Position[]>([])
   const [modalOpen, setModalOpen] = useState(false)
+  const [launching, setLaunching] = useState(false)
 
   // Press "a" on the portfolio-setup step to open the add-position modal.
   useHotkey('a', () => setModalOpen(true), step === 2 && !modalOpen)
@@ -45,18 +49,28 @@ export function Onboard() {
     setPositionsState((prev) => prev.filter((p) => p.ticker !== ticker))
   }
 
-  function launch() {
-    if (!risk || positions.length === 0) return
+  async function launch() {
+    if (!risk || positions.length === 0 || launching) return
+    setLaunching(true)
     setSettings({ risk_tier: risk })
-    setPositions(positions)
-    navigate('/dashboard', { replace: true })
+    try {
+      // Persist the built portfolio to the server (bulk replace) and prime the
+      // ['positions'] cache with the saved rows before navigating, so the
+      // dashboard paints without racing an empty fetch.
+      const saved = await positionsApi.replacePositions(positions)
+      qc.setQueryData(['positions'], saved)
+      qc.invalidateQueries({ queryKey: ['lens-analysis'] })
+      navigate('/dashboard', { replace: true })
+    } catch {
+      setLaunching(false)
+    }
   }
 
   const meta = STEPS[step - 1]
   const frac = step / STEPS.length
   const canBack = step === 2
-  const nextLabel = step === 1 ? 'Continue' : 'Launch Lens'
-  const nextDisabled = step === 1 ? !risk : positions.length === 0
+  const nextLabel = step === 1 ? 'Continue' : launching ? 'Launching...' : 'Launch Lens'
+  const nextDisabled = step === 1 ? !risk : positions.length === 0 || launching
   const onNext = step === 1 ? () => setStep(2) : launch
 
   return (

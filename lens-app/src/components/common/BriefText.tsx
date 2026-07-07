@@ -1,5 +1,5 @@
 import { type LensResult } from '@/api/lens'
-import { getPositions } from '@/lib/cookies'
+import { usePositions } from '@/hooks/usePositions'
 import { tokenizeBrief, type BriefKind } from '@/lib/lensData'
 
 // Weight stays at 500 max for these emphasis tokens; styling.md reserves 600
@@ -21,7 +21,8 @@ export function BriefText({
   result: LensResult
   className?: string
 }) {
-  const heldTickers = getPositions().map((p) => p.ticker)
+  const { data: positions = [] } = usePositions()
+  const heldTickers = positions.map((p) => p.ticker)
   const tickers = [...heldTickers, ...(result.recommended_tickers ?? [])]
   const segments = tokenizeBrief(result.brief, tickers)
 

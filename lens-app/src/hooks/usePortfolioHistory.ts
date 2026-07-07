@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { lensApi, type HistoryPeriod } from '@/api/lens'
-import { getPositions } from '@/lib/cookies'
+import { usePositions } from '@/hooks/usePositions'
 
 export interface EquityPoint {
   date: string
@@ -20,7 +20,7 @@ export interface EquityPoint {
  * jumps. Returns [] while loading or on total failure, letting callers fall back.
  */
 export function usePortfolioHistory(period: HistoryPeriod = '6mo') {
-  const positions = getPositions()
+  const { data: positions = [] } = usePositions()
 
   return useQuery<EquityPoint[]>({
     queryKey: ['portfolio-history', positions.map((p) => `${p.ticker}:${p.shares}`), period],

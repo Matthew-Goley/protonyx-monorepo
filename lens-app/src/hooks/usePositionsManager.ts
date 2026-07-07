@@ -1,54 +1,55 @@
-import { useCallback, useState } from 'react'
+import { useCallback } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { getPositions, setPositions } from '@/lib/cookies'
+import { positionsApi } from '@/api/positions'
+import { usePositions } from '@/hooks/usePositions'
 import { type Position } from '@/api/lens'
 
 export interface PositionsManager {
   positions: Position[]
-  addPosition: (p: Position) => void
-  removePosition: (ticker: string) => void
-  updateShares: (ticker: string, shares: number) => void
+  addPosition: (p: Position) => Promise<void>
+  removePosition: (ticker: string) => Promise<void>
+  updateShares: (ticker: string, shares: number) => Promise<void>
 }
 
 /**
- * Add / edit / delete the portfolio held in the `lens_positions` cookie, with the
- * same persistence + cache-invalidation pattern Settings uses. Hold the state in
- * the hook (not just the cookie) and call this in the page so a mutation re-renders
- * the page — that re-render lets `useLensAnalysis` re-read the cookie and refetch
- * (its query key is keyed off the positions array). Mutators read `getPositions()`
- * fresh to avoid a stale closure.
+ * Add / edit / delete the portfolio, persisted to Postgres via the Fastify
+ * /positions endpoints. Reads the current holdings from the shared ['positions']
+ * query (usePositions), and after every mutation invalidates BOTH ['positions']
+ * (so this list refetches) and ['lens-analysis'] (whose query key is the positions
+ * array, so it must re-run /analyze). Keeps the same external interface the
+ * PositionsManagerContext consumers expect.
  */
 export function usePositionsManager(): PositionsManager {
   const qc = useQueryClient()
-  const [positions, setState] = useState<Position[]>(getPositions())
+  const { data: positions = [] } = usePositions()
 
-  const persist = useCallback(
-    (next: Position[]) => {
-      setState(next)
-      setPositions(next)
-      qc.invalidateQueries({ queryKey: ['lens-analysis'] })
-    },
-    [qc],
-  )
+  const invalidate = useCallback(() => {
+    qc.invalidateQueries({ queryKey: ['positions'] })
+    qc.invalidateQueries({ queryKey: ['lens-analysis'] })
+  }, [qc])
 
   const addPosition = useCallback(
-    (p: Position) => persist([...getPositions().filter((x) => x.ticker !== p.ticker), p]),
-    [persist],
+    async (p: Position) => {
+      await positionsApi.addPosition(p)
+      invalidate()
+    },
+    [invalidate],
   )
 
   const removePosition = useCallback(
-    (ticker: string) => persist(getPositions().filter((p) => p.ticker !== ticker)),
-    [persist],
+    async (ticker: string) => {
+      await positionsApi.deletePosition(ticker)
+      invalidate()
+    },
+    [invalidate],
   )
 
   const updateShares = useCallback(
-    (ticker: string, shares: number) =>
-      persist(
-        getPositions().map((p) =>
-          p.ticker === ticker ? { ...p, shares, equity: p.price * shares } : p,
-        ),
-      ),
-    [persist],
+    async (ticker: string, shares: number) => {
+      await positionsApi.updatePosition(ticker, shares)
+      invalidate()
+    },
+    [invalidate],
   )
 
   return { positions, addPosition, removePosition, updateShares }

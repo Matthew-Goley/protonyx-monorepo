@@ -53,7 +53,8 @@ _monorepo/
 │   │       ├── legal.ts           # /legal/status, /legal/accept
 │   │       ├── beta.ts            # /beta/status (public signup-availability check)
 │   │       ├── stripe.ts          # /stripe/create-checkout-session, /stripe/portal, /stripe/webhook
-│   │       └── subscription.ts    # /subscription/status
+│   │       ├── subscription.ts    # /subscription/status
+│   │       └── positions.ts       # /positions CRUD (GET, PUT bulk-replace, POST add/upsert, PATCH :ticker, DELETE :ticker) - per-user portfolio in Postgres
 │   ├── package.json
 │   ├── tsconfig.json
 │   ├── CLAUDE.md                  # Backend quick-start reference
@@ -106,9 +107,10 @@ _monorepo/
 │
 ├── lens-app/                      # Vite + React + TS web app for Lens at app.use-lens.com
 │   ├── src/
-│   │   ├── api/lens.ts            # Typed API client (lensApi.analyze, getTickerInfo, getTickersHistory [batched], getTickerHistory [unused], health)
+│   │   ├── api/lens.ts            # Typed lens-api client (lensApi.analyze, getTickerInfo, getTickersHistory [batched], getTickerHistory [unused], health)
+│   │   ├── api/positions.ts       # Typed Fastify positions client (getPositions, replacePositions, addPosition, updatePosition, deletePosition)
 │   │   ├── contexts/            # AuthContext (real Fastify auth, httpOnly session cookie), ThemeContext (light/dark, localStorage), DashboardEditContext (dashboard edit-mode + gridActions), PositionsManagerContext (shared holdings manager)
-│   │   ├── hooks/                # useLensAnalysis.ts (react-query POST /analyze, shared cache), usePortfolioHistory.ts (real equity curve from batched /tickers/history), useGridMetrics.ts (ResizeObserver → square cell size), usePositionsManager.ts (holdings CRUD → cookie + query invalidate), useHotkey.ts (global single-key shortcut: a=add position, m=manage holdings)
+│   │   ├── hooks/                # useLensAnalysis.ts (react-query POST /analyze, shared cache), usePositions.ts (react-query GET /positions, server-backed portfolio), usePortfolioHistory.ts (real equity curve from batched /tickers/history), useGridMetrics.ts (ResizeObserver → square cell size), usePositionsManager.ts (holdings CRUD → server + query invalidate), useHotkey.ts (global single-key shortcut: a=add position, m=manage holdings)
 │   │   ├── components/
 │   │   │   ├── ProtectedRoute.tsx # Redirects to /login if not authenticated
 │   │   │   ├── layout/           # Sidebar (Logo + nav), AppShell (sidebar + main + tick-grid canvas), PageHeader, TopBar (centered search → /commodity, notifications/security popovers)
@@ -119,7 +121,7 @@ _monorepo/
 │   │   │   ├── analysis/         # CautionGauge (SVG), CtaList, MonteCarloChart (wraps LensAreaFanChart)
 │   │   │   └── ui/               # button + input (restyled dark); card/label/textarea/badge are now unused leftovers
 │   │   ├── assets/lens-arc/      # Lens Arc logo PNGs, bundled via import (mirror of ../assets/lens-arc)
-│   │   ├── lib/                  # utils.ts (cn), cookies.ts (positions/settings/layout cookies), lensData.ts (derivations), subscription.ts (isSubscribed), widgetRegistry.tsx (widget source of truth), widgetLayout.ts (grid geometry + fit/edit helpers)
+│   │   ├── lib/                  # utils.ts (cn), backend.ts (BACKEND_URL + backendFetch), cookies.ts (settings/layout cookies + legacy-positions migration reader), lensData.ts (derivations), subscription.ts (isSubscribed), widgetRegistry.tsx (widget source of truth), widgetLayout.ts (grid geometry + fit/edit helpers)
 │   │   └── pages/                # Login (sign in/up tabs), Onboard, Dashboard, Analysis, Profile, Settings, Success, Commodity (placeholder instrument detail)
 │   ├── assets/lens-arc/           # Lens Arc brand artwork (source of truth): lens-arc-{white,dark}, arc-{white,dark}, icon-{nobg,square,rounded}
 │   ├── public/lens-arc-icon.png   # Favicon (copy of icon-rounded), referenced from index.html
@@ -209,7 +211,7 @@ Auth uses the real Fastify backend: `POST /login` is called with credentials, an
 
 **UI / screens.** The app is a sidebar-driven dashboard (Tailwind v4 `@theme` tokens in `src/index.css`; Sora font; recharts + lucide-react). It is **light/dark themable** — dark is the default, a `.light` class on `<html>` re-declares the surface/text tokens, and `ThemeContext` persists the choice to `localStorage`; toggle via the `TopBar` sun/moon button or Settings. Screens: `/login` (sign in / sign up tabs), `/onboard` (2-step risk-profile + position-setup wizard), `/dashboard` (a **data-driven widget grid** with an opt-in edit mode — drag to reposition, add/remove widgets, reset to default; both the Lens Brief and Position Actions are now grid widgets), `/analysis` (brief, caution gauge, CTA list, Monte Carlo, allocation pies), `/profile`, `/settings`, `/success`, `/commodity/:symbol` (placeholder instrument-detail screen, reachable via TopBar search). See `lens-app/CLAUDE.md` §5/§7 for the grid model.
 
-**Client-side state.** Onboarding writes the portfolio to a `lens_positions` cookie and the risk tier to a `lens_settings` cookie (30-day, `SameSite=Lax`); there is no positions table on the backend yet. A third `lens_layout` cookie stores the dashboard widget placement (`x, y, w` per widget; `h` is always re-measured, never persisted). `useLensAnalysis` (react-query) reads the positions/settings cookies and runs `POST /analyze`; Dashboard, Analysis, and Profile share the cached result. Adding a position validates the ticker via lens-api `GET /ticker/{symbol}/info` (browser-direct, X-API-Key) to pull live price/sector/name. `Dashboard` redirects to `/onboard` when the positions cookie is empty. The react-query cache is **persisted to `localStorage`** so a refresh paints instantly from cache.
+**Portfolio + client-side state.** Positions are **stored in Postgres per user** via the Fastify `/positions` endpoints (see §4) and read through the `['positions']` react-query hook `usePositions`; the old `lens_positions` cookie is gone (a one-time migration folds any legacy cookie into the server on first load). The **risk tier stays in the `lens_settings` cookie** (30-day, `SameSite=Lax`) by design, and a `lens_layout` cookie still stores the dashboard widget placement (`x, y, w` per widget; `h` is always re-measured, never persisted). `useLensAnalysis` (react-query) sources positions from `usePositions` and the risk tier from the cookie, then runs `POST /analyze`; Dashboard, Analysis, and Profile share the cached result. Onboarding "Launch Lens" writes the portfolio to the server (`PUT /positions` bulk replace); add/edit/delete go through `usePositionsManager` (server mutations, then invalidate `['positions']` + `['lens-analysis']`). Adding a position validates the ticker via lens-api `GET /ticker/{symbol}/info` (browser-direct, X-API-Key) to pull live price/sector/name. `Dashboard`/`Analysis` redirect to `/onboard` only once the positions query has loaded and is empty (never while loading). The react-query cache is **persisted to `localStorage`** so a refresh paints instantly from cache; the `['positions']` query is deliberately **excluded** from that persistence so raw holdings are not written to disk at rest. The **`/analyze` path is still browser-direct to lens-api** (positions assembled on the client) - only where positions are stored changed, not the analyze path.
 
 **Derived vs. real data.** The brief, ctas, caution_score, action_type, recommended_tickers, net_cta_delta, full_report, projected_positions and the per-analyzer pool_results are read straight from `/analyze`. A few design surfaces the engine does **not** return (see `lens-api/CLAUDE.md` §13) are derived deterministically from the real analyzer outputs and labelled as estimates in the UI: the **Sharpe ratio** ((slope − 4.5%) / volatility) and the **Monte Carlo** projection fan (analytic GBM quantile bands from portfolio drift + volatility). See `src/lib/lensData.ts`. The **Total Equity chart** (an interactive area chart with a timeframe stepper and a signed $/% period-return readout driven by chart hover / click-drag range selection) and the Monte Carlo **historical lead-in** instead use the **real** portfolio equity curve, built from the batched `/tickers/history` endpoint (one request for all holdings) by `src/hooks/usePortfolioHistory.ts` (Σ shares × daily close), falling back to a slope-synthesized line only while that loads.
 
@@ -267,8 +269,8 @@ If `RESEND_API_KEY` is missing, signup still succeeds — `sendWelcomeEmail` is 
    - `http://localhost:5173` / `http://127.0.0.1:5173` (lens-app Vite dev server)
    - `https://protonyxdata.com`
    - `https://app.use-lens.com`
-   Methods: `GET, POST, DELETE, PATCH`. `credentials: true` is set so the lens-app can send the httpOnly session cookie. Adding any new origin (staging URL, another deployed frontend) requires editing this list in `server.ts`.
-3. **Route modules**: `authRoutes`, `debugRoutes`, `legalRoutes`, `betaRoutes`, `stripeRoutes`, `subscriptionRoutes`. All are mounted at the **root path** with no prefix. The `/protected` and `/me` endpoints live under `debug.ts` for historical reasons even though they are not strictly debug, the `/legal/*` endpoints live under `legal.ts`, the public `/beta/status` endpoint lives under `beta.ts`, the Stripe checkout/portal/webhook endpoints live under `stripe.ts`, and `GET /subscription/status` lives under `subscription.ts`.
+   Methods: `GET, POST, PUT, DELETE, PATCH` (`PUT` was added for `PUT /positions` bulk-replace - a JSON `PUT` triggers a CORS preflight, so the method must be allowlisted). `credentials: true` is set so the lens-app can send the httpOnly session cookie. Adding any new origin (staging URL, another deployed frontend) requires editing this list in `server.ts`.
+3. **Route modules**: `authRoutes`, `debugRoutes`, `legalRoutes`, `betaRoutes`, `stripeRoutes`, `subscriptionRoutes`, `positionsRoutes`. All are mounted at the **root path** with no prefix. The `/protected` and `/me` endpoints live under `debug.ts` for historical reasons even though they are not strictly debug, the `/legal/*` endpoints live under `legal.ts`, the public `/beta/status` endpoint lives under `beta.ts`, the Stripe checkout/portal/webhook endpoints live under `stripe.ts`, `GET /subscription/status` lives under `subscription.ts`, and the `/positions` CRUD lives under `positions.ts`.
 
    `stripeRoutes` overrides the `application/json` content-type parser in its plugin scope to receive raw `Buffer` bodies - required for Stripe webhook signature verification. Non-webhook routes in that scope parse the buffer manually with `JSON.parse((request.body as Buffer).toString())`. The webhook route also sets `config: { rateLimit: false }` to skip the global rate limiter so Stripe can deliver events freely.
 
@@ -281,7 +283,11 @@ Protected routes use `{ preHandler: authenticate }`. The middleware reads `Autho
 `db.ts` creates a single shared `pg.Pool` keyed off `DATABASE_URL`. On startup:
 
 ```sql
--- DEV ONLY (process.env.NODE_ENV === "development"): wipe users every boot
+-- DEV ONLY (process.env.NODE_ENV === "development"): wipe every boot.
+-- positions is dropped explicitly BEFORE users: DROP TABLE users CASCADE only
+-- removes the FK constraint, leaving orphaned positions rows whose user_id would
+-- re-bind to a freshly reseeded testuser once SERIAL restarts at 1.
+DROP TABLE IF EXISTS positions CASCADE;
 DROP TABLE IF EXISTS users CASCADE;
 
 CREATE TABLE IF NOT EXISTS users (
@@ -315,10 +321,34 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS eula_version_accepted TEXT DEFAULT NU
 ALTER TABLE users ADD COLUMN IF NOT EXISTS eula_accepted_at TIMESTAMP DEFAULT NULL;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_status TEXT NOT NULL DEFAULT 'inactive';
 
+-- Portfolio positions, one row per (user, ticker). CREATE TABLE IF NOT EXISTS
+-- (same idempotent pattern as the ALTERs) so it runs and persists in every
+-- environment; in dev it is dropped/recreated each boot alongside users. Created
+-- AFTER users because of the FK. NUMERIC amounts come back from node-postgres as
+-- strings; routes/positions.ts coerces them via a rowToPosition() mapper.
+CREATE TABLE IF NOT EXISTS positions (
+    id        SERIAL PRIMARY KEY,
+    user_id   INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    ticker    TEXT NOT NULL,
+    shares    NUMERIC NOT NULL,
+    equity    NUMERIC NOT NULL,
+    price     NUMERIC NOT NULL,
+    sector    TEXT DEFAULT NULL,
+    name      TEXT DEFAULT NULL,
+    added_at  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (user_id, ticker)
+);
+
 -- DEV ONLY: seed a known test account
-INSERT INTO users (username, email, password, plan, beta_access)
-VALUES ('testuser', 'test@protonyx.dev', <bcrypt('password123')>, 'free', true)
+INSERT INTO users (username, email, password, plan, beta_access, subscription_status)
+VALUES ('testuser', 'test@protonyx.dev', <bcrypt('password123')>, 'free', true, 'active')
 ON CONFLICT DO NOTHING;
+
+-- DEV ONLY: seed testuser with 2-3 sample positions so a fresh dev boot lands on
+-- a populated dashboard instead of onboarding (guarded like the testuser seed).
+INSERT INTO positions (user_id, ticker, shares, equity, price, sector, name)
+VALUES (<testuser id>, 'AAPL', 10, 2300, 230, 'Technology', 'Apple Inc.'), ...
+ON CONFLICT (user_id, ticker) DO NOTHING;
 ```
 
 The `verification_token` column holds a 64-char hex string (`crypto.randomBytes(32).toString("hex")`) issued at signup (and re-issued by `POST /resend-verification`) and cleared the moment `GET /verify-email` flips `email_verified=true`. A `NULL` token means either "already verified" or "never issued."
@@ -329,7 +359,9 @@ The `tos_version_accepted` / `tos_accepted_at` pair tracks Terms of Service acce
 
 The `eula_version_accepted` / `eula_accepted_at` pair tracks End User License Agreement acceptance and is the same shape as the TOS pair, gated against `CURRENT_EULA_VERSION` (currently `"3.1"`) in `src/constants.ts`. The key difference: **EULA is not auto-accepted at signup**. Acceptance happens in the Vector desktop app and is recorded via `POST /legal/accept` with `{ document: "eula" }`. A new account therefore has `eula_version_accepted = NULL` until the app stamps it. `GET /legal/status` reports `eula_accepted` the same way it reports `tos_accepted`.
 
-**Critical dev behavior:** when `NODE_ENV=development`, the users table is **dropped and recreated on every boot**. Every restart of `npm run dev` wipes all accounts and re-seeds `testuser` (password `password123`). This is intentional during early schema churn — there is no migration tooling, so dropping is the simplest way to apply schema changes. Do **not** run dev mode against a database that holds data you care about. In any other environment (`NODE_ENV !== "development"`), the `DROP` and seed are skipped and `CREATE TABLE IF NOT EXISTS` runs as normal.
+The `positions` table holds the user's portfolio, one row per `(user_id, ticker)` (unique), matching the lens-app `Position` shape (`ticker, shares, equity, price, sector?, name?, added_at`). It is served by `routes/positions.ts` (see the endpoints table). `shares`/`equity`/`price` are `NUMERIC`, which node-postgres returns as **strings**, so the route layer coerces them back to numbers via a single `rowToPosition()` mapper before responding. `ON DELETE CASCADE` on the FK means deleting a user removes their positions automatically.
+
+**Critical dev behavior:** when `NODE_ENV=development`, the `positions` and `users` tables are **dropped and recreated on every boot** (positions first, because of the FK). Every restart of `npm run dev` wipes all accounts + positions and re-seeds `testuser` (password `password123`) plus 2-3 sample positions so dev lands on a populated dashboard. This is intentional during early schema churn — there is no migration tooling, so dropping is the simplest way to apply schema changes. Do **not** run dev mode against a database that holds data you care about. In any other environment (`NODE_ENV !== "development"`), the `DROP` and seeds are skipped and `CREATE TABLE IF NOT EXISTS` runs as normal, so `positions` persists in prod exactly like `users`.
 
 All queries use parameterized `$1, $2, ...` placeholders. Never interpolate user input into SQL.
 
@@ -393,6 +425,11 @@ The error field is always named `message`. The frontend (`auth.js`) reads `data.
 | `POST` | `/stripe/portal` | ✅ | — | Creates a Stripe Customer Portal session so the user can manage their subscription. Requires `stripe_customer_id` to be set on the row (only happens after first checkout). Returns `{ success: true, url: "<portal-url>" }` or 400 if no billing account exists. |
 | `POST` | `/stripe/webhook` | — | Stripe event payload | Stripe webhook handler. Signature-verified with `STRIPE_WEBHOOK_SECRET`. Rate limiting skipped (`config: { rateLimit: false }`). Handles: `checkout.session.completed` (sets `subscription_status = 'active'`, stores `stripe_customer_id`), `customer.subscription.deleted` (sets `'cancelled'`), `invoice.payment_failed` (sets `'inactive'`). Matched to user rows via `metadata.userId` (checkout) or `stripe_customer_id` (subscription/invoice events). |
 | `GET` | `/subscription/status` | ✅ | — | Returns `{ success: true, subscription_status: "inactive" \| "active" \| "cancelled" }` for the authenticated user. Thin alternative to `/me` for components that only need billing state. |
+| `GET` | `/positions` | ✅ | — | Returns `{ success: true, positions: Position[] }` for the authenticated user, ordered by `added_at` ascending. Every position is coerced through `rowToPosition()` so `shares`/`equity`/`price` are **numbers** (node-postgres returns `NUMERIC` as strings). Scoped to `user_id = request.user.id`. |
+| `PUT` | `/positions` | ✅ | `{ positions: Position[] }` | **Bulk replace** (used by onboarding "Launch Lens"). In a transaction: `DELETE` all the user's positions, then `INSERT` the provided set. Missing/invalid `positions` array → 400. Returns `{ success: true, positions: Position[] }` (the saved set). Note the `PUT` method is allowlisted in the CORS config. |
+| `POST` | `/positions` | ✅ | `{ ticker, shares, equity, price, sector?, name?, added_at? }` | Add one position, **upsert** on the `(user_id, ticker)` unique constraint (`ON CONFLICT ... DO UPDATE`) - matches the client's AddPositionModal, which replaces any existing same-ticker holding. Missing `ticker`/`shares`/`equity`/`price` → 400. Returns 201 `{ success: true, position }`. |
+| `PATCH` | `/positions/:ticker` | ✅ | `{ shares }` | Edit a holding's share count; recomputes `equity = price * shares` server-side (matches `usePositionsManager.updateShares`). Non-positive/absent `shares` → 400. Ownership-scoped (`WHERE user_id = $1 AND ticker = $2`); `rowCount` 0 → 404. Returns `{ success: true, position }`. |
+| `DELETE` | `/positions/:ticker` | ✅ | — | Ownership-scoped delete; `rowCount` 0 → 404. Returns `{ success: true, message: "Position removed" }`. |
 
 There is **no** `/notes`, `/getnotes`, `/notes/:id` endpoint. Earlier docs referenced them; they have been removed.
 

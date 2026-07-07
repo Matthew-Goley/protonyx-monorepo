@@ -10,6 +10,7 @@ import legalRoutes from "./routes/legal";
 import betaRoutes from "./routes/beta";
 import stripeRoutes from "./routes/stripe";
 import subscriptionRoutes from "./routes/subscription";
+import positionsRoutes from "./routes/positions";
 
 const app = Fastify();
 
@@ -29,7 +30,7 @@ app.register(cors, {
         "http://127.0.0.1:5173",
         "https://app.use-lens.com"
     ],
-    methods: ["GET", "POST", "DELETE", "PATCH"],
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
     credentials: true
 });
 
@@ -41,6 +42,7 @@ app.register(legalRoutes);
 app.register(betaRoutes);
 app.register(stripeRoutes);
 app.register(subscriptionRoutes);
+app.register(positionsRoutes);
 
 // Start server
 const start = async () => {

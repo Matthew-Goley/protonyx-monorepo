@@ -1,8 +1,7 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Panel } from '@/components/common/Panel'
-
-const BACKEND_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3000'
+import { BACKEND_URL } from '@/lib/backend'
 
 /** Stripe paywall. Hits POST /stripe/create-checkout-session and redirects to
  *  Stripe Checkout. Shown wherever analysis data is gated behind a subscription. */

@@ -6,14 +6,10 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useTheme } from '@/contexts/ThemeContext'
 import { isSubscribed } from '@/lib/subscription'
 import { lensApi, type Position } from '@/api/lens'
-import {
-  getPositions,
-  setPositions,
-  getSettings,
-  setSettings,
-  clearAllData,
-  type RiskTier,
-} from '@/lib/cookies'
+import { positionsApi } from '@/api/positions'
+import { usePositionsManager } from '@/hooks/usePositionsManager'
+import { BACKEND_URL } from '@/lib/backend'
+import { getSettings, setSettings, clearAllData, type RiskTier } from '@/lib/cookies'
 import { AppShell } from '@/components/layout/AppShell'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Panel } from '@/components/common/Panel'
@@ -21,8 +17,6 @@ import { RiskProfileCards } from '@/components/common/RiskProfileCards'
 import { AddPositionModal } from '@/components/common/AddPositionModal'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-
-const BACKEND_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3000'
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
@@ -91,8 +85,9 @@ export function Settings() {
   const { theme, setTheme } = useTheme()
   const pro = isSubscribed(user)
 
+  const manager = usePositionsManager()
+  const positions = manager.positions
   const [risk, setRisk] = useState<RiskTier>(getSettings().risk_tier)
-  const [positions, setPositionsState] = useState<Position[]>(getPositions())
   const [selected, setSelected] = useState<string | null>(null)
   const [modalOpen, setModalOpen] = useState(false)
 
@@ -114,28 +109,26 @@ export function Settings() {
     queryClient.invalidateQueries({ queryKey: ['lens-analysis'] })
   }
 
-  function persistPositions(next: Position[]) {
-    setPositionsState(next)
-    setPositions(next)
-    queryClient.invalidateQueries({ queryKey: ['lens-analysis'] })
-  }
-
   function addPosition(p: Position) {
-    persistPositions([...positions.filter((x) => x.ticker !== p.ticker), p])
+    // Persisted to the server + query-invalidated by the manager.
+    manager.addPosition(p)
     setModalOpen(false)
   }
 
   function removeSelected() {
     if (!selected) return
-    persistPositions(positions.filter((p) => p.ticker !== selected))
+    manager.removePosition(selected)
     setSelected(null)
   }
 
-  function handleClearData() {
+  async function handleClearData() {
+    // Wipe the settings/layout cookies AND the server-stored positions, then drop
+    // any cached analysis and send the user back through onboarding (Dashboard
+    // also redirects once positions are gone).
     clearAllData()
-    // Drop any cached analysis so nothing stale survives, then send the user
-    // back through onboarding (Dashboard also redirects once positions are gone).
+    await positionsApi.replacePositions([]).catch(() => {})
     queryClient.removeQueries({ queryKey: ['lens-analysis'] })
+    queryClient.invalidateQueries({ queryKey: ['positions'] })
     navigate('/onboard', { replace: true })
   }
 

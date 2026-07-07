@@ -54,6 +54,12 @@ MAX_BETA_USERS=50          # hard cap on total user count
 | GET | `/beta/status` | - | Signup availability |
 | GET | `/legal/status` | JWT | TOS + EULA acceptance status |
 | POST | `/legal/accept` | JWT | Accept TOS or EULA |
+| GET | `/subscription/status` | JWT | Billing state (thin alternative to `/me`) |
+| GET | `/positions` | JWT | List the user's portfolio (per-user, Postgres) |
+| PUT | `/positions` | JWT | Bulk replace all positions (onboarding) |
+| POST | `/positions` | JWT | Add one position (upsert on ticker) |
+| PATCH | `/positions/:ticker` | JWT | Edit share count (equity recomputed) |
+| DELETE | `/positions/:ticker` | JWT | Remove a holding |
 
 Auth is resolved by `src/middleware/authenticate.ts`, which checks `Authorization: Bearer <token>` first, then falls back to the `session` httpOnly cookie. Both paths work — the static frontend and desktop app use bearer tokens; lens-app uses the cookie.
 
@@ -67,6 +73,7 @@ Auth is resolved by `src/middleware/authenticate.ts`, which checks `Authorizatio
 | `src/routes/debug.ts` | /protected, /me, /download, /version |
 | `src/routes/legal.ts` | /legal/status, /legal/accept |
 | `src/routes/beta.ts` | /beta/status |
+| `src/routes/positions.ts` | /positions CRUD (per-user portfolio; NUMERIC coerced to numbers via rowToPosition) |
 | `src/constants.ts` | CURRENT_TOS_VERSION, CURRENT_EULA_VERSION |
 | `src/betaConfig.ts` | BETA_ACTIVE, MAX_BETA_USERS (read from env) |
 | `src/version.json` | Latest Vector app version string |
@@ -74,8 +81,9 @@ Auth is resolved by `src/middleware/authenticate.ts`, which checks `Authorizatio
 
 ## Critical behaviors to preserve
 
-- **Dev mode wipes the DB on every boot** (`NODE_ENV=development` triggers `DROP TABLE users`). Never run dev against a database with real accounts.
-- **CORS allowlist** is hardcoded in `server.ts`. Current origins: 5500/5501 (static frontend), 5173 (lens-app Vite), `protonyxdata.com`, `app.use-lens.com`. `credentials: true` must stay set — without it browsers will not send the session cookie. Adding any new origin requires editing `server.ts`.
+- **Dev mode wipes the DB on every boot** (`NODE_ENV=development` triggers `DROP TABLE positions CASCADE` then `DROP TABLE users CASCADE`, and reseeds `testuser` + sample positions). Positions is dropped first because `DROP users CASCADE` only removes the FK, not the child rows. Never run dev against a database with real accounts.
+- **`positions` table** is created with `CREATE TABLE IF NOT EXISTS` (persists in prod, dropped only in dev). One row per `(user_id, ticker)`. `NUMERIC` columns come back as strings from node-postgres, so `routes/positions.ts` coerces them to numbers via `rowToPosition()` before responding.
+- **CORS allowlist** is hardcoded in `server.ts`. Current origins: 5500/5501 (static frontend), 5173 (lens-app Vite), `protonyxdata.com`, `app.use-lens.com`. Methods: `GET, POST, PUT, DELETE, PATCH` (`PUT` is needed for `PUT /positions` bulk-replace). `credentials: true` must stay set — without it browsers will not send the session cookie. Adding any new origin requires editing `server.ts`.
 - **Session cookie flags** are environment-gated: `sameSite: lax, secure: false` in dev (localhost cross-port); `sameSite: none, secure: true` in prod (cross-domain). Do not flatten to one value.
 - **`@fastify/cookie`** must be registered before any route that reads or sets the cookie. Registration is in `server.ts` after the CORS plugin.
 - **Rate limit:** 20 req / 60 s per IP globally. Expect 429s during fast frontend testing.

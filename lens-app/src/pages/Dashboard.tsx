@@ -4,8 +4,8 @@ import { Plus, Trash2, Pencil } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { isSubscribed } from '@/lib/subscription'
 import { useLensAnalysis } from '@/hooks/useLensAnalysis'
+import { usePositions } from '@/hooks/usePositions'
 import { usePositionsManager } from '@/hooks/usePositionsManager'
-import { getPositions } from '@/lib/cookies'
 import { AppShell } from '@/components/layout/AppShell'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { WidgetGrid } from '@/components/dashboard/WidgetGrid'
@@ -130,12 +130,28 @@ function WidgetHeaderControls() {
 
 function DashboardBody() {
   const { user } = useAuth()
+  const positionsQuery = usePositions()
   const manager = usePositionsManager()
   const query = useLensAnalysis()
 
   const header = (
     <PageHeader title="Dashboard" breadcrumb="Lens / Dashboard" right={<WidgetHeaderControls />} />
   )
+
+  // Wait for the positions query before deciding anything: redirecting to
+  // /onboard while it is still loading would bounce a real user on every refresh.
+  if (positionsQuery.isLoading) {
+    return (
+      <AppShell>
+        {header}
+        <PageLoader />
+      </AppShell>
+    )
+  }
+
+  if (positionsQuery.isSuccess && positionsQuery.data.length === 0) {
+    return <Navigate to="/onboard" replace />
+  }
 
   if (!isSubscribed(user)) {
     return (
@@ -177,9 +193,8 @@ function DashboardBody() {
 }
 
 export function Dashboard() {
-  const hasPositions = getPositions().length > 0
-  if (!hasPositions) return <Navigate to="/onboard" replace />
-
+  // The onboard-redirect decision waits for the positions query and lives in
+  // DashboardBody (so a refresh does not bounce a user while positions load).
   return (
     <DashboardEditProvider>
       <DashboardBody />
