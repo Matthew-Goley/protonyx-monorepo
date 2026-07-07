@@ -1,3 +1,11 @@
+import type {
+  RiskTier,
+  DirectionThresholds,
+  VolatilitySettings,
+  LensSignals,
+  MonteCarloSettings,
+} from '@/api/settings'
+
 // DEV ONLY: API key hardcoded for direct browser -> lens-api calls.
 // Before launch, move all /analyze calls to the Fastify backend (server-to-server)
 // so this key is never exposed in client code.
@@ -15,12 +23,12 @@ export interface Position {
 }
 
 export interface LensSettings {
-  risk_tier?: 'low' | 'regular' | 'high'
+  risk_tier?: RiskTier
   refresh_interval?: number
-  direction_thresholds?: Record<string, unknown>
-  volatility?: Record<string, unknown>
-  lens_signals?: Record<string, unknown>
-  monte_carlo?: Record<string, unknown>
+  direction_thresholds?: DirectionThresholds
+  volatility?: VolatilitySettings
+  lens_signals?: LensSignals
+  monte_carlo?: MonteCarloSettings
 }
 
 export type ActionType = 'sell' | 'rebalance' | 'buy_new' | 'buy_more' | 'hold'

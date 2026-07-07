@@ -21,7 +21,7 @@ import {
   type LayoutItem,
 } from '@/lib/widgetLayout'
 import { WIDGET_REGISTRY, getWidget } from '@/lib/widgetRegistry'
-import { getLayout as readSavedLayout, setLayout as writeSavedLayout, clearLayout } from '@/lib/cookies'
+import { useLayoutStore } from '@/hooks/useLayoutStore'
 import { FitScale } from './FitScale'
 import { useGridMetrics } from '@/hooks/useGridMetrics'
 import { useDashboardEdit } from '@/contexts/DashboardEditContext'
@@ -33,10 +33,11 @@ import { cn } from '@/lib/utils'
 
   BASE (edit mode OFF, the default every load): pixel-identical to before. A
   two-pass render measures each widget's real height and packs square cells;
-  h is ALWAYS measured, never trusted from persistence. The lens_layout cookie
-  is authoritative for PLACEMENT (x, y, w) only - on load a saved layout is
-  rebuilt with freshly measured h at its exact saved position; if there is no
-  saved layout the default first-fit pack runs (unchanged behavior).
+  h is ALWAYS measured, never trusted from persistence. The saved layout
+  (useLayoutStore, server-backed users.settings.layout) is authoritative for
+  PLACEMENT (x, y, w) only - on load a saved layout is rebuilt with freshly
+  measured h at its exact saved position; if there is no saved layout the default
+  first-fit pack runs (unchanged behavior).
 
   EDIT MODE (opt-in via the header Pencil): each card becomes a whole-card drag
   handle (native Pointer Events, no dependency), plus a remove (X) control;
@@ -44,7 +45,7 @@ import { cn } from '@/lib/utils'
   NON-DISPLACING - no widget ever moves to make room for another. A drag only
   commits when the destination is open (tryMoveElement); dropping over another
   widget snaps back. Add drops into the first free slot; delete leaves a gap.
-  Every mutation commits to state and persists {x, y, w} to the cookie. No
+  Every mutation commits to state and persists {x, y, w} to the server. No
   resize this phase (w stays the registry value). All affordances exist ONLY in
   edit mode; a user who never enables it sees zero change.
 */
@@ -66,6 +67,9 @@ function GridSkeleton() {
 export function WidgetGrid({ result }: { result: LensResult }) {
   const { ref, cellSize } = useGridMetrics()
   const { editMode, setGridActions } = useDashboardEdit()
+  // Server-backed layout persistence (users.settings.layout). Reads are synchronous
+  // (ref-seeded from the auth user), so the measure/build passes see their own writes.
+  const { getSaved: readSavedLayout, save: writeSavedLayout, clear: clearLayout } = useLayoutStore()
 
   const gridRef = useRef<HTMLDivElement | null>(null)
   const measureRefs = useRef<Map<string, HTMLDivElement>>(new Map())
@@ -130,7 +134,7 @@ export function WidgetGrid({ result }: { result: LensResult }) {
       h: measuredH(w.id),
     }))
     return placeWidgets(footprints, GRID_COLUMNS)
-  }, [measuredH])
+  }, [measuredH, readSavedLayout])
 
   // PASS 1 measure + build. useLayoutEffect so the layout commits before paint;
   // re-runs on resize (cell height changes h) or content change (heights change).
@@ -149,13 +153,13 @@ export function WidgetGrid({ result }: { result: LensResult }) {
     // current one - the next load restores {x, y, w} from the cookie instead of
     // recomputing a default (edits already persist via commit(); Reset clears it).
     if (!hadSaved) writeSavedLayout(built)
-  }, [cellSize, result, buildLayout])
+  }, [cellSize, result, buildLayout, readSavedLayout, writeSavedLayout])
 
   // Commit an edited layout: update state and persist {x, y, w}.
   const commit = useCallback((next: LayoutItem[]) => {
     setLayoutState(next)
     writeSavedLayout(next)
-  }, [])
+  }, [writeSavedLayout])
 
   // Publish the add/reset actions + the addable-widget list up to the header.
   useEffect(() => {
@@ -179,7 +183,7 @@ export function WidgetGrid({ result }: { result: LensResult }) {
       setLayoutState(buildLayout()) // cookie now empty -> default measured pack
     }
     setGridActions({ availableWidgets, addWidget, resetLayout })
-  }, [layout, measuredH, buildLayout, commit, setGridActions])
+  }, [layout, measuredH, buildLayout, commit, setGridActions, clearLayout])
 
   // Clear published actions on unmount.
   useEffect(() => () => setGridActions(null), [setGridActions])

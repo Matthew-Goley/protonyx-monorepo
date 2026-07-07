@@ -54,8 +54,8 @@ export default function App() {
         },
       }}
     >
-      <ThemeProvider>
       <AuthProvider>
+      <ThemeProvider>
         <BrowserRouter>
           <Routes>
             <Route path="/login" element={<Login />} />
@@ -118,8 +118,8 @@ export default function App() {
             <Route path="*" element={<Navigate to="/login" replace />} />
           </Routes>
         </BrowserRouter>
-      </AuthProvider>
       </ThemeProvider>
+      </AuthProvider>
     </PersistQueryClientProvider>
   )
 }

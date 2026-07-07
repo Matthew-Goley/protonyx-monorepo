@@ -36,6 +36,7 @@ const setup = async () => {
             eula_accepted_at TIMESTAMP DEFAULT NULL,
             subscription_status TEXT NOT NULL DEFAULT 'inactive',
             risk_tier TEXT DEFAULT NULL,
+            settings JSONB NOT NULL DEFAULT '{}'::jsonb,
             member_since TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
         )
     `);
@@ -119,6 +120,17 @@ const setup = async () => {
         await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS risk_tier TEXT DEFAULT NULL");
     } catch (err) {
         console.error("Failed to add risk_tier column:", err);
+    }
+
+    // Per-user app settings blob (theme, date_format, dashboard layout, and the
+    // analyze tuning blocks: direction_thresholds/volatility/lens_signals/monte_carlo).
+    // A single JSONB column keeps this extensible without a column per setting. Moved
+    // off client-side cookies/localStorage so preferences follow the account, not the
+    // browser. PUT /settings shallow-merges partial updates into this object.
+    try {
+        await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS settings JSONB NOT NULL DEFAULT '{}'::jsonb");
+    } catch (err) {
+        console.error("Failed to add settings column:", err);
     }
 
     // Dev-only: seed a known test account (password = "password123").

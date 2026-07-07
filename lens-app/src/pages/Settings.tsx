@@ -7,10 +7,18 @@ import { useTheme } from '@/contexts/ThemeContext'
 import { isSubscribed } from '@/lib/subscription'
 import { lensApi, type Position } from '@/api/lens'
 import { positionsApi } from '@/api/positions'
-import { settingsApi, type RiskTier } from '@/api/settings'
+import {
+  settingsApi,
+  DATE_FORMATS,
+  VOLATILITY_LOOKBACKS,
+  MONTE_CARLO_PERIODS,
+  MONTE_CARLO_SIMULATIONS,
+  DEFAULT_USER_SETTINGS,
+  type RiskTier,
+} from '@/api/settings'
 import { usePositionsManager } from '@/hooks/usePositionsManager'
+import { useUserSettings } from '@/hooks/useUserSettings'
 import { BACKEND_URL } from '@/lib/backend'
-import { clearAllData } from '@/lib/cookies'
 import { AppShell } from '@/components/layout/AppShell'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Panel } from '@/components/common/Panel'
@@ -79,6 +87,52 @@ function Dropdown({
   )
 }
 
+// A labelled numeric input that edits locally and commits on blur / Enter, so a
+// tuning value isn't PUT to the server on every keystroke. Reverts to the prop
+// value on an empty / non-numeric entry. Syncs down when the prop changes.
+function NumberRow({
+  label,
+  value,
+  step,
+  onCommit,
+}: {
+  label: string
+  value: number
+  step?: number
+  onCommit: (value: number) => void
+}) {
+  const [draft, setDraft] = useState(String(value))
+  useEffect(() => {
+    setDraft(String(value))
+  }, [value])
+
+  function commit() {
+    const n = Number(draft)
+    if (draft.trim() !== '' && Number.isFinite(n)) {
+      if (n !== value) onCommit(n)
+    } else {
+      setDraft(String(value))
+    }
+  }
+
+  return (
+    <div className="flex items-center justify-between gap-4">
+      <span className="text-sm text-secondary">{label}</span>
+      <input
+        type="number"
+        step={step ?? 'any'}
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') (e.target as HTMLInputElement).blur()
+        }}
+        className="w-28 rounded-md border border-subtle bg-base px-3 py-2 text-right text-sm text-primary transition-all duration-200 ease-out focus:border-accent-teal focus:outline-none"
+      />
+    </div>
+  )
+}
+
 export function Settings() {
   const queryClient = useQueryClient()
   const navigate = useNavigate()
@@ -88,6 +142,8 @@ export function Settings() {
 
   const manager = usePositionsManager()
   const positions = manager.positions
+  // Server-stored app settings (theme is handled via ThemeContext; the rest here).
+  const { settings, update } = useUserSettings()
   // Risk tier is server-stored (Postgres, via /me). Mirror it into local state for
   // instant UI feedback on change, and keep it in sync when the auth user updates.
   const [risk, setRisk] = useState<RiskTier>(user?.risk_tier ?? 'regular')
@@ -118,6 +174,22 @@ export function Settings() {
     queryClient.invalidateQueries({ queryKey: ['lens-analysis'] })
   }
 
+  // Merge a single field into one of the analyze tuning blocks (sends the whole
+  // block; the API merges settings shallowly). affectsAnalysis so the shared
+  // ['lens-analysis'] query refetches with the new tuning.
+  function setDirection(key: keyof typeof settings.direction_thresholds, value: number) {
+    update({ direction_thresholds: { ...settings.direction_thresholds, [key]: value } }, { affectsAnalysis: true })
+  }
+  function setVolatility(key: keyof typeof settings.volatility, value: string | number) {
+    update({ volatility: { ...settings.volatility, [key]: value } }, { affectsAnalysis: true })
+  }
+  function setSignal(key: keyof typeof settings.lens_signals, value: number) {
+    update({ lens_signals: { ...settings.lens_signals, [key]: value } }, { affectsAnalysis: true })
+  }
+  function setMonteCarlo(key: keyof typeof settings.monte_carlo, value: string | number) {
+    update({ monte_carlo: { ...settings.monte_carlo, [key]: value } }, { affectsAnalysis: true })
+  }
+
   function addPosition(p: Position) {
     // Persisted to the server + query-invalidated by the manager.
     manager.addPosition(p)
@@ -131,13 +203,14 @@ export function Settings() {
   }
 
   async function handleClearData() {
-    // Wipe the layout cookie AND the server-stored positions + risk tier, then drop
+    // Wipe the server-stored positions, risk tier, and dashboard layout, then drop
     // any cached analysis and send the user back through onboarding as a true
-    // no-info account (Dashboard also redirects once positions are gone).
-    clearAllData()
+    // no-info account (Dashboard also redirects once positions are gone). Everything
+    // is server-side now, so there are no cookies to clear.
     await Promise.all([
       positionsApi.replacePositions([]).catch(() => {}),
       settingsApi.setRiskTier(null).catch(() => {}),
+      settingsApi.updateSettings({ layout: null }).catch(() => {}),
     ])
     await refreshUser()
     queryClient.removeQueries({ queryKey: ['lens-analysis'] })
@@ -196,7 +269,12 @@ export function Settings() {
               value={theme === 'light' ? 'Light' : 'Dark'}
               onChange={(v) => setTheme(v === 'Light' ? 'light' : 'dark')}
             />
-            <Dropdown label="Date Format" options={['MM/DD/YYYY', 'DD/MM/YYYY', 'YYYY-MM-DD']} />
+            <Dropdown
+              label="Date Format"
+              options={[...DATE_FORMATS]}
+              value={settings.date_format}
+              onChange={(v) => update({ date_format: v })}
+            />
           </div>
         </Section>
 
@@ -252,10 +330,85 @@ export function Settings() {
             </Button>
           )}
         </Collapsible>
-        <Collapsible title="Portfolio Direction Thresholds" />
-        <Collapsible title="Volatility" />
-        <Collapsible title="Lens Signal Thresholds" />
-        <Collapsible title="Monte Carlo" />
+        <Collapsible title="Portfolio Direction Thresholds">
+          <p className="mb-4">
+            Slope cutoffs (fraction per period) that classify a holding's direction.
+          </p>
+          <div className="space-y-3">
+            <NumberRow label="Strong" step={0.01} value={settings.direction_thresholds.strong} onCommit={(v) => setDirection('strong', v)} />
+            <NumberRow label="Steady" step={0.01} value={settings.direction_thresholds.steady} onCommit={(v) => setDirection('steady', v)} />
+            <NumberRow label="Neutral (high)" step={0.01} value={settings.direction_thresholds.neutral_high} onCommit={(v) => setDirection('neutral_high', v)} />
+            <NumberRow label="Neutral (low)" step={0.01} value={settings.direction_thresholds.neutral_low} onCommit={(v) => setDirection('neutral_low', v)} />
+            <NumberRow label="Depreciating" step={0.01} value={settings.direction_thresholds.depreciating} onCommit={(v) => setDirection('depreciating', v)} />
+          </div>
+          <div className="mt-4">
+            <Button variant="ghost" onClick={() => update({ direction_thresholds: DEFAULT_USER_SETTINGS.direction_thresholds }, { affectsAnalysis: true })}>
+              Reset to defaults
+            </Button>
+          </div>
+        </Collapsible>
+
+        <Collapsible title="Volatility">
+          <p className="mb-4">Lookback window and the low/high annualized-volatility cutoffs (%).</p>
+          <div className="space-y-3">
+            <Dropdown
+              label="Lookback"
+              options={[...VOLATILITY_LOOKBACKS]}
+              value={settings.volatility.lookback}
+              onChange={(v) => setVolatility('lookback', v)}
+            />
+            <NumberRow label="Low cutoff (%)" value={settings.volatility.low_cutoff} onCommit={(v) => setVolatility('low_cutoff', v)} />
+            <NumberRow label="High cutoff (%)" value={settings.volatility.high_cutoff} onCommit={(v) => setVolatility('high_cutoff', v)} />
+          </div>
+          <div className="mt-4">
+            <Button variant="ghost" onClick={() => update({ volatility: DEFAULT_USER_SETTINGS.volatility }, { affectsAnalysis: true })}>
+              Reset to defaults
+            </Button>
+          </div>
+        </Collapsible>
+
+        <Collapsible title="Lens Signal Thresholds">
+          <p className="mb-4">The trigger levels the Lens engine uses to flag risks.</p>
+          <div className="space-y-3">
+            <NumberRow label="Stock concentration (%)" value={settings.lens_signals.stock_concentration_pct} onCommit={(v) => setSignal('stock_concentration_pct', v)} />
+            <NumberRow label="Sector concentration (%)" value={settings.lens_signals.sector_concentration_pct} onCommit={(v) => setSignal('sector_concentration_pct', v)} />
+            <NumberRow label="Steep downtrend (%)" value={settings.lens_signals.steep_downtrend_pct} onCommit={(v) => setSignal('steep_downtrend_pct', v)} />
+            <NumberRow label="High beta threshold" step={0.1} value={settings.lens_signals.high_beta_threshold} onCommit={(v) => setSignal('high_beta_threshold', v)} />
+            <NumberRow label="Stock volatility (%)" value={settings.lens_signals.stock_vol_threshold_pct} onCommit={(v) => setSignal('stock_vol_threshold_pct', v)} />
+            <NumberRow label="Dead weight (%)" value={settings.lens_signals.dead_weight_pct} onCommit={(v) => setSignal('dead_weight_pct', v)} />
+            <NumberRow label="Loss threshold (%)" value={settings.lens_signals.loss_threshold} onCommit={(v) => setSignal('loss_threshold', v)} />
+            <NumberRow label="Winner drift multiple" step={0.1} value={settings.lens_signals.winner_drift_multiple} onCommit={(v) => setSignal('winner_drift_multiple', v)} />
+          </div>
+          <div className="mt-4">
+            <Button variant="ghost" onClick={() => update({ lens_signals: DEFAULT_USER_SETTINGS.lens_signals }, { affectsAnalysis: true })}>
+              Reset to defaults
+            </Button>
+          </div>
+        </Collapsible>
+
+        <Collapsible title="Monte Carlo">
+          <p className="mb-4">Projection horizon and number of simulated paths.</p>
+          <div className="space-y-3">
+            <Dropdown
+              label="Projection period"
+              options={[...MONTE_CARLO_PERIODS]}
+              value={settings.monte_carlo.projection_period}
+              onChange={(v) => setMonteCarlo('projection_period', v)}
+            />
+            <Dropdown
+              label="Simulations"
+              options={MONTE_CARLO_SIMULATIONS.map(String)}
+              value={String(settings.monte_carlo.simulations)}
+              onChange={(v) => setMonteCarlo('simulations', Number(v))}
+            />
+          </div>
+          <div className="mt-4">
+            <Button variant="ghost" onClick={() => update({ monte_carlo: DEFAULT_USER_SETTINGS.monte_carlo }, { affectsAnalysis: true })}>
+              Reset to defaults
+            </Button>
+          </div>
+        </Collapsible>
+
         <Collapsible title="Developer" />
 
         <Section title="Positions">

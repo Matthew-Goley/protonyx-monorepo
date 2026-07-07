@@ -2,7 +2,7 @@ import { createContext, useContext, useState, useEffect, type ReactNode } from '
 import { useQueryClient } from '@tanstack/react-query'
 import { BACKEND_URL } from '@/lib/backend'
 import { QUERY_CACHE_KEY } from '@/lib/persist'
-import { type RiskTier } from '@/api/settings'
+import { type RiskTier, type UserSettings } from '@/api/settings'
 
 interface User {
   id: number
@@ -16,6 +16,9 @@ interface User {
   // The user's onboarding risk profile, sourced from Postgres. null means the user
   // has not chosen one yet (a brand-new account that should go through onboarding).
   risk_tier?: RiskTier | null
+  // Per-user app settings blob (theme, date_format, dashboard layout, analyze tuning
+  // blocks). May be {} or partial for a new account; read via mergeUserSettings.
+  settings?: Partial<UserSettings>
 }
 
 interface AuthContextValue {
