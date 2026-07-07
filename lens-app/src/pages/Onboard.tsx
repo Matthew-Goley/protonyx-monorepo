@@ -137,7 +137,7 @@ export function Onboard() {
 
               <div className="mt-5">
                 <Button variant="teal" onClick={() => setModalOpen(true)}>
-                  Add Position
+                  Add Position (a)
                 </Button>
               </div>
             </div>

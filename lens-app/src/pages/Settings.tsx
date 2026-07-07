@@ -18,6 +18,7 @@ import {
 } from '@/api/settings'
 import { usePositionsManager } from '@/hooks/usePositionsManager'
 import { useUserSettings } from '@/hooks/useUserSettings'
+import { useHotkey } from '@/hooks/useHotkey'
 import { BACKEND_URL } from '@/lib/backend'
 import { AppShell } from '@/components/layout/AppShell'
 import { PageHeader } from '@/components/layout/PageHeader'
@@ -154,6 +155,9 @@ export function Settings() {
   const [portalLoading, setPortalLoading] = useState(false)
   const [billingError, setBillingError] = useState<string | null>(null)
   const [apiStatus, setApiStatus] = useState<string>('checking...')
+
+  // Press "a" to open the add-position modal (matches Onboard + the dashboard).
+  useHotkey('a', () => setModalOpen(true), !modalOpen)
 
   useEffect(() => {
     lensApi
@@ -437,7 +441,7 @@ export function Settings() {
           )}
           <div className="mt-4 flex flex-wrap gap-3">
             <Button variant="teal" onClick={() => setModalOpen(true)}>
-              Add New Position
+              Add New Position (a)
             </Button>
             <Button variant="red" onClick={removeSelected} disabled={!selected}>
               Remove Selected Position
