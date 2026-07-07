@@ -1,5 +1,7 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { BACKEND_URL } from '@/lib/backend'
+import { QUERY_CACHE_KEY } from '@/lib/persist'
 import { type RiskTier } from '@/api/settings'
 
 interface User {
@@ -31,9 +33,25 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue | null>(null)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const queryClient = useQueryClient()
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [loading, setLoading] = useState(true)
   const [user, setUser] = useState<User | null>(null)
+
+  // Drop all cached server data (memory + the persisted localStorage copy) so one
+  // account's holdings/analysis can never bleed into the next account on the same
+  // browser. Called on every account switch (login + logout). The in-memory clear
+  // matters most: usePositions has a 5-min staleTime, so without this a fresh login
+  // in the same SPA session would be served the previous user's cached ['positions']
+  // instead of refetching.
+  function resetCache() {
+    queryClient.clear()
+    try {
+      window.localStorage.removeItem(QUERY_CACHE_KEY)
+    } catch {
+      /* ignore storage errors */
+    }
+  }
 
   useEffect(() => {
     fetch(`${BACKEND_URL}/me`, { credentials: 'include' })
@@ -61,6 +79,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!res.ok) {
       throw new Error(data.message ?? 'Login failed')
     }
+
+    // New session: wipe any prior account's cached queries before loading this one.
+    resetCache()
 
     const meRes = await fetch(`${BACKEND_URL}/me`, { credentials: 'include' })
     if (meRes.ok) {
@@ -96,6 +117,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }).catch(() => {})
     setUser(null)
     setIsAuthenticated(false)
+    // Clear this account's cached queries so the next account starts clean.
+    resetCache()
   }
 
   async function refreshUser() {

@@ -5,6 +5,7 @@ import { createSyncStoragePersister } from '@tanstack/query-sync-storage-persist
 import { AuthProvider } from '@/contexts/AuthContext'
 import { ThemeProvider } from '@/contexts/ThemeContext'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
+import { QUERY_CACHE_KEY } from '@/lib/persist'
 import { Login } from '@/pages/Login'
 import { Onboard } from '@/pages/Onboard'
 import { Dashboard } from '@/pages/Dashboard'
@@ -30,7 +31,7 @@ const queryClient = new QueryClient({
 // change.
 const persister = createSyncStoragePersister({
   storage: window.localStorage,
-  key: 'lens-query-cache',
+  key: QUERY_CACHE_KEY,
 })
 
 export default function App() {
