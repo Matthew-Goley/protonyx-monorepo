@@ -80,7 +80,7 @@ Auth is resolved by `src/middleware/authenticate.ts`, which checks `Authorizatio
 - **`@fastify/cookie`** must be registered before any route that reads or sets the cookie. Registration is in `server.ts` after the CORS plugin.
 - **Rate limit:** 20 req / 60 s per IP globally. Expect 429s during fast frontend testing.
 - **`/forgot-password` always returns 200** regardless of whether the email exists — account-enumeration defense. Never change this.
-- **`better-sqlite3`** is still in `package.json` but nothing imports it. Safe to remove.
+- **`better-sqlite3`** (from the pre-Postgres SQLite era) has been removed from `package.json`. Do not re-introduce a SQLite code path.
 - **Error field on the wire is `message`**, not `error`. Keep it consistent.
 - **TOS version** is bumped in `src/constants.ts` to re-prompt all users. EULA same pattern.
 - **Passwords are bcrypt cost 10.** Do not lower it. Do not log them.
