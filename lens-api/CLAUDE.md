@@ -127,12 +127,21 @@ lens-api/
 ├── parity_check.py            Legacy verification script (network-based; see section 8)
 ├── tests/
 │   ├── test_tuning_registry.py  pytest smoke: tuning imports, registry has 8 analyzers, smoke analyze
-│   └── parity/                OFFLINE byte-identical parity net (see section 8 + tests/parity/README.md)
-│       ├── parity_harness.py    deterministic 50-portfolio x 3-tier runner (network blocked)
-│       ├── frozen_market_data.json  frozen cache, all 77 tickers warmed (+ SPY 1y)
-│       ├── debug_test.json      the 50 test portfolios (copied from Vector-Main; self-contained)
-│       ├── parity_baseline.json ground-truth output for all 150 runs
-│       └── README.md            what it proves, how to run, when (not) to recapture
+│   ├── parity/                OFFLINE byte-identical parity net (see section 8 + tests/parity/README.md)
+│   │   ├── parity_harness.py    deterministic 50-portfolio x 3-tier runner (network blocked)
+│   │   ├── frozen_market_data.json  frozen cache, all 77 tickers warmed (+ SPY 1y)
+│   │   ├── debug_test.json      the 50 test portfolios (copied from Vector-Main; self-contained)
+│   │   ├── parity_baseline.json ground-truth output for all 150 runs
+│   │   └── README.md            what it proves, how to run, when (not) to recapture
+│   └── edge/                  OFFLINE edge-case FAILURE harness (see section 8 + tests/edge/README.md)
+│       ├── edge_common.py       offline bootstrap (frozen cache, network blocked, fresh store per run)
+│       ├── generate_corpus.py   fixed-seed torture-corpus generator
+│       ├── edge_corpus.json     committed 63-portfolio corpus (regenerates byte-identical)
+│       ├── invariants.py        small pure HARD/SOFT predicate checks
+│       ├── run_edge_report.py   runs corpus offline -> edge_report.json + summary; exit != 0 on HARD
+│       ├── edge_report.json     latest machine-readable per-portfolio findings
+│       ├── test_edge_smoke.py   pytest: detector fires on broken output; full build has 0 HARD
+│       └── README.md            what it proves, the invariants, the current parked finding
 └── engine/                    The Lens computation package
     ├── __init__.py
     ├── analytics.py           Portfolio math primitives (slope, vol, Sharpe, beta)
@@ -311,6 +320,17 @@ python tests/parity/parity_harness.py     # must print [PASS]
 
 It runs `generate_lens_full` over **50 portfolios x 3 tiers = 150 runs** and compares every result field (brief, caution score, action type, full `ctas` list, `net_cta_delta`, `projected_positions`, all `pool_results`) against `tests/parity/parity_baseline.json`, byte-for-byte. It is **deterministic**: fully offline against a frozen `frozen_market_data.json` (all 77 tickers warmed) with the `DataStore` patched so every cached entry is fresh and every yfinance call raises, so live price drift can never look like a regression. It needs nothing outside the repo (the 50 portfolios are copied into `tests/parity/debug_test.json`). Re-capture the baseline (`--out tests/parity/parity_baseline.json`) ONLY when you have deliberately changed what the engine should output; see `tests/parity/README.md` for the full rules. This harness was used to verify the tunables-hoist + registry refactor (150/150 byte-identical).
 
+### Edge-case failure harness (`tests/edge/`)
+
+A SECOND offline net with the OPPOSITE goal from parity: instead of proving output is unchanged, it mechanically hunts for portfolios where the engine emits a questionable recommendation. Same determinism discipline as the parity harness (it reuses `tests/parity/frozen_market_data.json`, with the `DataStore` forced offline so every cached entry is fresh and every yfinance call raises), and it additionally rebuilds a fresh store per portfolio so nothing leaks between runs.
+
+- **Corpus.** `generate_corpus.py` writes a fixed-seed torture corpus to `edge_corpus.json` (63 portfolios: structural degenerates, tier-threshold boundaries, data-quality and NaN/inf paths, settings edge cases, and severity drivers). The corpus is committed and regenerates byte-identical; the report runs against the committed file, not a fresh generation, so it is stable across runs.
+- **Checker.** `invariants.py` is small pure predicate functions split into **HARD** (structural guarantees the engine's own code enforces, e.g. never buy and sell the same ticker, a sell never exceeds the held value, `net_cta_delta == buys - sells`, caution in `[1,99]`, no NaN/inf in the result) and **SOFT** (judgment calls, e.g. tier-caution monotonicity, clean-book quietness, same-issuer aggregation).
+- **Run.** `python tests/edge/run_edge_report.py` applies every invariant to every portfolio (no fail-fast), writes `edge_report.json`, prints a summary, and **exits non-zero iff a HARD invariant fails** so it can gate CI. SOFT findings are reported but never change the exit code. `python -m pytest tests/edge -q` separately proves the detector itself fires on deliberately broken output. See `tests/edge/README.md`.
+- **Do NOT touch `engine/` to make a check pass.** A HARD failure is a finding to triage, not something to silence. A SOFT finding is a candidate for human judgment, not a license to loosen the invariant until it disappears.
+
+**Current state: one PARKED soft finding (do not "fix" it by weakening the check).** The harness currently reports **0 HARD violations and exactly 1 SOFT finding**: `same_issuer_aggregation` on the `adv-two-share-classes` portfolio. That book is GOOG + GOOGL at ~90% of total value, one issuer masked as two positions: because the two share classes resolve to different sectors, the portfolio-level concentration flag understates the true single-issuer exposure and the engine only holds. This is a **KNOWN, INTENTIONAL, DEFERRED** finding queued for future analyzer work (real same-issuer / dual-class aggregation). It is NOT a harness bug and NOT to be closed by loosening or deleting the `same_issuer_aggregation` invariant. Note that an earlier, naive version of this check also fired on ordinary two-holding 50/50 books; that was a false positive (with two holdings, ~50% per name is the floor, so flag-then-hold is the correct engine behavior) and has already been tightened out. Leave the remaining finding surfaced until the engine gains genuine same-issuer handling.
+
 ### Legacy tool: `parity_check.py` (network-based, vs Vector-Main)
 
 `parity_check.py` verifies that the `engine` package produces identical output to the original `vector` package for the same inputs. Unlike the offline harness above, it can hit the network and needs Vector-Main present.
@@ -386,8 +406,9 @@ pip install -r requirements-dev.txt
 ### Running the tests
 
 ```bash
-python -m pytest tests/ -q                 # structural smoke tests
+python -m pytest tests/ -q                 # structural + edge smoke tests
 python tests/parity/parity_harness.py      # offline byte-identical parity net (see section 8)
+python tests/edge/run_edge_report.py       # offline edge-case failure net; exit != 0 on any HARD (see section 8)
 ```
 
 ### Running the server
