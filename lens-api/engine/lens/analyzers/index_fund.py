@@ -6,8 +6,11 @@ import logging
 from typing import Any
 
 from engine.constants import INDEX_ETFS, INDEX_FUND_TYPES
+from engine.tuning import TUNING
 
 _log = logging.getLogger(__name__)
+
+_ab = TUNING.analyzers
 
 
 def analyze(
@@ -37,7 +40,7 @@ def analyze(
 
         fund_type = INDEX_FUND_TYPES.get(t, 'other') if is_index else 'other'
 
-        flag = is_index and weight_pct > 30
+        flag = is_index and weight_pct > _ab.index_fund_min_weight_pct
         sev = 'moderate' if flag else 'none'
 
         ticker_results[t] = {
@@ -59,7 +62,7 @@ def analyze(
                 dominant_weight = weight_pct
                 dominant_index = t
 
-    port_flag = total_index_weight > 30
+    port_flag = total_index_weight > _ab.index_fund_min_weight_pct
 
     return {
         'ticker_results': ticker_results,

@@ -6,32 +6,37 @@ import logging
 from typing import Any
 
 from engine.constants import INDEX_ETFS, LOW_BETA_BY_SECTOR, SECTOR_SUGGESTIONS, sector_for
+from engine.tuning import TUNING
 
 _log = logging.getLogger(__name__)
 
+# All CTA tunables now live in engine/tuning.py (TUNING.cta). The module-level
+# names below are thin aliases so the explanatory comments stay here and every
+# downstream usage keeps its short local name.
+_cta = TUNING.cta
 
-_MIN_SELL_DOLLARS = 500
-_MIN_POSITION_VALUE_FOR_SELL = 1000
+_MIN_SELL_DOLLARS = _cta.min_sell_dollars
+_MIN_POSITION_VALUE_FOR_SELL = _cta.min_position_value_for_sell
 
 # Dead-weight (priority 8) is a "clean up the odd-lot tail" suggestion, not a
 # risk trim, so it is exempt from _MIN_POSITION_VALUE_FOR_SELL — which otherwise
 # rejects every sub-2% position before it can ever be flagged, making the whole
 # priority dead code. It only needs a tiny floor so we don't emit a sell on a
 # literal penny stub.
-_MIN_DEAD_WEIGHT_VALUE = 25.0
+_MIN_DEAD_WEIGHT_VALUE = _cta.min_dead_weight_value
 
 # Priority 9 (underrepresented sector) only nudges books that are not yet
 # broadly diversified. A portfolio already spread across this many sectors is
 # diversified enough that "deposit into a slightly-light sector" is noise (it
 # was firing on near-perfect 10-sector books).
-_DIVERSIFIED_SECTOR_COUNT = 6
+_DIVERSIFIED_SECTOR_COUNT = _cta.diversified_sector_count
 
 # A concentration threshold is the weight ABOVE which a holding/sector is flagged.
 # Diluting it back to that same threshold requires ~$0 for a position sitting right
 # at the trigger (target == current weight → near-zero buy). We instead dilute toward
 # a target that is this fraction of the trigger, so the recommended buy is always
 # materially sized while still scaling with the user's chosen threshold.
-_CONCENTRATION_DILUTION_FACTOR = 0.75
+_CONCENTRATION_DILUTION_FACTOR = _cta.concentration_dilution_factor
 
 # Aggregate cap on all buy CTAs combined, by risk tier. Each buy priority is
 # capped on its own, but several (high beta + concentration dilution + sector
@@ -41,13 +46,13 @@ _CONCENTRATION_DILUTION_FACTOR = 0.75
 # a broken book should not be told to deposit a huge sum (and, because their
 # sells are mostly suppressed, an uncapped buy total becomes the entire net
 # CTA delta — see the Leverage-Lover deposit-into-a-fire case).
-_MAX_TOTAL_BUY_FRACTION_BY_TIER = {'high': 0.35, 'regular': 0.30, 'low': 0.20}
-_MAX_TOTAL_BUY_FRACTION = 0.30  # fallback when tier is unknown
+_MAX_TOTAL_BUY_FRACTION_BY_TIER = _cta.max_total_buy_fraction_by_tier
+_MAX_TOTAL_BUY_FRACTION = _cta.max_total_buy_fraction  # fallback when tier is unknown
 
 # A buy CTA below this floor (the greater of an absolute $ and 1% of the book)
 # is dropped — sub-1% "deposit $30 into KO" suggestions are noise, not advice.
-_MIN_BUY_DOLLARS = 200.0
-_MIN_BUY_FRACTION = 0.01
+_MIN_BUY_DOLLARS = _cta.min_buy_dollars
+_MIN_BUY_FRACTION = _cta.min_buy_fraction
 
 # When a genuinely dangerous book is generating NO sell/rebalance proceeds (sells
 # suppressed by the conservative tier, or every signal resolved to a HOLD), the
@@ -55,7 +60,7 @@ _MIN_BUY_FRACTION = 0.01
 # the book (by _danger_weight: critical at full weight, high at half) sits in
 # dangerous positions and nothing is being freed, all diversification buys are
 # dropped — the right posture is hold / de-risk, not "deposit into the fire".
-_NO_DEPOSIT_DANGER_WEIGHT = 0.30
+_NO_DEPOSIT_DANGER_WEIGHT = _cta.no_deposit_danger_weight
 
 # Fresh-deposit advice is also dropped when this much of the book sits in
 # positions with REALIZED weakness (a high/critical unrealized loss or steep
@@ -65,18 +70,18 @@ _NO_DEPOSIT_DANGER_WEIGHT = 0.30
 # concentration-driven book does not wipe legitimate diversification advice; it
 # fires once losers are a substantial share of the book. Tier-independent: it
 # reads analyzer severities, which are set even when a tier suppresses the sell.
-_NO_DEPOSIT_LOSS_WEIGHT = 0.20
+_NO_DEPOSIT_LOSS_WEIGHT = _cta.no_deposit_loss_weight
 
 
 def _round10(v: float) -> float:
-    return round(v / 10) * 10
+    return round(v / _cta.dollar_rounding) * _cta.dollar_rounding
 
 
 def _floor10(v: float) -> float:
     """Round DOWN to the nearest 10. Used when scaling buys to a hard cap so the
     rounded total can never exceed the cap (a +$10 rounding overshoot otherwise
     left a 'redistribute' plan marginally net-positive)."""
-    return float(int(v // 10) * 10) if v > 0 else 0.0
+    return float(int(v // _cta.dollar_rounding) * _cta.dollar_rounding) if v > 0 else 0.0
 
 
 def _cap_buy_amount(raw_amount: float, total_equity: float, group_size: int) -> float:
@@ -87,9 +92,9 @@ def _cap_buy_amount(raw_amount: float, total_equity: float, group_size: int) -> 
     """
     if total_equity <= 0:
         return _round10(raw_amount)
-    per_cta_cap = total_equity * 0.25
+    per_cta_cap = total_equity * _cta.per_cta_buy_cap_fraction
     if group_size > 1:
-        group_cap = (total_equity * 0.50) / group_size
+        group_cap = (total_equity * _cta.group_buy_cap_fraction) / group_size
         per_cta_cap = min(per_cta_cap, group_cap)
     return _round10(min(raw_amount, per_cta_cap))
 
@@ -205,7 +210,7 @@ def compute_ctas(pool_results: dict[str, Any]) -> list[dict[str, Any]]:
         """
         if risk_tier != 'low':
             return False
-        if ticker_weight > 0.50:
+        if ticker_weight > _cta.dominant_position_weight:
             return False
         mc = _market_cap(ticker)
         # Missing market cap: normally assume large cap and BLOCK the sell (a safe
@@ -215,12 +220,12 @@ def compute_ctas(pool_results: dict[str, Any]) -> list[dict[str, Any]]:
         # silent (all HOLDs) on max-caution small-cap disasters. So only assume
         # large-cap for non-critical signals; let critical unknowns through.
         if mc <= 0:
-            mc = 0.0 if severity == 'critical' else 100_000_000_000.0
-        if mc > 5_000_000_000:
+            mc = 0.0 if severity == 'critical' else _cta.assumed_large_cap_usd
+        if mc > _cta.conservative_large_cap_usd:
             return True
         if severity != 'critical':
             return True
-        if ticker_weight < 0.05:
+        if ticker_weight < _cta.conservative_min_sell_weight:
             return True
         return False
 
@@ -241,7 +246,7 @@ def compute_ctas(pool_results: dict[str, Any]) -> list[dict[str, Any]]:
             ticker_weight = ticker_weights.get(t, 0)
             if _conservative_sell_blocked(t, sev, ticker_weight):
                 continue
-            sev_factor = 1.0 if sev == 'critical' else 0.5
+            sev_factor = _cta.sell_sev_factor_critical if sev == 'critical' else _cta.sell_sev_factor_high
             pos_value = summary.get('ticker_current_values', {}).get(
                 t, ticker_weight * total_equity,
             )
@@ -268,7 +273,7 @@ def compute_ctas(pool_results: dict[str, Any]) -> list[dict[str, Any]]:
             ticker_weight = ticker_weights.get(t, 0)
             if _conservative_sell_blocked(t, sev, ticker_weight):
                 continue
-            sev_factor = 1.0 if sev == 'critical' else 0.5
+            sev_factor = _cta.sell_sev_factor_critical if sev == 'critical' else _cta.sell_sev_factor_high
             pos_value = summary.get('ticker_current_values', {}).get(
                 t, ticker_weight * total_equity,
             )
@@ -307,7 +312,7 @@ def compute_ctas(pool_results: dict[str, Any]) -> list[dict[str, Any]]:
             position_value = summary.get('ticker_current_values', {}).get(t, current_w * total_equity)
             raw_rebalance = (current_w - entry_w) * total_equity
             # Cap rebalance at 35% of the position's current value
-            max_rebalance = position_value * 0.35
+            max_rebalance = position_value * _cta.rebalance_cap_fraction
             dollars = _round10(min(raw_rebalance, max_rebalance))
             _log.debug(
                 'winner_drift %s: current_weight=%.3f, entry_weight=%.3f, '
@@ -324,7 +329,7 @@ def compute_ctas(pool_results: dict[str, Any]) -> list[dict[str, Any]]:
                 # an informational hold while the buy-to-dilute path tells the
                 # user to deposit fresh capital into a position that is already
                 # most of their portfolio.
-                if risk_tier == 'low' and current_w <= 0.50:
+                if risk_tier == 'low' and current_w <= _cta.dominant_position_weight:
                     ctas.append({
                         'priority': 3,
                         'action': 'hold',
@@ -406,7 +411,7 @@ def compute_ctas(pool_results: dict[str, Any]) -> list[dict[str, Any]]:
                 if len(suggestions) >= 2:
                     break
 
-        dollars = _cap_buy_amount(0.10 * total_equity, total_equity, 1)
+        dollars = _cap_buy_amount(_cta.beta_buy_deposit_fraction * total_equity, total_equity, 1)
         if dollars > 0:
             ctas.append({
                 'priority': 5,
@@ -434,7 +439,7 @@ def compute_ctas(pool_results: dict[str, Any]) -> list[dict[str, Any]]:
             # to deposit cash into other sectors is unactionable — mirror the
             # >50% sell exceptions elsewhere and trim toward the target, for every
             # tier. Always skip the buy-to-dilute path for such a position.
-            if current_w > 0.50:
+            if current_w > _cta.dominant_position_weight:
                 # An existing winner-drift rebalance is already a proper trim —
                 # leave it (its narrative is more informative).
                 has_rebalance = any(
@@ -449,7 +454,7 @@ def compute_ctas(pool_results: dict[str, Any]) -> list[dict[str, Any]]:
                         t, current_w * total_equity,
                     )
                     raw_trim = (current_w - target_weight) * total_equity
-                    trim = _round10(min(raw_trim, pos_value * 0.35))
+                    trim = _round10(min(raw_trim, pos_value * _cta.rebalance_cap_fraction))
                     # The trim supersedes a SMALLER same-direction risk sell: a
                     # tier-scaled vol/decline sell (conservative sell_scale 0.10)
                     # would otherwise leave a 76% position barely reduced. Keep
@@ -509,19 +514,19 @@ def compute_ctas(pool_results: dict[str, Any]) -> list[dict[str, Any]]:
                     break
             if ticker_sector == 'Unknown':
                 for s, sw in sector_weights.items():
-                    if sw > 0.4:
+                    if sw > _cta.unknown_sector_infer_weight:
                         ticker_sector = s
                         break
 
             exclude = {ticker_sector} if ticker_sector != 'Unknown' else set()
             uw_sectors = _underweight_sectors_sorted(
                 sector_weights, held_sectors, exclude,
-            )[:3]
+            )[:_cta.max_diversification_ctas]
 
             if not uw_sectors:
                 uw_sectors = _underweight_sectors_sorted(
                     sector_weights, held_sectors,
-                )[:3]
+                )[:_cta.max_diversification_ctas]
 
             # Split dollars across underweight sectors proportionally
             allocations = _split_dollars_by_underweight(
@@ -570,18 +575,18 @@ def compute_ctas(pool_results: dict[str, Any]) -> list[dict[str, Any]]:
             v_total_new = sector_eq / target
             total_dollars = _round10(v_total_new - total_equity)
         else:
-            total_dollars = _round10(0.10 * total_equity)
+            total_dollars = _round10(_cta.sector_buy_deposit_fraction * total_equity)
 
         if total_dollars > 0:
             exclude = {heavy_sector} if heavy_sector else set()
             uw_sectors = _underweight_sectors_sorted(
                 sector_weights, held_sectors, exclude,
-            )[:3]
+            )[:_cta.max_diversification_ctas]
 
             if not uw_sectors:
                 uw_sectors = _underweight_sectors_sorted(
                     sector_weights, held_sectors,
-                )[:3]
+                )[:_cta.max_diversification_ctas]
 
             allocations = _split_dollars_by_underweight(
                 uw_sectors, sector_weights, total_dollars,
@@ -627,7 +632,7 @@ def compute_ctas(pool_results: dict[str, Any]) -> list[dict[str, Any]]:
     if risk_tier != 'low':
         for t in slope_res.get('ticker_results', {}):
             w = ticker_weights.get(t, 0)
-            if w < 0.02 and t not in INDEX_ETFS:
+            if w < _cta.dead_weight_max_weight and t not in INDEX_ETFS:
                 pos_value = summary.get('ticker_current_values', {}).get(
                     t, w * total_equity,
                 )
@@ -661,7 +666,7 @@ def compute_ctas(pool_results: dict[str, Any]) -> list[dict[str, Any]]:
     # Only nudge books that hold a few sectors but aren't yet broadly diversified
     # (3..<6). A book already spread across 6+ sectors is diversified enough that
     # filling a slightly-light sector is noise, not advice.
-    if 3 <= sector_count < _DIVERSIFIED_SECTOR_COUNT:
+    if _cta.underweight_min_sector_count <= sector_count < _DIVERSIFIED_SECTOR_COUNT:
         # A sector that is "thin" only because its single holding is a sub-2%
         # odd-lot is not genuinely missing — don't recommend buying into it while
         # the odd-lot itself should be cleaned up (sell T, buy GOOGL). Derive this
@@ -672,21 +677,21 @@ def compute_ctas(pool_results: dict[str, Any]) -> list[dict[str, Any]]:
         dead_weight_sectors = {
             sector_for(t)
             for t, w in ticker_weights.items()
-            if w < 0.02 and t not in INDEX_ETFS
+            if w < _cta.dead_weight_max_weight and t not in INDEX_ETFS
         }
         thin_sectors = sorted(
             ((s, w) for s, w in sector_wts.items()
-             if w < 10 and s not in ('Unknown', '') and s not in dead_weight_sectors),
+             if w < _cta.thin_sector_max_pct and s not in ('Unknown', '') and s not in dead_weight_sectors),
             key=lambda x: x[1],
         )
         cta_count = 0
-        group_size = min(len(thin_sectors), 3)
+        group_size = min(len(thin_sectors), _cta.max_diversification_ctas)
         for sector, sw_pct in thin_sectors:
-            if cta_count >= 3:
+            if cta_count >= _cta.max_diversification_ctas:
                 break
             suggested = _pick_sector_tickers(sector, held_tickers, n=1)
             sector_val = (sw_pct / 100) * total_equity
-            raw_deposit = (0.10 * total_equity - sector_val) / 0.90
+            raw_deposit = (_cta.sector_buy_deposit_fraction * total_equity - sector_val) / _cta.sector_deposit_denominator
             deposit = _cap_buy_amount(raw_deposit, total_equity, group_size)
             if deposit > 0 and suggested:
                 ctas.append({
@@ -900,7 +905,7 @@ def _danger_weight(
             crit += w
         elif any(s == 'high' for s in sevs):
             high += w
-    return min(1.0, crit + 0.5 * high)
+    return min(1.0, crit + _cta.danger_high_weight_factor * high)
 
 
 def _loss_weight(
@@ -1011,7 +1016,7 @@ def _dedupe_ctas(cta_list: list[dict]) -> list[dict]:
         if cta['action'] in ('buy_new', 'buy_more'):
             sector = (cta.get('details', {}) or {}).get('target_sector', '')
             if sector:
-                if sector_counts.get(sector, 0) >= 3:
+                if sector_counts.get(sector, 0) >= _cta.max_buys_per_sector:
                     continue
                 sector_counts[sector] = sector_counts.get(sector, 0) + 1
         capped.append(cta)

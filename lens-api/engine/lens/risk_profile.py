@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from engine.constants import DEFAULT_RISK_PROFILES, DEFAULT_SETTINGS
+from engine.tuning import DEFAULT_RISK_TIER
 
 # Shipped lens-signal defaults. An override is only applied when the user has
 # *changed* a value away from these — otherwise the chosen risk tier drives the
@@ -38,9 +39,9 @@ def load_risk_profile(settings: dict[str, Any]) -> dict[str, Any]:
     ``settings["lens_signals"]`` (values left at the shipped default defer to
     the tier so the risk-tier selection is meaningful — see ``_changed``).
     """
-    tier: str = settings.get('risk_tier', 'regular')
+    tier: str = settings.get('risk_tier', DEFAULT_RISK_TIER)
     if tier not in DEFAULT_RISK_PROFILES:
-        tier = 'regular'
+        tier = DEFAULT_RISK_TIER
 
     profile: dict[str, Any] = {
         'tier': tier,

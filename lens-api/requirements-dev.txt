@@ -1,0 +1,7 @@
+# Development / test dependencies for lens-api.
+# Runtime deps are in requirements.txt; install both for local dev + tests:
+#   pip install -r requirements.txt -r requirements-dev.txt
+#
+# Used by tests/ (pytest smoke tests) and tests/parity/ (the offline parity
+# harness runs on stdlib alone, but pytest is how you run the rest of the suite).
+pytest>=8.0

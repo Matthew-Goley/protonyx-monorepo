@@ -295,34 +295,8 @@ def sector_for(ticker: str, live_sector: str | None = None) -> str:
 
 
 # ── Lens: Default Risk Profiles ──
-DEFAULT_RISK_PROFILES: dict[str, dict] = {
-    'high': {
-        'slope':         {'critical': -50, 'high': -35, 'moderate': -20},
-        'volatility':    {'critical': 80,  'high': 60,  'moderate': 45},
-        'concentration': {'critical': 60,  'high': 50,  'moderate': 40},
-        'beta':          {'critical': 2.2, 'high': 1.6, 'moderate': 1.2},
-        'performance':   {'critical': -60, 'high': -40, 'moderate': -25},
-        'sell_scale': 0.25,
-    },
-    'regular': {
-        'slope':         {'critical': -40, 'high': -28, 'moderate': -15},
-        'volatility':    {'critical': 65,  'high': 50,  'moderate': 35},
-        'concentration': {'critical': 50,  'high': 40,  'moderate': 30},
-        'beta':          {'critical': 1.8, 'high': 1.3, 'moderate': 1.0},
-        'performance':   {'critical': -50, 'high': -30, 'moderate': -18},
-        'sell_scale': 0.50,
-    },
-    'low': {
-        'slope':         {'critical': -35, 'high': -25, 'moderate': -12},
-        'volatility':    {'critical': 55,  'high': 42,  'moderate': 30},
-        # Concentration moderate=25 (was 20): a 20–25% single position is normal,
-        # not a flag. The old 20% trigger made the conservative tier alarmist —
-        # flagging any one-fifth holding and turning it into multi-thousand-$
-        # buy-to-dilute deposits + a 90s caution on otherwise-healthy books.
-        # Still tighter than regular (30/40/50) so the tier stays cautious.
-        'concentration': {'critical': 45,  'high': 35,  'moderate': 25},
-        'beta':          {'critical': 1.4, 'high': 1.1, 'moderate': 0.8},
-        'performance':   {'critical': -40, 'high': -25, 'moderate': -15},
-        'sell_scale': 0.10,
-    },
-}
+# The per-tier severity thresholds now live in engine/tuning.py. Re-exported here
+# under the historical name so every importer (risk_profile.py) resolves to the
+# SAME dict object it did before — load_risk_profile deep-copies each tier before
+# mutating, so sharing the object is safe.
+from .tuning import RISK_TIER_PROFILES as DEFAULT_RISK_PROFILES  # noqa: E402

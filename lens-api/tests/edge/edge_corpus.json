@@ -1,0 +1,1852 @@
+{
+  "_meta": {
+    "seed": 20260707,
+    "portfolio_total_used": 100000.0,
+    "count": 63,
+    "frozen_market_data": "frozen_market_data.json",
+    "note": "Deterministic torture corpus for the Lens edge harness. Regenerate with: python tests/edge/generate_corpus.py"
+  },
+  "data_notes": [
+    "Only 41 of 142 frozen tickers carry >= 30 daily closes; the rest resolve to slope 'none' / vol 0 / beta 1.0. 'data-insufficient-history' exploits that real gap (KO/PG/JNJ) instead of a synthetic ticker, so it stays fully offline.",
+    "A genuinely SHORT-but-nonempty series (e.g. exactly 29 closes) cannot be built without editing the frozen cache, which would change parity inputs; the min-data-points path is instead reached via the no-usable-history tickers above.",
+    "True yfinance NaN/inf response rows (CLAUDE.md section 6) live in the main.py HTTP layer, not the analyze pipeline; 'data-nan-inf-stress' exercises the closest analyze-side path (extreme unrealized %) rather than a fabricated bar.",
+    "Exact on-threshold vol/beta/slope values are not dialable from a fixed price series; those boundary entries use the nearest real full-history ticker and note the intended band. Concentration and performance boundaries ARE exact."
+  ],
+  "portfolios": [
+    {
+      "id": "struct-empty",
+      "label": "empty portfolio",
+      "category": "structural",
+      "targets": "positions=[] -> documented empty-result shape",
+      "settings": {
+        "risk_tier": "regular"
+      },
+      "positions": []
+    },
+    {
+      "id": "struct-single",
+      "label": "single position (whole book)",
+      "category": "structural",
+      "targets": "1 holding == 100% weight",
+      "settings": {
+        "risk_tier": "regular"
+      },
+      "positions": [
+        {
+          "ticker": "AAPL",
+          "shares": 319.22282957604193,
+          "equity": 100000.0,
+          "price": 313.26080322265625,
+          "added_at": "2024-01-01T00:00:00"
+        }
+      ]
+    },
+    {
+      "id": "struct-two",
+      "label": "two positions",
+      "category": "structural",
+      "targets": "2 holdings, 50/50",
+      "settings": {
+        "risk_tier": "regular"
+      },
+      "positions": [
+        {
+          "ticker": "AAPL",
+          "shares": 159.61141478802097,
+          "equity": 50000.0,
+          "price": 313.26080322265625,
+          "added_at": "2024-01-01T00:00:00"
+        },
+        {
+          "ticker": "XOM",
+          "shares": 358.42293906810033,
+          "equity": 50000.0,
+          "price": 139.5,
+          "added_at": "2024-01-01T00:00:00"
+        }
+      ]
+    },
+    {
+      "id": "struct-one-sector-clean",
+      "label": "all one sector (Technology), clean names",
+      "category": "structural",
+      "targets": "single-sector book -> concentration sector-count escalation",
+      "settings": {
+        "risk_tier": "regular"
+      },
+      "positions": [
+        {
+          "ticker": "AAPL",
+          "shares": 108.53576205585425,
+          "equity": 34000.0,
+          "price": 313.26080322265625,
+          "added_at": "2024-01-01T00:00:00"
+        },
+        {
+          "ticker": "MSFT",
+          "shares": 83.81377867877562,
+          "equity": 33000.0,
+          "price": 393.7300109863281,
+          "added_at": "2024-01-01T00:00:00"
+        },
+        {
+          "ticker": "ORCL",
+          "shares": 234.94232110656742,
+          "equity": 33000.0,
+          "price": 140.4600067138672,
+          "added_at": "2024-01-01T00:00:00"
+        }
+      ]
+    },
+    {
+      "id": "struct-3fund-index",
+      "label": "healthy 3-fund index portfolio (should NOT nag)",
+      "category": "structural",
+      "targets": "SPY+VXUS+SCHD, all index ETFs -> index-dominance downgrade, no high/critical",
+      "settings": {
+        "risk_tier": "regular"
+      },
+      "positions": [
+        {
+          "ticker": "SPY",
+          "shares": 80.17639066938119,
+          "equity": 60000.0,
+          "price": 748.3499755859375,
+          "added_at": "2024-01-01T00:00:00"
+        },
+        {
+          "ticker": "VXUS",
+          "shares": 294.63516374649544,
+          "equity": 25000.0,
+          "price": 84.85070037841797,
+          "added_at": "2024-01-01T00:00:00"
+        },
+        {
+          "ticker": "SCHD",
+          "shares": 461.53846153846155,
+          "equity": 15000.0,
+          "price": 32.5,
+          "added_at": "2024-01-01T00:00:00"
+        }
+      ]
+    },
+    {
+      "id": "struct-single-index",
+      "label": "single broad-market index fund",
+      "category": "structural",
+      "targets": "100% SPY -> index informational hold, quiet",
+      "settings": {
+        "risk_tier": "regular"
+      },
+      "positions": [
+        {
+          "ticker": "SPY",
+          "shares": 133.627317782302,
+          "equity": 100000.0,
+          "price": 748.3499755859375,
+          "added_at": "2024-01-01T00:00:00"
+        }
+      ]
+    },
+    {
+      "id": "struct-many-diversified",
+      "label": "broadly diversified 10-sector clean book",
+      "category": "structural",
+      "targets": "10 sectors ~even -> should be healthy/quiet",
+      "settings": {
+        "risk_tier": "regular"
+      },
+      "positions": [
+        {
+          "ticker": "AAPL",
+          "shares": 31.922282957604192,
+          "equity": 10000.0,
+          "price": 313.26080322265625,
+          "added_at": "2024-01-01T00:00:00"
+        },
+        {
+          "ticker": "JPM",
+          "shares": 29.60594583669549,
+          "equity": 10000.0,
+          "price": 337.7699890136719,
+          "added_at": "2024-01-01T00:00:00"
+        },
+        {
+          "ticker": "JNJ",
+          "shares": 37.329449709594016,
+          "equity": 10000.0,
+          "price": 267.885009765625,
+          "added_at": "2024-01-01T00:00:00"
+        },
+        {
+          "ticker": "KO",
+          "shares": 118.8071785379879,
+          "equity": 10000.0,
+          "price": 84.16999816894531,
+          "added_at": "2024-01-01T00:00:00"
+        },
+        {
+          "ticker": "XOM",
+          "shares": 71.68458781362007,
+          "equity": 10000.0,
+          "price": 139.5,
+          "added_at": "2024-01-01T00:00:00"
+        },
+        {
+          "ticker": "HD",
+          "shares": 28.930162281011924,
+          "equity": 10000.0,
+          "price": 345.6600036621094,
+          "added_at": "2024-01-01T00:00:00"
+        },
+        {
+          "ticker": "GE",
+          "shares": 27.172804374715362,
+          "equity": 10000.0,
+          "price": 368.0150146484375,
+          "added_at": "2024-01-01T00:00:00"
+        },
+        {
+          "ticker": "NEE",
+          "shares": 113.18619323948415,
+          "equity": 10000.0,
+          "price": 88.3499984741211,
+          "added_at": "2024-01-01T00:00:00"
+        },
+        {
+          "ticker": "LIN",
+          "shares": 18.67657795938095,
+          "equity": 10000.0,
+          "price": 535.4299926757812,
+          "added_at": "2024-01-01T00:00:00"
+        },
+        {
+          "ticker": "PLD",
+          "shares": 70.30618312713827,
+          "equity": 10000.0,
+          "price": 142.23500061035156,
+          "added_at": "2024-01-01T00:00:00"
+        }
+      ]
+    },
+    {
+      "id": "bound-conc-eq-30",
+      "label": "single-stock weight exactly 30% (regular moderate threshold)",
+      "category": "numeric_boundary",
+      "targets": "weight==30.0% -> strict-'>' means still the band BELOW moderate",
+      "settings": {
+        "risk_tier": "regular"
+      },
+      "positions": [
+        {
+          "ticker": "KO",
+          "shares": 356.42153561396367,
+          "equity": 30000.0,
+          "price": 84.16999816894531,
+          "added_at": "2024-01-01T00:00:00"
+        },
+        {
+          "ticker": "JNJ",
+          "shares": 261.3061479671581,
+          "equity": 70000.0,
+          "price": 267.885009765625,
+          "added_at": "2024-01-01T00:00:00"
+        }
+      ]
+    },
+    {
+      "id": "bound-conc-just-over-30",
+      "label": "single-stock weight 30.5% (just over moderate threshold)",
+      "category": "numeric_boundary",
+      "targets": "weight just over 30.0% -> should classify moderate",
+      "settings": {
+        "risk_tier": "regular"
+      },
+      "positions": [
+        {
+          "ticker": "KO",
+          "shares": 362.3618945408631,
+          "equity": 30500.0,
+          "price": 84.16999816894531,
+          "added_at": "2024-01-01T00:00:00"
+        },
+        {
+          "ticker": "JNJ",
+          "shares": 259.4396754816784,
+          "equity": 69500.0,
+          "price": 267.885009765625,
+          "added_at": "2024-01-01T00:00:00"
+        }
+      ]
+    },
+    {
+      "id": "bound-conc-eq-40",
+      "label": "single-stock weight exactly 40% (regular high threshold)",
+      "category": "numeric_boundary",
+      "targets": "weight==40.0% -> strict-'>' means still the band BELOW high",
+      "settings": {
+        "risk_tier": "regular"
+      },
+      "positions": [
+        {
+          "ticker": "KO",
+          "shares": 475.2287141519516,
+          "equity": 40000.0,
+          "price": 84.16999816894531,
+          "added_at": "2024-01-01T00:00:00"
+        },
+        {
+          "ticker": "JNJ",
+          "shares": 223.9766982575641,
+          "equity": 60000.0,
+          "price": 267.885009765625,
+          "added_at": "2024-01-01T00:00:00"
+        }
+      ]
+    },
+    {
+      "id": "bound-conc-just-over-40",
+      "label": "single-stock weight 40.5% (just over high threshold)",
+      "category": "numeric_boundary",
+      "targets": "weight just over 40.0% -> should classify high",
+      "settings": {
+        "risk_tier": "regular"
+      },
+      "positions": [
+        {
+          "ticker": "KO",
+          "shares": 481.169073078851,
+          "equity": 40500.0,
+          "price": 84.16999816894531,
+          "added_at": "2024-01-01T00:00:00"
+        },
+        {
+          "ticker": "JNJ",
+          "shares": 222.1102257720844,
+          "equity": 59500.0,
+          "price": 267.885009765625,
+          "added_at": "2024-01-01T00:00:00"
+        }
+      ]
+    },
+    {
+      "id": "bound-conc-eq-50",
+      "label": "single-stock weight exactly 50% (regular critical threshold)",
+      "category": "numeric_boundary",
+      "targets": "weight==50.0% -> strict-'>' means still the band BELOW critical",
+      "settings": {
+        "risk_tier": "regular"
+      },
+      "positions": [
+        {
+          "ticker": "KO",
+          "shares": 594.0358926899395,
+          "equity": 50000.0,
+          "price": 84.16999816894531,
+          "added_at": "2024-01-01T00:00:00"
+        },
+        {
+          "ticker": "JNJ",
+          "shares": 186.64724854797007,
+          "equity": 50000.0,
+          "price": 267.885009765625,
+          "added_at": "2024-01-01T00:00:00"
+        }
+      ]
+    },
+    {
+      "id": "bound-conc-just-over-50",
+      "label": "single-stock weight 50.5% (just over critical threshold)",
+      "category": "numeric_boundary",
+      "targets": "weight just over 50.0% -> should classify critical",
+      "settings": {
+        "risk_tier": "regular"
+      },
+      "positions": [
+        {
+          "ticker": "KO",
+          "shares": 599.9762516168389,
+          "equity": 50500.0,
+          "price": 84.16999816894531,
+          "added_at": "2024-01-01T00:00:00"
+        },
+        {
+          "ticker": "JNJ",
+          "shares": 184.78077606249036,
+          "equity": 49500.0,
+          "price": 267.885009765625,
+          "added_at": "2024-01-01T00:00:00"
+        }
+      ]
+    },
+    {
+      "id": "bound-vol-just-over-high",
+      "label": "volatility just over regular high (PLTR ~51.8%)",
+      "category": "numeric_boundary",
+      "targets": "PLTR vol 51.8 > regular high 50 at >15% weight -> vol sell",
+      "settings": {
+        "risk_tier": "regular"
+      },
+      "positions": [
+        {
+          "ticker": "PLTR",
+          "shares": 366.98595759054365,
+          "equity": 50000.0,
+          "price": 136.2449951171875,
+          "added_at": "2024-01-01T00:00:00"
+        },
+        {
+          "ticker": "KO",
+          "shares": 594.0358926899395,
+          "equity": 50000.0,
+          "price": 84.16999816894531,
+          "added_at": "2024-01-01T00:00:00"
+        }
+      ]
+    },
+    {
+      "id": "bound-vol-moderate",
+      "label": "volatility in moderate band (F ~36.7%)",
+      "category": "numeric_boundary",
+      "targets": "F vol 36.7 in (35,50] -> moderate, no flag",
+      "settings": {
+        "risk_tier": "regular"
+      },
+      "positions": [
+        {
+          "ticker": "F",
+          "shares": 3662.547516232275,
+          "equity": 50000.0,
+          "price": 13.651700019836426,
+          "added_at": "2024-01-01T00:00:00"
+        },
+        {
+          "ticker": "KO",
+          "shares": 594.0358926899395,
+          "equity": 50000.0,
+          "price": 84.16999816894531,
+          "added_at": "2024-01-01T00:00:00"
+        }
+      ]
+    },
+    {
+      "id": "bound-beta-high",
+      "label": "beta just over regular high (F ~1.29 vs 1.3)",
+      "category": "numeric_boundary",
+      "targets": "F beta 1.29 sits right under regular high 1.3",
+      "settings": {
+        "risk_tier": "regular"
+      },
+      "positions": [
+        {
+          "ticker": "F",
+          "shares": 3662.547516232275,
+          "equity": 50000.0,
+          "price": 13.651700019836426,
+          "added_at": "2024-01-01T00:00:00"
+        },
+        {
+          "ticker": "KO",
+          "shares": 594.0358926899395,
+          "equity": 50000.0,
+          "price": 84.16999816894531,
+          "added_at": "2024-01-01T00:00:00"
+        }
+      ]
+    },
+    {
+      "id": "bound-near-100pct",
+      "label": "one position ~99.99% of the book",
+      "category": "numeric_boundary",
+      "targets": "dominant >50% single stock -> trim path, not buy-to-dilute",
+      "settings": {
+        "risk_tier": "regular"
+      },
+      "positions": [
+        {
+          "ticker": "AAPL",
+          "shares": 319.1909072930843,
+          "equity": 99990.0,
+          "price": 313.26080322265625,
+          "added_at": "2024-01-01T00:00:00"
+        },
+        {
+          "ticker": "KO",
+          "shares": 0.11880717853798789,
+          "equity": 10.0,
+          "price": 84.16999816894531,
+          "added_at": "2024-01-01T00:00:00"
+        }
+      ]
+    },
+    {
+      "id": "bound-perf-eq-moderate",
+      "label": "unrealized loss exactly -15% (regular moderate edge)",
+      "category": "numeric_boundary",
+      "targets": "return==-15 -> strict-'<' means NOT yet moderate",
+      "settings": {
+        "risk_tier": "regular"
+      },
+      "positions": [
+        {
+          "ticker": "AAPL",
+          "shares": 159.61141478802097,
+          "equity": 58823.52941176471,
+          "price": 313.26080322265625,
+          "added_at": "2024-01-01T00:00:00"
+        },
+        {
+          "ticker": "KO",
+          "shares": 594.0358926899395,
+          "equity": 50000.0,
+          "price": 84.16999816894531,
+          "added_at": "2024-01-01T00:00:00"
+        }
+      ]
+    },
+    {
+      "id": "bound-deadweight-just-above-25",
+      "label": "sub-2% odd-lot worth ~$26 (just over $25 floor)",
+      "category": "numeric_boundary",
+      "targets": "weight<2% and value>$25 -> dead_weight sell (regular/high)",
+      "settings": {
+        "risk_tier": "regular"
+      },
+      "positions": [
+        {
+          "ticker": "AAPL",
+          "shares": 314.4344871324013,
+          "equity": 98500.0,
+          "price": 313.26080322265625,
+          "added_at": "2024-01-01T00:00:00"
+        },
+        {
+          "ticker": "KO",
+          "shares": 0.30889866419876855,
+          "equity": 26.0,
+          "price": 84.16999816894531,
+          "added_at": "2024-01-01T00:00:00"
+        },
+        {
+          "ticker": "XOM",
+          "shares": 10.5663082437276,
+          "equity": 1474.0,
+          "price": 139.5,
+          "added_at": "2024-01-01T00:00:00"
+        }
+      ]
+    },
+    {
+      "id": "bound-deadweight-below-25",
+      "label": "sub-2% odd-lot worth ~$20 (below $25 floor)",
+      "category": "numeric_boundary",
+      "targets": "penny stub below dead-weight floor -> must NOT be sold",
+      "settings": {
+        "risk_tier": "regular"
+      },
+      "positions": [
+        {
+          "ticker": "AAPL",
+          "shares": 314.4344871324013,
+          "equity": 98500.0,
+          "price": 313.26080322265625,
+          "added_at": "2024-01-01T00:00:00"
+        },
+        {
+          "ticker": "KO",
+          "shares": 0.23761435707597578,
+          "equity": 20.0,
+          "price": 84.16999816894531,
+          "added_at": "2024-01-01T00:00:00"
+        },
+        {
+          "ticker": "XOM",
+          "shares": 10.609318996415771,
+          "equity": 1480.0,
+          "price": 139.5,
+          "added_at": "2024-01-01T00:00:00"
+        }
+      ]
+    },
+    {
+      "id": "bound-penny-fractional",
+      "label": "fractional penny position",
+      "category": "numeric_boundary",
+      "targets": "0.0005 shares of AMC (~$0.0008) -> near-zero weight",
+      "settings": {
+        "risk_tier": "regular"
+      },
+      "positions": [
+        {
+          "ticker": "AAPL",
+          "shares": 318.90360674646587,
+          "equity": 99900.0,
+          "price": 313.26080322265625,
+          "added_at": "2024-01-01T00:00:00"
+        },
+        {
+          "ticker": "AMC",
+          "shares": 0.0005,
+          "equity": 0.000824999988079071,
+          "price": 1.649999976158142,
+          "sector": "Unknown",
+          "name": "AMC",
+          "added_at": "2024-01-01T00:00:00"
+        }
+      ]
+    },
+    {
+      "id": "data-unknown-sector",
+      "label": "holding whose sector resolves to Unknown (GOOG)",
+      "category": "data_quality",
+      "targets": "GOOG not in TICKER_SECTOR, sector omitted -> Unknown bucket",
+      "settings": {
+        "risk_tier": "regular"
+      },
+      "positions": [
+        {
+          "ticker": "GOOG",
+          "shares": 136.85506819406856,
+          "equity": 50000.0,
+          "price": 365.3500061035156,
+          "added_at": "2024-01-01T00:00:00"
+        },
+        {
+          "ticker": "AAPL",
+          "shares": 159.61141478802097,
+          "equity": 50000.0,
+          "price": 313.26080322265625,
+          "added_at": "2024-01-01T00:00:00"
+        }
+      ]
+    },
+    {
+      "id": "data-malformed-sector",
+      "label": "malformed/garbage sector string",
+      "category": "data_quality",
+      "targets": "sector='Blahsector' -> normalize keeps it, used as a real sector",
+      "settings": {
+        "risk_tier": "regular"
+      },
+      "positions": [
+        {
+          "ticker": "AAPL",
+          "shares": 159.61141478802097,
+          "equity": 50000.0,
+          "price": 313.26080322265625,
+          "sector": "Blahsector",
+          "added_at": "2024-01-01T00:00:00"
+        },
+        {
+          "ticker": "KO",
+          "shares": 594.0358926899395,
+          "equity": 50000.0,
+          "price": 84.16999816894531,
+          "added_at": "2024-01-01T00:00:00"
+        }
+      ]
+    },
+    {
+      "id": "data-missing-optionals",
+      "label": "positions missing name / sector / added_at",
+      "category": "data_quality",
+      "targets": "optional fields omitted -> engine must fill defaults",
+      "settings": {
+        "risk_tier": "regular"
+      },
+      "positions": [
+        {
+          "ticker": "AAPL",
+          "shares": 159.61141478802097,
+          "equity": 50000.0,
+          "price": 313.26080322265625
+        },
+        {
+          "ticker": "XOM",
+          "shares": 358.42293906810033,
+          "equity": 50000.0,
+          "price": 139.5
+        }
+      ]
+    },
+    {
+      "id": "data-insufficient-history",
+      "label": "holdings with < min-data-points 1y/6mo history",
+      "category": "data_quality",
+      "targets": "KO/JNJ/JPM have no usable frozen history -> slope none, vol 0, beta 1.0; three distinct sectors so it stays genuinely quiet",
+      "settings": {
+        "risk_tier": "regular"
+      },
+      "positions": [
+        {
+          "ticker": "KO",
+          "shares": 403.94440702915887,
+          "equity": 34000.0,
+          "price": 84.16999816894531,
+          "added_at": "2024-01-01T00:00:00"
+        },
+        {
+          "ticker": "JNJ",
+          "shares": 123.18718404166025,
+          "equity": 33000.0,
+          "price": 267.885009765625,
+          "added_at": "2024-01-01T00:00:00"
+        },
+        {
+          "ticker": "JPM",
+          "shares": 97.69962126109512,
+          "equity": 33000.0,
+          "price": 337.7699890136719,
+          "added_at": "2024-01-01T00:00:00"
+        }
+      ]
+    },
+    {
+      "id": "data-zero-price",
+      "label": "a position with price 0 (and zero current value)",
+      "category": "data_quality",
+      "targets": "price==0 -> current value 0, weight math must not divide-by-0",
+      "settings": {
+        "risk_tier": "regular"
+      },
+      "positions": [
+        {
+          "ticker": "AAPL",
+          "shares": 100,
+          "equity": 0.0,
+          "price": 0.0,
+          "sector": "Technology",
+          "name": "AAPL",
+          "added_at": "2024-01-01T00:00:00"
+        },
+        {
+          "ticker": "XOM",
+          "shares": 716.8458781362007,
+          "equity": 100000.0,
+          "price": 139.5,
+          "added_at": "2024-01-01T00:00:00"
+        }
+      ]
+    },
+    {
+      "id": "data-zero-shares",
+      "label": "a position with 0 shares",
+      "category": "data_quality",
+      "targets": "shares==0 -> zero value, entry_price div-guard",
+      "settings": {
+        "risk_tier": "regular"
+      },
+      "positions": [
+        {
+          "ticker": "AAPL",
+          "shares": 0,
+          "equity": 0.0,
+          "price": 313.26080322265625,
+          "sector": "Technology",
+          "name": "AAPL",
+          "added_at": "2024-01-01T00:00:00"
+        },
+        {
+          "ticker": "XOM",
+          "shares": 716.8458781362007,
+          "equity": 100000.0,
+          "price": 139.5,
+          "added_at": "2024-01-01T00:00:00"
+        }
+      ]
+    },
+    {
+      "id": "data-negative-shares",
+      "label": "a malformed position with NEGATIVE shares",
+      "category": "data_quality",
+      "targets": "shares<0 -> negative weight; stresses weight-sum & finite checks",
+      "settings": {
+        "risk_tier": "regular"
+      },
+      "positions": [
+        {
+          "ticker": "AAPL",
+          "shares": -10,
+          "equity": -3132.6080322265625,
+          "price": 313.26080322265625,
+          "sector": "Technology",
+          "name": "AAPL",
+          "added_at": "2024-01-01T00:00:00"
+        },
+        {
+          "ticker": "XOM",
+          "shares": 716.8458781362007,
+          "equity": 100000.0,
+          "price": 139.5,
+          "added_at": "2024-01-01T00:00:00"
+        }
+      ]
+    },
+    {
+      "id": "data-huge-shares",
+      "label": "an absurdly large share count",
+      "category": "data_quality",
+      "targets": "1e12 shares -> very large equity; stresses caps & finite outputs",
+      "settings": {
+        "risk_tier": "regular"
+      },
+      "positions": [
+        {
+          "ticker": "AAPL",
+          "shares": 1000000000000.0,
+          "equity": 313260803222656.25,
+          "price": 313.26080322265625,
+          "sector": "Technology",
+          "name": "AAPL",
+          "added_at": "2024-01-01T00:00:00"
+        },
+        {
+          "ticker": "KO",
+          "shares": 1188.071785379879,
+          "equity": 100000.0,
+          "price": 84.16999816894531,
+          "added_at": "2024-01-01T00:00:00"
+        }
+      ]
+    },
+    {
+      "id": "data-nan-inf-stress",
+      "label": "extreme-magnitude entry price (unrealized overflow bait)",
+      "category": "data_quality",
+      "targets": "near-zero cost basis -> +huge unrealized %; performance/finite stress",
+      "settings": {
+        "risk_tier": "regular"
+      },
+      "positions": [
+        {
+          "ticker": "AAPL",
+          "shares": 1000,
+          "equity": 1e-09,
+          "price": 313.26080322265625,
+          "sector": "Technology",
+          "name": "AAPL",
+          "added_at": "2024-01-01T00:00:00"
+        },
+        {
+          "ticker": "XOM",
+          "shares": 716.8458781362007,
+          "equity": 100000.0,
+          "price": 139.5,
+          "added_at": "2024-01-01T00:00:00"
+        }
+      ]
+    },
+    {
+      "id": "set-missing-risk-tier",
+      "label": "settings omit risk_tier entirely",
+      "category": "settings",
+      "targets": "no risk_tier -> load_risk_profile default 'regular'",
+      "settings": {},
+      "positions": [
+        {
+          "ticker": "COIN",
+          "shares": 239.24532730814965,
+          "equity": 50000.0,
+          "price": 167.19239807128906,
+          "added_at": "2024-01-01T00:00:00"
+        },
+        {
+          "ticker": "HL",
+          "shares": 1936.7334049892252,
+          "equity": 37500.0,
+          "price": 15.489999771118164,
+          "added_at": "2024-01-01T00:00:00"
+        },
+        {
+          "ticker": "AAPL",
+          "shares": 95.76684887281257,
+          "equity": 37500.0,
+          "price": 313.26080322265625,
+          "added_at": "2024-01-01T00:00:00"
+        }
+      ]
+    },
+    {
+      "id": "set-unknown-risk-tier",
+      "label": "settings name an unknown risk_tier",
+      "category": "settings",
+      "targets": "risk_tier='ferocious' -> unknown -> fallback 'regular' (Tier-C .get)",
+      "settings": {
+        "risk_tier": "ferocious"
+      },
+      "positions": [
+        {
+          "ticker": "COIN",
+          "shares": 239.24532730814965,
+          "equity": 50000.0,
+          "price": 167.19239807128906,
+          "added_at": "2024-01-01T00:00:00"
+        },
+        {
+          "ticker": "HL",
+          "shares": 1936.7334049892252,
+          "equity": 37500.0,
+          "price": 15.489999771118164,
+          "added_at": "2024-01-01T00:00:00"
+        },
+        {
+          "ticker": "AAPL",
+          "shares": 95.76684887281257,
+          "equity": 37500.0,
+          "price": 313.26080322265625,
+          "added_at": "2024-01-01T00:00:00"
+        }
+      ]
+    },
+    {
+      "id": "set-tier-low",
+      "label": "explicit risk_tier=low on a risky book",
+      "category": "settings",
+      "targets": "exercise low thresholds + sell suppression",
+      "settings": {
+        "risk_tier": "low"
+      },
+      "positions": [
+        {
+          "ticker": "COIN",
+          "shares": 239.24532730814965,
+          "equity": 50000.0,
+          "price": 167.19239807128906,
+          "added_at": "2024-01-01T00:00:00"
+        },
+        {
+          "ticker": "HL",
+          "shares": 1936.7334049892252,
+          "equity": 37500.0,
+          "price": 15.489999771118164,
+          "added_at": "2024-01-01T00:00:00"
+        },
+        {
+          "ticker": "AAPL",
+          "shares": 95.76684887281257,
+          "equity": 37500.0,
+          "price": 313.26080322265625,
+          "added_at": "2024-01-01T00:00:00"
+        }
+      ]
+    },
+    {
+      "id": "set-tier-regular",
+      "label": "explicit risk_tier=regular on a risky book",
+      "category": "settings",
+      "targets": "exercise regular thresholds + sell suppression",
+      "settings": {
+        "risk_tier": "regular"
+      },
+      "positions": [
+        {
+          "ticker": "COIN",
+          "shares": 239.24532730814965,
+          "equity": 50000.0,
+          "price": 167.19239807128906,
+          "added_at": "2024-01-01T00:00:00"
+        },
+        {
+          "ticker": "HL",
+          "shares": 1936.7334049892252,
+          "equity": 37500.0,
+          "price": 15.489999771118164,
+          "added_at": "2024-01-01T00:00:00"
+        },
+        {
+          "ticker": "AAPL",
+          "shares": 95.76684887281257,
+          "equity": 37500.0,
+          "price": 313.26080322265625,
+          "added_at": "2024-01-01T00:00:00"
+        }
+      ]
+    },
+    {
+      "id": "set-tier-high",
+      "label": "explicit risk_tier=high on a risky book",
+      "category": "settings",
+      "targets": "exercise high thresholds + sell suppression",
+      "settings": {
+        "risk_tier": "high"
+      },
+      "positions": [
+        {
+          "ticker": "COIN",
+          "shares": 239.24532730814965,
+          "equity": 50000.0,
+          "price": 167.19239807128906,
+          "added_at": "2024-01-01T00:00:00"
+        },
+        {
+          "ticker": "HL",
+          "shares": 1936.7334049892252,
+          "equity": 37500.0,
+          "price": 15.489999771118164,
+          "added_at": "2024-01-01T00:00:00"
+        },
+        {
+          "ticker": "AAPL",
+          "shares": 95.76684887281257,
+          "equity": 37500.0,
+          "price": 313.26080322265625,
+          "added_at": "2024-01-01T00:00:00"
+        }
+      ]
+    },
+    {
+      "id": "sev-conc-none",
+      "label": "single-stock concentration -> none (weight 15%)",
+      "category": "severity_driver",
+      "targets": "KO weight 15.0% -> concentration severity none",
+      "settings": {
+        "risk_tier": "regular"
+      },
+      "positions": [
+        {
+          "ticker": "KO",
+          "shares": 178.21076780698183,
+          "equity": 15000.0,
+          "price": 84.16999816894531,
+          "added_at": "2024-01-01T00:00:00"
+        },
+        {
+          "ticker": "JNJ",
+          "shares": 317.3003225315491,
+          "equity": 85000.0,
+          "price": 267.885009765625,
+          "added_at": "2024-01-01T00:00:00"
+        }
+      ]
+    },
+    {
+      "id": "sev-conc-low",
+      "label": "single-stock concentration -> low (weight 25%)",
+      "category": "severity_driver",
+      "targets": "KO weight 25.0% -> concentration severity low",
+      "settings": {
+        "risk_tier": "regular"
+      },
+      "positions": [
+        {
+          "ticker": "KO",
+          "shares": 297.01794634496974,
+          "equity": 25000.0,
+          "price": 84.16999816894531,
+          "added_at": "2024-01-01T00:00:00"
+        },
+        {
+          "ticker": "JNJ",
+          "shares": 279.9708728219551,
+          "equity": 75000.0,
+          "price": 267.885009765625,
+          "added_at": "2024-01-01T00:00:00"
+        }
+      ]
+    },
+    {
+      "id": "sev-conc-moderate",
+      "label": "single-stock concentration -> moderate (weight 35%)",
+      "category": "severity_driver",
+      "targets": "KO weight 35.0% -> concentration severity moderate",
+      "settings": {
+        "risk_tier": "regular"
+      },
+      "positions": [
+        {
+          "ticker": "KO",
+          "shares": 415.82512488295765,
+          "equity": 35000.0,
+          "price": 84.16999816894531,
+          "added_at": "2024-01-01T00:00:00"
+        },
+        {
+          "ticker": "JNJ",
+          "shares": 242.6414231123611,
+          "equity": 65000.0,
+          "price": 267.885009765625,
+          "added_at": "2024-01-01T00:00:00"
+        }
+      ]
+    },
+    {
+      "id": "sev-conc-high",
+      "label": "single-stock concentration -> high (weight 45%)",
+      "category": "severity_driver",
+      "targets": "KO weight 45.0% -> concentration severity high",
+      "settings": {
+        "risk_tier": "regular"
+      },
+      "positions": [
+        {
+          "ticker": "KO",
+          "shares": 534.6323034209455,
+          "equity": 45000.0,
+          "price": 84.16999816894531,
+          "added_at": "2024-01-01T00:00:00"
+        },
+        {
+          "ticker": "JNJ",
+          "shares": 205.3119734027671,
+          "equity": 55000.00000000001,
+          "price": 267.885009765625,
+          "added_at": "2024-01-01T00:00:00"
+        }
+      ]
+    },
+    {
+      "id": "sev-conc-critical",
+      "label": "single-stock concentration -> critical (weight 55%)",
+      "category": "severity_driver",
+      "targets": "KO weight 55.0% -> concentration severity critical",
+      "settings": {
+        "risk_tier": "regular"
+      },
+      "positions": [
+        {
+          "ticker": "KO",
+          "shares": 653.4394819589335,
+          "equity": 55000.00000000001,
+          "price": 84.16999816894531,
+          "added_at": "2024-01-01T00:00:00"
+        },
+        {
+          "ticker": "JNJ",
+          "shares": 167.98252369317308,
+          "equity": 45000.0,
+          "price": 267.885009765625,
+          "added_at": "2024-01-01T00:00:00"
+        }
+      ]
+    },
+    {
+      "id": "sev-perf-low",
+      "label": "unrealized loss -> low (-10%)",
+      "category": "severity_driver",
+      "targets": "AAPL unrealized -10.0% -> performance severity low",
+      "settings": {
+        "risk_tier": "regular"
+      },
+      "positions": [
+        {
+          "ticker": "AAPL",
+          "shares": 191.53369774562515,
+          "equity": 66666.66666666667,
+          "price": 313.26080322265625,
+          "added_at": "2024-01-01T00:00:00"
+        },
+        {
+          "ticker": "KO",
+          "shares": 475.2287141519516,
+          "equity": 40000.0,
+          "price": 84.16999816894531,
+          "added_at": "2024-01-01T00:00:00"
+        }
+      ]
+    },
+    {
+      "id": "sev-perf-moderate",
+      "label": "unrealized loss -> moderate (-22%)",
+      "category": "severity_driver",
+      "targets": "AAPL unrealized -22.0% -> performance severity moderate",
+      "settings": {
+        "risk_tier": "regular"
+      },
+      "positions": [
+        {
+          "ticker": "AAPL",
+          "shares": 191.53369774562515,
+          "equity": 76923.07692307692,
+          "price": 313.26080322265625,
+          "added_at": "2024-01-01T00:00:00"
+        },
+        {
+          "ticker": "KO",
+          "shares": 475.2287141519516,
+          "equity": 40000.0,
+          "price": 84.16999816894531,
+          "added_at": "2024-01-01T00:00:00"
+        }
+      ]
+    },
+    {
+      "id": "sev-perf-high",
+      "label": "unrealized loss -> high (-40%)",
+      "category": "severity_driver",
+      "targets": "AAPL unrealized -40.0% -> performance severity high",
+      "settings": {
+        "risk_tier": "regular"
+      },
+      "positions": [
+        {
+          "ticker": "AAPL",
+          "shares": 191.53369774562515,
+          "equity": 100000.0,
+          "price": 313.26080322265625,
+          "added_at": "2024-01-01T00:00:00"
+        },
+        {
+          "ticker": "KO",
+          "shares": 475.2287141519516,
+          "equity": 40000.0,
+          "price": 84.16999816894531,
+          "added_at": "2024-01-01T00:00:00"
+        }
+      ]
+    },
+    {
+      "id": "sev-perf-critical",
+      "label": "unrealized loss -> critical (-60%)",
+      "category": "severity_driver",
+      "targets": "AAPL unrealized -60.0% -> performance severity critical",
+      "settings": {
+        "risk_tier": "regular"
+      },
+      "positions": [
+        {
+          "ticker": "AAPL",
+          "shares": 191.53369774562515,
+          "equity": 150000.0,
+          "price": 313.26080322265625,
+          "added_at": "2024-01-01T00:00:00"
+        },
+        {
+          "ticker": "KO",
+          "shares": 475.2287141519516,
+          "equity": 40000.0,
+          "price": 84.16999816894531,
+          "added_at": "2024-01-01T00:00:00"
+        }
+      ]
+    },
+    {
+      "id": "sev-force-sell-vol",
+      "label": "force a volatility SELL CTA",
+      "category": "severity_driver",
+      "targets": "OPEN vol 143 crit at 40% weight -> priority-2 sell",
+      "settings": {
+        "risk_tier": "regular"
+      },
+      "positions": [
+        {
+          "ticker": "OPEN",
+          "shares": 7999.680341142374,
+          "equity": 40000.0,
+          "price": 5.000199794769287,
+          "added_at": "2024-01-01T00:00:00"
+        },
+        {
+          "ticker": "AAPL",
+          "shares": 191.53369774562515,
+          "equity": 60000.0,
+          "price": 313.26080322265625,
+          "added_at": "2024-01-01T00:00:00"
+        }
+      ]
+    },
+    {
+      "id": "sev-force-sell-decline",
+      "label": "force a steep-decline SELL CTA",
+      "category": "severity_driver",
+      "targets": "UEC slope -80 crit at 30% weight -> priority-1 sell",
+      "settings": {
+        "risk_tier": "regular"
+      },
+      "positions": [
+        {
+          "ticker": "UEC",
+          "shares": 3012.0481812348876,
+          "equity": 30000.0,
+          "price": 9.960000038146973,
+          "added_at": "2024-01-01T00:00:00"
+        },
+        {
+          "ticker": "AAPL",
+          "shares": 223.45598070322936,
+          "equity": 70000.0,
+          "price": 313.26080322265625,
+          "added_at": "2024-01-01T00:00:00"
+        }
+      ]
+    },
+    {
+      "id": "sev-force-buy-conc",
+      "label": "force buy-to-diversify from single-stock concentration",
+      "category": "severity_driver",
+      "targets": "AAPL 45% (high) clean -> priority-6 buy_new suggestions",
+      "settings": {
+        "risk_tier": "regular"
+      },
+      "positions": [
+        {
+          "ticker": "AAPL",
+          "shares": 143.65027330921887,
+          "equity": 45000.0,
+          "price": 313.26080322265625,
+          "added_at": "2024-01-01T00:00:00"
+        },
+        {
+          "ticker": "XOM",
+          "shares": 215.05376344086022,
+          "equity": 30000.0,
+          "price": 139.5,
+          "added_at": "2024-01-01T00:00:00"
+        },
+        {
+          "ticker": "KO",
+          "shares": 297.01794634496974,
+          "equity": 25000.0,
+          "price": 84.16999816894531,
+          "added_at": "2024-01-01T00:00:00"
+        }
+      ]
+    },
+    {
+      "id": "sev-force-buy-beta",
+      "label": "force a reduce-beta BUY CTA",
+      "category": "severity_driver",
+      "targets": "high-beta book (SOXL/TQQQ) -> priority-5 buy low-beta name",
+      "settings": {
+        "risk_tier": "regular"
+      },
+      "positions": [
+        {
+          "ticker": "SOXL",
+          "shares": 206.39208349184005,
+          "equity": 34000.0,
+          "price": 164.73500061035156,
+          "added_at": "2024-01-01T00:00:00"
+        },
+        {
+          "ticker": "TQQQ",
+          "shares": 451.4981755840156,
+          "equity": 33000.0,
+          "price": 73.08999633789062,
+          "added_at": "2024-01-01T00:00:00"
+        },
+        {
+          "ticker": "RIOT",
+          "shares": 1510.9890004322974,
+          "equity": 33000.0,
+          "price": 21.84000015258789,
+          "added_at": "2024-01-01T00:00:00"
+        }
+      ]
+    },
+    {
+      "id": "sev-deadweight-prune",
+      "label": "multiple sub-2% odd-lots -> dead-weight sells",
+      "category": "severity_driver",
+      "targets": "3 tiny lots (<2%, >$25) -> priority-8 dead_weight sells (reg/high)",
+      "settings": {
+        "risk_tier": "regular"
+      },
+      "positions": [
+        {
+          "ticker": "AAPL",
+          "shares": 300.0694598014794,
+          "equity": 94000.0,
+          "price": 313.26080322265625,
+          "added_at": "2024-01-01T00:00:00"
+        },
+        {
+          "ticker": "KO",
+          "shares": 23.761435707597578,
+          "equity": 2000.0,
+          "price": 84.16999816894531,
+          "added_at": "2024-01-01T00:00:00"
+        },
+        {
+          "ticker": "XOM",
+          "shares": 14.336917562724015,
+          "equity": 2000.0,
+          "price": 139.5,
+          "added_at": "2024-01-01T00:00:00"
+        },
+        {
+          "ticker": "JNJ",
+          "shares": 7.465889941918803,
+          "equity": 2000.0,
+          "price": 267.885009765625,
+          "added_at": "2024-01-01T00:00:00"
+        }
+      ]
+    },
+    {
+      "id": "sev-conservative-suppressed",
+      "label": "dangerous book on conservative tier (sells blocked)",
+      "category": "severity_driver",
+      "targets": "low tier + declining large caps -> suppressed sells, high floor",
+      "settings": {
+        "risk_tier": "low"
+      },
+      "positions": [
+        {
+          "ticker": "MSFT",
+          "shares": 101.59245900457651,
+          "equity": 53333.333333333336,
+          "price": 393.7300109863281,
+          "added_at": "2024-01-01T00:00:00"
+        },
+        {
+          "ticker": "AAPL",
+          "shares": 95.76684887281257,
+          "equity": 40000.0,
+          "price": 313.26080322265625,
+          "added_at": "2024-01-01T00:00:00"
+        },
+        {
+          "ticker": "COIN",
+          "shares": 179.43399548111225,
+          "equity": 40000.0,
+          "price": 167.19239807128906,
+          "added_at": "2024-01-01T00:00:00"
+        }
+      ]
+    },
+    {
+      "id": "sev-leveraged-fire",
+      "label": "78% in a leveraged ETF (deposit-into-fire trap)",
+      "category": "severity_driver",
+      "targets": "SOXL 78% crit vol/beta -> trim, never buy-to-dilute",
+      "settings": {
+        "risk_tier": "regular"
+      },
+      "positions": [
+        {
+          "ticker": "SOXL",
+          "shares": 473.4877209518683,
+          "equity": 78000.0,
+          "price": 164.73500061035156,
+          "added_at": "2024-01-01T00:00:00"
+        },
+        {
+          "ticker": "AAPL",
+          "shares": 70.22902250672922,
+          "equity": 22000.0,
+          "price": 313.26080322265625,
+          "added_at": "2024-01-01T00:00:00"
+        }
+      ]
+    },
+    {
+      "id": "sev-all-critical",
+      "label": "book that is wholly in crisis",
+      "category": "severity_driver",
+      "targets": "5 critical-vol names even weight -> danger gate, no buys",
+      "settings": {
+        "risk_tier": "regular"
+      },
+      "positions": [
+        {
+          "ticker": "OPEN",
+          "shares": 3999.840170571187,
+          "equity": 36363.63636363637,
+          "price": 5.000199794769287,
+          "added_at": "2024-01-01T00:00:00"
+        },
+        {
+          "ticker": "RGTI",
+          "shares": 1202.6385709675073,
+          "equity": 36363.63636363636,
+          "price": 16.63010025024414,
+          "added_at": "2024-01-01T00:00:00"
+        },
+        {
+          "ticker": "QUBT",
+          "shares": 2281.438130892404,
+          "equity": 36363.63636363635,
+          "price": 8.766400337219238,
+          "added_at": "2024-01-01T00:00:00"
+        },
+        {
+          "ticker": "RUN",
+          "shares": 1680.6723227836649,
+          "equity": 36363.63636363636,
+          "price": 11.899999618530273,
+          "added_at": "2024-01-01T00:00:00"
+        },
+        {
+          "ticker": "FCEL",
+          "shares": 746.8259703956423,
+          "equity": 36363.63636363636,
+          "price": 26.780000686645508,
+          "added_at": "2024-01-01T00:00:00"
+        }
+      ]
+    },
+    {
+      "id": "sev-winner-drift",
+      "label": "runaway winner that drifted up",
+      "category": "severity_driver",
+      "targets": "AAPL up 220% -> >2x drift at >30% weight -> rebalance",
+      "settings": {
+        "risk_tier": "regular"
+      },
+      "positions": [
+        {
+          "ticker": "AAPL",
+          "shares": 175.57255626682309,
+          "equity": 17187.500000000004,
+          "price": 313.26080322265625,
+          "added_at": "2024-01-01T00:00:00"
+        },
+        {
+          "ticker": "XOM",
+          "shares": 179.21146953405017,
+          "equity": 25000.0,
+          "price": 139.5,
+          "added_at": "2024-01-01T00:00:00"
+        },
+        {
+          "ticker": "KO",
+          "shares": 237.6143570759758,
+          "equity": 20000.0,
+          "price": 84.16999816894531,
+          "added_at": "2024-01-01T00:00:00"
+        }
+      ]
+    },
+    {
+      "id": "adv-tier-inversion-riskbook",
+      "label": "risk book that may invert tier caution ordering",
+      "category": "adversarial",
+      "targets": "per-tier sell_scale (0.10/0.50/0.25) vs risk floor -> ordering",
+      "settings": {
+        "risk_tier": "regular"
+      },
+      "positions": [
+        {
+          "ticker": "PLTR",
+          "shares": 249.5504511615697,
+          "equity": 42500.0,
+          "price": 136.2449951171875,
+          "added_at": "2024-01-01T00:00:00"
+        },
+        {
+          "ticker": "RIVN",
+          "shares": 1919.1625813132853,
+          "equity": 41250.0,
+          "price": 17.19499969482422,
+          "added_at": "2024-01-01T00:00:00"
+        },
+        {
+          "ticker": "HOOD",
+          "shares": 286.2595450159431,
+          "equity": 41250.0,
+          "price": 115.27999877929688,
+          "added_at": "2024-01-01T00:00:00"
+        }
+      ]
+    },
+    {
+      "id": "adv-tier-inversion-highsev",
+      "label": "all-high (not critical) severity book across tiers",
+      "category": "adversarial",
+      "targets": "high-severity names -> danger half-weight; tier ordering",
+      "settings": {
+        "risk_tier": "regular"
+      },
+      "positions": [
+        {
+          "ticker": "PLTR",
+          "shares": 366.98595759054365,
+          "equity": 69444.44444444444,
+          "price": 136.2449951171875,
+          "added_at": "2024-01-01T00:00:00"
+        },
+        {
+          "ticker": "RIVN",
+          "shares": 2907.822092898917,
+          "equity": 69444.44444444445,
+          "price": 17.19499969482422,
+          "added_at": "2024-01-01T00:00:00"
+        }
+      ]
+    },
+    {
+      "id": "adv-tier-inversion-midcaps",
+      "label": "mid-cap decliners, moderate weights, all tiers",
+      "category": "adversarial",
+      "targets": "sell-driven caution may peak at regular tier",
+      "settings": {
+        "risk_tier": "regular"
+      },
+      "positions": [
+        {
+          "ticker": "SOFI",
+          "shares": 1375.515876172508,
+          "equity": 30487.80487804878,
+          "price": 18.174999237060547,
+          "added_at": "2024-01-01T00:00:00"
+        },
+        {
+          "ticker": "COIN",
+          "shares": 149.52832956759354,
+          "equity": 30487.80487804878,
+          "price": 167.19239807128906,
+          "added_at": "2024-01-01T00:00:00"
+        },
+        {
+          "ticker": "HL",
+          "shares": 1613.9445041576876,
+          "equity": 30487.80487804878,
+          "price": 15.489999771118164,
+          "added_at": "2024-01-01T00:00:00"
+        },
+        {
+          "ticker": "CDE",
+          "shares": 1556.6721809099345,
+          "equity": 30487.804878048777,
+          "price": 16.059900283813477,
+          "added_at": "2024-01-01T00:00:00"
+        }
+      ]
+    },
+    {
+      "id": "adv-unknown-sector-conc",
+      "label": "60% in an Unknown-sector name (GOOG)",
+      "category": "adversarial",
+      "targets": "heavy sector Unknown -> exclude set empty -> buy targeting",
+      "settings": {
+        "risk_tier": "regular"
+      },
+      "positions": [
+        {
+          "ticker": "GOOG",
+          "shares": 164.2260818328823,
+          "equity": 60000.0,
+          "price": 365.3500061035156,
+          "added_at": "2024-01-01T00:00:00"
+        },
+        {
+          "ticker": "KO",
+          "shares": 475.2287141519516,
+          "equity": 40000.0,
+          "price": 84.16999816894531,
+          "added_at": "2024-01-01T00:00:00"
+        }
+      ]
+    },
+    {
+      "id": "adv-unknown-heavy-multi",
+      "label": "Unknown-sector cluster dominates the book",
+      "category": "adversarial",
+      "targets": "CLSK/MARA/RIOT all Unknown -> heaviest 'sector' is Unknown",
+      "settings": {
+        "risk_tier": "regular"
+      },
+      "positions": [
+        {
+          "ticker": "CLSK",
+          "shares": 2708.084362688828,
+          "equity": 34000.0,
+          "price": 12.555000305175781,
+          "added_at": "2024-01-01T00:00:00"
+        },
+        {
+          "ticker": "MARA",
+          "shares": 2681.8365852554593,
+          "equity": 33000.0,
+          "price": 12.305000305175781,
+          "added_at": "2024-01-01T00:00:00"
+        },
+        {
+          "ticker": "RIOT",
+          "shares": 1510.9890004322974,
+          "equity": 33000.0,
+          "price": 21.84000015258789,
+          "added_at": "2024-01-01T00:00:00"
+        }
+      ]
+    },
+    {
+      "id": "adv-two-share-classes",
+      "label": "GOOG + GOOGL (same issuer, split sector accounting)",
+      "category": "adversarial",
+      "targets": "one class Unknown, one Comm Services -> sector double-count",
+      "settings": {
+        "risk_tier": "regular"
+      },
+      "positions": [
+        {
+          "ticker": "GOOG",
+          "shares": 123.16956137466171,
+          "equity": 45000.0,
+          "price": 365.3500061035156,
+          "added_at": "2024-01-01T00:00:00"
+        },
+        {
+          "ticker": "GOOGL",
+          "shares": 122.1200064929257,
+          "equity": 45000.0,
+          "price": 368.489990234375,
+          "added_at": "2024-01-01T00:00:00"
+        },
+        {
+          "ticker": "KO",
+          "shares": 118.8071785379879,
+          "equity": 10000.0,
+          "price": 84.16999816894531,
+          "added_at": "2024-01-01T00:00:00"
+        }
+      ]
+    },
+    {
+      "id": "adv-dominant-trim-vs-sell",
+      "label": "55% high-vol name (trim vs risk-sell contest)",
+      "category": "adversarial",
+      "targets": "SOXL 55% crit vol -> priority-6 trim must beat the vol sell",
+      "settings": {
+        "risk_tier": "regular"
+      },
+      "positions": [
+        {
+          "ticker": "SOXL",
+          "shares": 333.8695468250354,
+          "equity": 55000.00000000001,
+          "price": 164.73500061035156,
+          "added_at": "2024-01-01T00:00:00"
+        },
+        {
+          "ticker": "AAPL",
+          "shares": 143.65027330921887,
+          "equity": 45000.0,
+          "price": 313.26080322265625,
+          "added_at": "2024-01-01T00:00:00"
+        }
+      ]
+    },
+    {
+      "id": "adv-lowtier-winner-drift",
+      "label": "dominant drifted winner on conservative tier",
+      "category": "adversarial",
+      "targets": "low tier + >50% winner -> trim path bypasses sell floor",
+      "settings": {
+        "risk_tier": "low"
+      },
+      "positions": [
+        {
+          "ticker": "AAPL",
+          "shares": 197.91815433714598,
+          "equity": 19375.0,
+          "price": 313.26080322265625,
+          "added_at": "2024-01-01T00:00:00"
+        },
+        {
+          "ticker": "XOM",
+          "shares": 143.36917562724014,
+          "equity": 20000.0,
+          "price": 139.5,
+          "added_at": "2024-01-01T00:00:00"
+        },
+        {
+          "ticker": "KO",
+          "shares": 213.85292136837822,
+          "equity": 18000.0,
+          "price": 84.16999816894531,
+          "added_at": "2024-01-01T00:00:00"
+        }
+      ]
+    },
+    {
+      "id": "adv-tiny-conc-trim",
+      "label": "single stock just over 50% -> possibly small trim",
+      "category": "adversarial",
+      "targets": "51% single stock -> priority-6 trim near the rounding/floor edge",
+      "settings": {
+        "risk_tier": "regular"
+      },
+      "positions": [
+        {
+          "ticker": "KO",
+          "shares": 605.9166105437382,
+          "equity": 51000.0,
+          "price": 84.16999816894531,
+          "added_at": "2024-01-01T00:00:00"
+        },
+        {
+          "ticker": "JNJ",
+          "shares": 182.91430357701068,
+          "equity": 49000.0,
+          "price": 267.885009765625,
+          "added_at": "2024-01-01T00:00:00"
+        }
+      ]
+    },
+    {
+      "id": "adv-sector-conc-crowded",
+      "label": "sector over-concentration with most sectors held",
+      "category": "adversarial",
+      "targets": "8 sectors held + heavy Tech -> limited underweight room",
+      "settings": {
+        "risk_tier": "regular"
+      },
+      "positions": [
+        {
+          "ticker": "AAPL",
+          "shares": 95.76684887281257,
+          "equity": 30000.0,
+          "price": 313.26080322265625,
+          "added_at": "2024-01-01T00:00:00"
+        },
+        {
+          "ticker": "MSFT",
+          "shares": 45.71660655205943,
+          "equity": 18000.0,
+          "price": 393.7300109863281,
+          "added_at": "2024-01-01T00:00:00"
+        },
+        {
+          "ticker": "JPM",
+          "shares": 26.64535125302594,
+          "equity": 9000.0,
+          "price": 337.7699890136719,
+          "added_at": "2024-01-01T00:00:00"
+        },
+        {
+          "ticker": "JNJ",
+          "shares": 33.596504738634614,
+          "equity": 9000.0,
+          "price": 267.885009765625,
+          "added_at": "2024-01-01T00:00:00"
+        },
+        {
+          "ticker": "XOM",
+          "shares": 64.51612903225806,
+          "equity": 9000.0,
+          "price": 139.5,
+          "added_at": "2024-01-01T00:00:00"
+        },
+        {
+          "ticker": "HD",
+          "shares": 20.25111359670835,
+          "equity": 7000.000000000001,
+          "price": 345.6600036621094,
+          "added_at": "2024-01-01T00:00:00"
+        },
+        {
+          "ticker": "KO",
+          "shares": 83.16502497659154,
+          "equity": 7000.000000000001,
+          "price": 84.16999816894531,
+          "added_at": "2024-01-01T00:00:00"
+        },
+        {
+          "ticker": "NEE",
+          "shares": 67.9117159436905,
+          "equity": 6000.0,
+          "price": 88.3499984741211,
+          "added_at": "2024-01-01T00:00:00"
+        },
+        {
+          "ticker": "LIN",
+          "shares": 9.338288979690475,
+          "equity": 5000.0,
+          "price": 535.4299926757812,
+          "added_at": "2024-01-01T00:00:00"
+        }
+      ]
+    }
+  ]
+}

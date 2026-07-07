@@ -9,11 +9,17 @@ from typing import Any
 
 import numpy as np
 
+from engine.tuning import TUNING
+
 _log = logging.getLogger(__name__)
 
-_MIN_DATA_POINTS = 30
-_VOL_CLAMP_MIN = 0.0
-_VOL_CLAMP_MAX = 150.0
+# Hardcoded tunables now live in engine/tuning.py; the _classify .get(key,DEFAULT)
+# severity fallbacks are left inline on purpose.
+_ab = TUNING.analyzers
+
+_MIN_DATA_POINTS = _ab.vol_min_data_points
+_VOL_CLAMP_MIN = _ab.vol_clamp_min
+_VOL_CLAMP_MAX = _ab.vol_clamp_max
 
 
 def _annualized_vol(prices: list[float], ticker: str = '') -> float:
@@ -88,7 +94,7 @@ def analyze(
         daily_std = vol / sqrt(252) / 100 if vol > 0 else 0.0
         sev = _classify(vol, thresholds)
         # Only flag if high severity AND weight > 15%
-        flag = sev in ('high', 'critical') and weight > 0.15
+        flag = sev in ('high', 'critical') and weight > _ab.vol_flag_min_weight
 
         ticker_results[t] = {
             'value': vol,

@@ -7,6 +7,7 @@ from typing import Any
 
 from engine.constants import sector_for
 
+from .registry import EXECUTION_ORDER, REGISTRY
 from .risk_profile import load_risk_profile
 
 _log = logging.getLogger(__name__)
@@ -35,23 +36,14 @@ def run_analysis(
     settings: dict[str, Any],
 ) -> dict[str, Any]:
     """
-    Run all analyzers and return the combined results dict.
+    Run all analyzers (driven by ``registry.REGISTRY``) and return the combined
+    results dict.
 
-    Execution order: slope and volatility run first so earnings can use
-    their results for the ``outlook`` field.  After all analyzers finish,
-    index-fund suppression is applied to concentration results.
+    Execution order comes from ``registry.EXECUTION_ORDER`` (a stable phase sort):
+    slope and volatility run first so earnings (phase 2) can use their results for
+    the ``outlook`` field; the remaining phase-3 analyzers run last. After all
+    analyzers finish, index-fund suppression is applied to concentration results.
     """
-    from .analyzers import (
-        beta,
-        concentration,
-        dividends,
-        earnings,
-        index_fund,
-        performance,
-        slope,
-        volatility,
-    )
-
     risk_profile = load_risk_profile(settings)
 
     # Build THE single source of truth for weights and values.
@@ -67,59 +59,34 @@ def run_analysis(
         if cp and not p.get('price'):
             p['price'] = cp
 
-    # Phase 1: slope and volatility (needed by earnings for outlook)
-    slope_res = _safe_analyze(
-        'slope', slope.analyze, positions, store, settings, risk_profile,
-    )
-    vol_res = _safe_analyze(
-        'volatility', volatility.analyze, positions, store, settings, risk_profile,
-    )
-
-    # Phase 2: earnings (depends on slope/vol for outlook)
-    prior = {'slope': slope_res, 'volatility': vol_res}
-    earnings_res = _safe_analyze(
-        'earnings', earnings.analyze, positions, store, settings, risk_profile,
-        prior_results=prior,
-    )
-
-    # Phase 3: remaining analyzers (independent)
-    conc_res = _safe_analyze(
-        'concentration', concentration.analyze, positions, store, settings, risk_profile,
-    )
-    div_res = _safe_analyze(
-        'dividends', dividends.analyze, positions, store, settings, risk_profile,
-    )
-    beta_res = _safe_analyze(
-        'beta', beta.analyze, positions, store, settings, risk_profile,
-    )
-    perf_res = _safe_analyze(
-        'performance', performance.analyze, positions, store, settings, risk_profile,
-    )
-    idx_res = _safe_analyze(
-        'index_fund', index_fund.analyze, positions, store, settings, risk_profile,
-    )
+    # Run analyzers in phase order. Phase-1 outputs are gathered into ``prior``
+    # and handed to any later analyzer that declares ``needs_prior`` (earnings).
+    results: dict[str, dict[str, Any]] = {}
+    prior: dict[str, dict[str, Any]] = {}
+    for spec in EXECUTION_ORDER:
+        kwargs = {'prior_results': prior} if spec.needs_prior else {}
+        results[spec.name] = _safe_analyze(
+            spec.name, spec.analyze, positions, store, settings, risk_profile,
+            **kwargs,
+        )
+        if spec.phase == 1:
+            prior[spec.name] = results[spec.name]
 
     # Post-process: suppress concentration flags for index ETFs
-    idx_tickers = idx_res.get('ticker_results', {})
-    conc_tickers = conc_res.get('ticker_results', {})
+    idx_tickers = results.get('index_fund', {}).get('ticker_results', {})
+    conc_tickers = results.get('concentration', {}).get('ticker_results', {})
     for t, idx_data in idx_tickers.items():
         if idx_data.get('flag') and t in conc_tickers:
             conc_tickers[t]['flag'] = False
             conc_tickers[t]['severity'] = 'none'
 
-    return {
-        'slope': slope_res,
-        'volatility': vol_res,
-        'concentration': conc_res,
-        'earnings': earnings_res,
-        'dividends': div_res,
-        'beta': beta_res,
-        'performance': perf_res,
-        'index_fund': idx_res,
-        '_risk_profile': risk_profile,
-        '_store': store,
-        '_positions_summary': summary,
-    }
+    # Assemble the output dict in REGISTRY (output) order so the key order is
+    # byte-identical to the original hand-wired result dict.
+    combined: dict[str, Any] = {spec.name: results[spec.name] for spec in REGISTRY}
+    combined['_risk_profile'] = risk_profile
+    combined['_store'] = store
+    combined['_positions_summary'] = summary
+    return combined
 
 
 def _build_positions_summary(

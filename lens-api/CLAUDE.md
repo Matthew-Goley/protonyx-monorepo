@@ -123,11 +123,21 @@ lens-api/
 ├── requirements.txt           Python dependencies
 ├── Procfile                   Railway startup command
 ├── .env.example               Required env vars with descriptions
-├── parity_check.py            Verification script (see section 8)
+├── requirements-dev.txt       Dev/test deps (pytest) — separate from runtime requirements.txt
+├── parity_check.py            Legacy verification script (network-based; see section 8)
+├── tests/
+│   ├── test_tuning_registry.py  pytest smoke: tuning imports, registry has 8 analyzers, smoke analyze
+│   └── parity/                OFFLINE byte-identical parity net (see section 8 + tests/parity/README.md)
+│       ├── parity_harness.py    deterministic 50-portfolio x 3-tier runner (network blocked)
+│       ├── frozen_market_data.json  frozen cache, all 77 tickers warmed (+ SPY 1y)
+│       ├── debug_test.json      the 50 test portfolios (copied from Vector-Main; self-contained)
+│       ├── parity_baseline.json ground-truth output for all 150 runs
+│       └── README.md            what it proves, how to run, when (not) to recapture
 └── engine/                    The Lens computation package
     ├── __init__.py
     ├── analytics.py           Portfolio math primitives (slope, vol, Sharpe, beta)
-    ├── constants.py           App-wide constants, risk profiles, sector maps, DEFAULT_SETTINGS
+    ├── constants.py           App-wide constants, sector maps, DEFAULT_SETTINGS. Re-exports DEFAULT_RISK_PROFILES from tuning.py (same object)
+    ├── tuning.py              Single source of truth for hoisted tunables — TUNING (CtaPolicy, AnalyzerBounds), RISK_TIER_PROFILES, DEFAULT_RISK_TIER, TUNING_VERSION
     ├── lens_engine.py         Entry point: generate_lens() and generate_lens_full()
     ├── monte_carlo.py         GBM Monte Carlo projection engine
     ├── paths.py               Path utilities — MODIFIED for LENS_DATA_DIR env var
@@ -136,7 +146,8 @@ lens-api/
     └── lens/
         ├── __init__.py
         ├── _templates.py      Loads sentences.json; package-local path takes priority
-        ├── analysis_pool.py   Orchestrates all 8 analyzers in dependency order
+        ├── registry.py        AnalyzerSpec list (name, callable, phase, profile_key, needs_prior) — the source of truth for which analyzers run and in what phase
+        ├── analysis_pool.py   Iterates registry (phase-ordered) to run all 8 analyzers
         ├── cta_engine.py      Builds prioritized CTA list with dollar amounts
         ├── debug_runner.py    Offline test harness (used by parity_check.py)
         ├── lens_output.py     Top-level assembler: caution score, sentences, result dict
@@ -289,7 +300,20 @@ Requires `X-API-Key`. `?symbols=NVDA,SPY&period=1y`. Returns each series normali
 
 ## 8. Parity Verification
 
-`parity_check.py` is the regression/parity tool. It verifies that the `engine` package produces identical output to the original `vector` package for the same inputs.
+### Primary tool: the offline parity harness (`tests/parity/`)
+
+**This is the regression net to run after any engine change** (a Vector-Main sync, any `engine/tuning.py` value change, any analyzer / CTA-engine / analysis-pool refactor meant to preserve behavior):
+
+```bash
+# From lens-api/
+python tests/parity/parity_harness.py     # must print [PASS]
+```
+
+It runs `generate_lens_full` over **50 portfolios x 3 tiers = 150 runs** and compares every result field (brief, caution score, action type, full `ctas` list, `net_cta_delta`, `projected_positions`, all `pool_results`) against `tests/parity/parity_baseline.json`, byte-for-byte. It is **deterministic**: fully offline against a frozen `frozen_market_data.json` (all 77 tickers warmed) with the `DataStore` patched so every cached entry is fresh and every yfinance call raises, so live price drift can never look like a regression. It needs nothing outside the repo (the 50 portfolios are copied into `tests/parity/debug_test.json`). Re-capture the baseline (`--out tests/parity/parity_baseline.json`) ONLY when you have deliberately changed what the engine should output; see `tests/parity/README.md` for the full rules. This harness was used to verify the tunables-hoist + registry refactor (150/150 byte-identical).
+
+### Legacy tool: `parity_check.py` (network-based, vs Vector-Main)
+
+`parity_check.py` verifies that the `engine` package produces identical output to the original `vector` package for the same inputs. Unlike the offline harness above, it can hit the network and needs Vector-Main present.
 
 ### Rigorous parity check (in-process comparison)
 
@@ -355,6 +379,15 @@ python -m venv .venv
 .venv/Scripts/activate        # Windows
 # or: source .venv/bin/activate  (Linux/macOS)
 pip install -r requirements.txt
+# For the test suite (pytest smoke tests + the parity harness):
+pip install -r requirements-dev.txt
+```
+
+### Running the tests
+
+```bash
+python -m pytest tests/ -q                 # structural smoke tests
+python tests/parity/parity_harness.py      # offline byte-identical parity net (see section 8)
 ```
 
 ### Running the server
@@ -413,13 +446,15 @@ To redeploy after a code change: commit the change, then run `railway up` from `
 
 The engine's pipeline, in order:
 
-1. **Risk profile** (`engine/lens/risk_profile.py`): reads `settings['risk_tier']` (`low`/`regular`/`high`) and returns per-metric severity thresholds.
+0. **Tunables** (`engine/tuning.py`): every hoisted numeric knob lives here in the single frozen `TUNING` instance (`TUNING.cta` = `CtaPolicy`, `TUNING.analyzers` = `AnalyzerBounds`) plus `RISK_TIER_PROFILES` / `DEFAULT_RISK_TIER`. `cta_engine.py` and the analyzers read from `TUNING`; `constants.DEFAULT_RISK_PROFILES` is re-exported from here (same object). Bump `TUNING_VERSION` when you change a value. Deliberately NOT hoisted (left inline): the `.get(key, DEFAULT)` safety-net fallbacks in each analyzer `_classify`, the caution-score constants in `lens_output.py`, `DEFAULT_SETTINGS`, sector maps, TTLs, and pure math constants.
 
-2. **Analysis pool** (`engine/lens/analysis_pool.py`): runs all 8 analyzers. Phase 1: `slope` + `volatility` (earnings needs slope/vol output). Phase 2: `earnings` (uses phase 1 results), then `concentration`, `dividends`, `beta`, `performance`, `index_fund` in parallel.
+1. **Risk profile** (`engine/lens/risk_profile.py`): reads `settings['risk_tier']` (`low`/`regular`/`high`, default `DEFAULT_RISK_TIER`) and returns per-metric severity thresholds from `RISK_TIER_PROFILES`.
 
-3. **8 Analyzers** (all in `engine/lens/analyzers/`): each exposes `analyze(positions, store, settings, risk_profile) → dict`. Returns `ticker_results` (per-ticker) and `portfolio_result` (aggregate), each with `value`, `severity` (none/low/moderate/high/critical), `flag`, `weight`, `details`.
+2. **Analysis pool** (`engine/lens/analysis_pool.py`): iterates `engine/lens/registry.py` (`REGISTRY` / `EXECUTION_ORDER`) rather than importing analyzers by name. Phase 1: `slope` + `volatility` (earnings needs slope/vol output). Phase 2: `earnings` (uses phase 1 results via `prior_results`). Phase 3: `concentration`, `dividends`, `beta`, `performance`, `index_fund`. `EXECUTION_ORDER` is a stable phase-sort of `REGISTRY`, so the run order and the assembled result-dict key order both match the original hand-wired pool.
 
-4. **CTA engine** (`engine/lens/cta_engine.py`): reads all analyzer results and emits a prioritized list of CTAs (11 priority levels, 1=highest). Runs dedup, tiny-buy pruning, budget caps, loss/danger gates.
+3. **8 Analyzers** (all in `engine/lens/analyzers/`, listed in `registry.py`): each exposes `analyze(positions, store, settings, risk_profile) → dict`. Returns `ticker_results` (per-ticker) and `portfolio_result` (aggregate), each with `value`, `severity` (none/low/moderate/high/critical), `flag`, `weight`, `details`.
+
+4. **CTA engine** (`engine/lens/cta_engine.py`): reads all analyzer results and emits a prioritized list of CTAs (11 priority levels, 1=highest). Runs dedup, tiny-buy pruning, budget caps, loss/danger gates. All its thresholds/caps read from `TUNING.cta`.
 
 5. **Sentence composers** (`sentence1.py`, `sentence2.py`, `sentence3.py`): build the 3-sentence natural language brief. Templates in `engine/lens/templates/sentences.json`. Selection is deterministic (SHA-256 of portfolio state).
 
@@ -444,7 +479,9 @@ When the Lens engine is updated in `Vector-Main/` (new analyzer behavior, CTA lo
    ```
 3. If `constants.py` changed (risk profiles, sector maps, thresholds), copy it without modification (it uses relative imports only).
 4. If `paths.py` changed in Vector-Main, apply the same change to `engine/paths.py` but **preserve the `LENS_DATA_DIR` env-var block** — that addition must not be lost.
-5. Run parity check (section 8) to confirm output is still identical.
+5. Run the offline parity harness to confirm output is still identical: `python tests/parity/parity_harness.py` must print `[PASS]` (section 8). Do not recapture the baseline to silence a `[FAIL]` unless the Vector-Main change was genuinely meant to change engine output.
+
+**Watch out for the tunables/registry divergence.** `engine/tuning.py` and `engine/lens/registry.py` do **not** exist in Vector-Main. `cta_engine.py`, the 8 analyzers (except `dividends.py`/`performance.py`), `constants.py` (risk profiles), `risk_profile.py`, and `analysis_pool.py` have been rewired to read from `TUNING` / iterate the registry. A blind `sed` copy from Vector-Main would REINTRODUCE the hardcoded literals and the hand-wired analyzer calls, undoing the refactor. When syncing one of these files, port the *logic* change onto the `TUNING`-based version instead of overwriting it, and if a Vector-Main change touches a value that now lives in `tuning.py`, update it there. Every value in `tuning.py` was moved verbatim (behavior-preserving); the 50-portfolio × 3-tier parity harness (§8) must stay byte-identical after any sync.
 
 **Watch out for `engine/lens/analyzers/dividends.py` — it has DIVERGED from Vector-Main.** It was given next-ex-date estimation (§6) so the web Dividend Calendar works; Vector-Main's copy still only reports genuinely future-dated (i.e. effectively never) ex-dates. Do **not** blind-copy Vector-Main's `dividends.py` over this one; re-apply the estimation, or port the estimation back into Vector-Main first so they converge again. The estimation is deliberately severity/flag-neutral, so parity of the brief/CTAs is unaffected.
 

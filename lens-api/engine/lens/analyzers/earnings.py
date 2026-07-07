@@ -7,8 +7,11 @@ from datetime import date, datetime
 from typing import Any
 
 from engine.constants import INDEX_ETFS
+from engine.tuning import TUNING
 
 _log = logging.getLogger(__name__)
+
+_ab = TUNING.analyzers
 
 
 def _parse_date(d: Any) -> date | None:
@@ -28,11 +31,11 @@ def _parse_date(d: Any) -> date | None:
 def _severity_from_days(days: int | None) -> str:
     if days is None:
         return 'none'
-    if days <= 7:
+    if days <= _ab.earnings_days_high:
         return 'high'
-    if days <= 14:
+    if days <= _ab.earnings_days_moderate:
         return 'moderate'
-    if days <= 30:
+    if days <= _ab.earnings_days_low:
         return 'low'
     return 'none'
 
@@ -42,9 +45,9 @@ def _determine_outlook(
     vol_annualized: float | None,
 ) -> str:
     if slope_annualized is not None and vol_annualized is not None:
-        if slope_annualized > 15 and vol_annualized <= 28:
+        if slope_annualized > _ab.earnings_outlook_slope_beat and vol_annualized <= _ab.earnings_outlook_vol_beat:
             return 'beat_likely'
-        if slope_annualized < -5 or vol_annualized > 40:
+        if slope_annualized < _ab.earnings_outlook_slope_miss or vol_annualized > _ab.earnings_outlook_vol_miss:
             return 'miss_risk'
     return 'neutral'
 

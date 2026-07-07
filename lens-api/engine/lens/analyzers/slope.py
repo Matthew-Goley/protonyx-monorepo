@@ -7,11 +7,17 @@ import math
 from typing import Any
 
 from engine.analytics import linear_regression_slope_percent
+from engine.tuning import TUNING
 
 _log = logging.getLogger(__name__)
 
-_MIN_DATA_POINTS = 30
-_SLOPE_CLAMP_MIN = -80.0
+# Hardcoded slope tunables now live in engine/tuning.py (TUNING.analyzers). The
+# module-level names below are thin aliases so comments + usages stay put. The
+# .get(key, DEFAULT) severity fallbacks in _classify are left inline on purpose.
+_ab = TUNING.analyzers
+
+_MIN_DATA_POINTS = _ab.slope_min_data_points
+_SLOPE_CLAMP_MIN = _ab.slope_clamp_min
 # Sanity bound on the annualized slope. Recovering high-volatility names can
 # produce absurd regression/×2 figures; without a believable ceiling several
 # unrelated tickers all pinned to an identical "+250.0%" in the brief. Positive
@@ -19,7 +25,7 @@ _SLOPE_CLAMP_MIN = -80.0
 # DISPLAYED value. The ceiling IS surfaced by the portfolio-state sentence, so
 # it must be a *believable* momentum figure — a literal "+150.0%" reads as a
 # bug. 60% annualized is a credible strong-uptrend ceiling.
-_SLOPE_CLAMP_MAX = 60.0
+_SLOPE_CLAMP_MAX = _ab.slope_clamp_max
 
 
 def _classify(annualized_pct: float, thresholds: dict[str, float]) -> str:
@@ -32,7 +38,7 @@ def _classify(annualized_pct: float, thresholds: dict[str, float]) -> str:
         return 'high'
     if annualized_pct <= mod:
         return 'moderate'
-    if annualized_pct <= 5:
+    if annualized_pct <= _ab.slope_low_ceiling:
         return 'low'
     return 'none'
 
@@ -143,7 +149,7 @@ def analyze(
             sev = 'none'
         else:
             sev = _classify(annualized, thresholds)
-        direction = 'up' if annualized > 5 else ('down' if annualized < -5 else 'flat')
+        direction = 'up' if annualized > _ab.slope_direction_band else ('down' if annualized < -_ab.slope_direction_band else 'flat')
 
         ticker_results[t] = {
             'value': annualized,
@@ -169,9 +175,9 @@ def analyze(
     flat_tickers = [t for t, r in ticker_results.items() if r['details']['direction'] == 'flat']
     total = len(ticker_results)
 
-    if total > 0 and len(down_tickers) / total > 0.7:
+    if total > 0 and len(down_tickers) / total > _ab.slope_broad_state_ratio:
         state = 'broad_decline'
-    elif total > 0 and len(up_tickers) / total > 0.7:
+    elif total > 0 and len(up_tickers) / total > _ab.slope_broad_state_ratio:
         state = 'broad_uptrend'
     else:
         state = 'mixed'

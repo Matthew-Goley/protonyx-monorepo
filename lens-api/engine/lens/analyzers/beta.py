@@ -8,14 +8,19 @@ from typing import Any
 import numpy as np
 
 from engine.analytics import portfolio_beta as _portfolio_beta
+from engine.tuning import TUNING
 
 _log = logging.getLogger(__name__)
+
+# Hardcoded tunables now live in engine/tuning.py; the _classify .get(key,DEFAULT)
+# severity fallbacks and the 1e-12 variance epsilon are left inline on purpose.
+_ab = TUNING.analyzers
 
 
 def _ticker_beta(ticker_prices: list[float], spy_prices: list[float]) -> float:
     """Compute beta of a single ticker against SPY."""
     n = min(len(ticker_prices), len(spy_prices))
-    if n < 10:
+    if n < _ab.beta_min_data_points:
         return 1.0
     t_arr = np.array(ticker_prices[-n:], dtype=float)
     s_arr = np.array(spy_prices[-n:], dtype=float)
@@ -37,7 +42,7 @@ def _classify(beta: float, thresholds: dict[str, float]) -> str:
         return 'high'
     if beta > mod:
         return 'moderate'
-    if beta > 0.5:
+    if beta > _ab.beta_low_ceiling:
         return 'low'
     return 'none'
 
@@ -72,7 +77,7 @@ def analyze(
         weight = _cv(pos) / total_equity
         try:
             hist = store.get_history(t, '1y', refresh) or []
-            beta = _ticker_beta(hist, spy_prices) if len(spy_prices) >= 10 else 1.0
+            beta = _ticker_beta(hist, spy_prices) if len(spy_prices) >= _ab.beta_min_data_points else 1.0
         except Exception:
             beta = 1.0
 
@@ -101,10 +106,10 @@ def analyze(
                 closes_map[t] = h
         from engine.analytics import portfolio_daily_returns
         port_rets = portfolio_daily_returns(positions, closes_map)
-        if len(port_rets) >= 10 and len(spy_prices) > 1:
+        if len(port_rets) >= _ab.beta_min_data_points and len(spy_prices) > 1:
             spy_rets = [(spy_prices[i] - spy_prices[i - 1]) / spy_prices[i - 1]
                         for i in range(1, len(spy_prices))]
-            if len(spy_rets) >= 10:
+            if len(spy_rets) >= _ab.beta_min_data_points:
                 port_beta = _portfolio_beta(port_rets, spy_rets)
     except Exception:
         pass

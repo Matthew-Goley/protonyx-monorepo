@@ -6,8 +6,13 @@ import logging
 from typing import Any
 
 from engine.constants import INDEX_ETFS, sector_for
+from engine.tuning import TUNING
 
 _log = logging.getLogger(__name__)
+
+# Hardcoded tunables now live in engine/tuning.py; the _stock_severity
+# .get(key, DEFAULT) severity fallbacks are left inline on purpose.
+_ab = TUNING.analyzers
 
 _SEV_ORDER = {'none': 0, 'low': 1, 'moderate': 2, 'high': 3, 'critical': 4}
 
@@ -71,9 +76,10 @@ def analyze(
         # position to actually be UP from cost — otherwise a holding that merely
         # fell less than its peers (current weight > cost-basis weight) gets
         # mislabeled a "winner that drifted".
-        if (not is_index and weight_pct > 30 and drift_multiple > 2.0
+        if (not is_index and weight_pct > _ab.winner_drift_min_weight_pct
+                and drift_multiple > _ab.winner_drift_multiple
                 and current_value > cost_equity):
-            drift_sev = 'high' if drift_multiple > 2.5 else 'moderate'
+            drift_sev = 'high' if drift_multiple > _ab.winner_drift_high_multiple else 'moderate'
             sub_signals.append('winner_drift')
             if _SEV_ORDER[drift_sev] > _SEV_ORDER[best_severity]:
                 best_severity = drift_sev
@@ -122,16 +128,16 @@ def analyze(
         heaviest_pct = 0.0
 
     sector_mod = thresholds.get('sector_moderate', 50)
-    reliable = unknown_pct <= 20.0 and sector_count > 0
-    if heaviest_pct > 60:
+    reliable = unknown_pct <= _ab.sector_unknown_reliable_pct and sector_count > 0
+    if heaviest_pct > _ab.sector_sev_high_pct:
         sector_sev = 'high'
     elif heaviest_pct > sector_mod:
         sector_sev = 'moderate'
-    elif reliable and sector_count <= 1:
+    elif reliable and sector_count <= _ab.sector_sev_single_count:
         sector_sev = 'high'
-    elif reliable and sector_count <= 2:
+    elif reliable and sector_count <= _ab.sector_sev_double_count:
         sector_sev = 'moderate'
-    elif heaviest_pct > 40:
+    elif heaviest_pct > _ab.sector_sev_low_pct:
         sector_sev = 'low'
     else:
         sector_sev = 'none'
@@ -144,7 +150,7 @@ def analyze(
         index_current_value / total_current_value * 100
         if total_current_value else 0.0
     )
-    if index_weight_pct >= 50 and sector_sev in ('moderate', 'high'):
+    if index_weight_pct >= _ab.index_dominance_downgrade_pct and sector_sev in ('moderate', 'high'):
         sector_sev = 'low'
 
     return {
