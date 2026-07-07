@@ -5,7 +5,6 @@ import { createSyncStoragePersister } from '@tanstack/query-sync-storage-persist
 import { AuthProvider } from '@/contexts/AuthContext'
 import { ThemeProvider } from '@/contexts/ThemeContext'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
-import { PositionsMigrationGate } from '@/components/PositionsMigrationGate'
 import { Login } from '@/pages/Login'
 import { Onboard } from '@/pages/Onboard'
 import { Dashboard } from '@/pages/Dashboard'
@@ -57,7 +56,6 @@ export default function App() {
       <ThemeProvider>
       <AuthProvider>
         <BrowserRouter>
-          <PositionsMigrationGate />
           <Routes>
             <Route path="/login" element={<Login />} />
             <Route

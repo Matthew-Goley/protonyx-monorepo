@@ -7,9 +7,10 @@ import { useTheme } from '@/contexts/ThemeContext'
 import { isSubscribed } from '@/lib/subscription'
 import { lensApi, type Position } from '@/api/lens'
 import { positionsApi } from '@/api/positions'
+import { settingsApi, type RiskTier } from '@/api/settings'
 import { usePositionsManager } from '@/hooks/usePositionsManager'
 import { BACKEND_URL } from '@/lib/backend'
-import { getSettings, setSettings, clearAllData, type RiskTier } from '@/lib/cookies'
+import { clearAllData } from '@/lib/cookies'
 import { AppShell } from '@/components/layout/AppShell'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Panel } from '@/components/common/Panel'
@@ -81,13 +82,15 @@ function Dropdown({
 export function Settings() {
   const queryClient = useQueryClient()
   const navigate = useNavigate()
-  const { user } = useAuth()
+  const { user, refreshUser } = useAuth()
   const { theme, setTheme } = useTheme()
   const pro = isSubscribed(user)
 
   const manager = usePositionsManager()
   const positions = manager.positions
-  const [risk, setRisk] = useState<RiskTier>(getSettings().risk_tier)
+  // Risk tier is server-stored (Postgres, via /me). Mirror it into local state for
+  // instant UI feedback on change, and keep it in sync when the auth user updates.
+  const [risk, setRisk] = useState<RiskTier>(user?.risk_tier ?? 'regular')
   const [selected, setSelected] = useState<string | null>(null)
   const [modalOpen, setModalOpen] = useState(false)
 
@@ -103,9 +106,15 @@ export function Settings() {
       .catch(() => setApiStatus('unavailable'))
   }, [])
 
-  function changeRisk(tier: RiskTier) {
+  // Keep the local mirror in sync if the auth user's tier changes elsewhere.
+  useEffect(() => {
+    if (user?.risk_tier) setRisk(user.risk_tier)
+  }, [user?.risk_tier])
+
+  async function changeRisk(tier: RiskTier) {
     setRisk(tier)
-    setSettings({ risk_tier: tier })
+    await settingsApi.setRiskTier(tier)
+    await refreshUser()
     queryClient.invalidateQueries({ queryKey: ['lens-analysis'] })
   }
 
@@ -122,11 +131,15 @@ export function Settings() {
   }
 
   async function handleClearData() {
-    // Wipe the settings/layout cookies AND the server-stored positions, then drop
-    // any cached analysis and send the user back through onboarding (Dashboard
-    // also redirects once positions are gone).
+    // Wipe the layout cookie AND the server-stored positions + risk tier, then drop
+    // any cached analysis and send the user back through onboarding as a true
+    // no-info account (Dashboard also redirects once positions are gone).
     clearAllData()
-    await positionsApi.replacePositions([]).catch(() => {})
+    await Promise.all([
+      positionsApi.replacePositions([]).catch(() => {}),
+      settingsApi.setRiskTier(null).catch(() => {}),
+    ])
+    await refreshUser()
     queryClient.removeQueries({ queryKey: ['lens-analysis'] })
     queryClient.invalidateQueries({ queryKey: ['positions'] })
     navigate('/onboard', { replace: true })

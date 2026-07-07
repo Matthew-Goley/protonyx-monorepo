@@ -35,6 +35,7 @@ const setup = async () => {
             eula_version_accepted TEXT DEFAULT NULL,
             eula_accepted_at TIMESTAMP DEFAULT NULL,
             subscription_status TEXT NOT NULL DEFAULT 'inactive',
+            risk_tier TEXT DEFAULT NULL,
             member_since TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
         )
     `);
@@ -110,15 +111,25 @@ const setup = async () => {
         console.error("Failed to add subscription_status column:", err);
     }
 
+    // The user's risk profile (low/regular/high), set during onboarding. NULL means
+    // the user has not chosen one yet, i.e. a brand-new account that should still be
+    // sent through onboarding. Moved here from the client-side lens_settings cookie
+    // so it is per-user in Postgres, not shared across accounts on one browser.
+    try {
+        await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS risk_tier TEXT DEFAULT NULL");
+    } catch (err) {
+        console.error("Failed to add risk_tier column:", err);
+    }
+
     // Dev-only: seed a known test account (password = "password123").
     // subscription_status is seeded as 'active' so the app is immediately usable in dev.
     if (process.env.NODE_ENV === "development") {
         const hashedPassword = await bcrypt.hash("password123", 10);
         await pool.query(
-            `INSERT INTO users (username, email, password, plan, beta_access, subscription_status)
-             VALUES ($1, $2, $3, $4, $5, $6)
+            `INSERT INTO users (username, email, password, plan, beta_access, subscription_status, risk_tier)
+             VALUES ($1, $2, $3, $4, $5, $6, $7)
              ON CONFLICT DO NOTHING`,
-            ["testuser", "test@protonyx.dev", hashedPassword, "free", true, "active"]
+            ["testuser", "test@protonyx.dev", hashedPassword, "free", true, "active", "regular"]
         );
 
         // Dev-only: seed testuser with a few sample positions so a fresh dev boot

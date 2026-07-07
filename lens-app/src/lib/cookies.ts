@@ -1,18 +1,11 @@
-import type { Position } from '@/api/lens'
 import type { LayoutItem, SavedLayoutItem } from '@/lib/widgetLayout'
 
-// Persisted client state lives in cookies (30-day expiry, SameSite=Lax) so the
-// onboarding output survives reloads without a positions table on the backend.
-const POSITIONS_COOKIE = 'lens_positions'
-const SETTINGS_COOKIE = 'lens_settings'
+// The only persisted client-side state left in a cookie is the dashboard widget
+// layout. Positions and the risk profile now live per-user in Postgres (Fastify
+// /positions and /settings/risk-tier), so nothing account-specific is shared across
+// users on the same browser anymore.
 const LAYOUT_COOKIE = 'lens_layout'
 const MAX_AGE = 60 * 60 * 24 * 30 // 30 days, in seconds
-
-export type RiskTier = 'low' | 'regular' | 'high'
-
-export interface StoredSettings {
-  risk_tier: RiskTier
-}
 
 function readCookie(name: string): string | null {
   const prefix = `${name}=`
@@ -25,43 +18,6 @@ function readCookie(name: string): string | null {
 
 function writeCookie(name: string, value: string) {
   document.cookie = `${name}=${encodeURIComponent(value)}; path=/; max-age=${MAX_AGE}; SameSite=Lax`
-}
-
-// Positions now live in Postgres (per user) via the Fastify /positions endpoints,
-// not in a cookie. The two helpers below exist ONLY for the one-time migration of
-// any legacy lens_positions cookie into the server on first authenticated load
-// (see src/components/PositionsMigrationGate.tsx). Delete them once no beta user
-// could still be carrying the old cookie.
-export function readLegacyPositions(): Position[] {
-  const raw = readCookie(POSITIONS_COOKIE)
-  if (!raw) return []
-  try {
-    const parsed: unknown = JSON.parse(raw)
-    return Array.isArray(parsed) ? (parsed as Position[]) : []
-  } catch {
-    return []
-  }
-}
-
-export function clearLegacyPositions(): void {
-  document.cookie = `${POSITIONS_COOKIE}=; path=/; max-age=0; SameSite=Lax`
-}
-
-export function getSettings(): StoredSettings {
-  const raw = readCookie(SETTINGS_COOKIE)
-  if (raw) {
-    try {
-      const parsed = JSON.parse(raw) as Partial<StoredSettings>
-      if (parsed.risk_tier) return { risk_tier: parsed.risk_tier }
-    } catch {
-      /* fall through to default */
-    }
-  }
-  return { risk_tier: 'regular' }
-}
-
-export function setSettings(settings: StoredSettings): void {
-  writeCookie(SETTINGS_COOKIE, JSON.stringify(settings))
 }
 
 // Dashboard widget layout: user PLACEMENT only ({ widgetId, x, y, w }). Height is
@@ -105,11 +61,9 @@ export function clearLayout(): void {
   document.cookie = `${LAYOUT_COOKIE}=; path=/; max-age=0; SameSite=Lax`
 }
 
-// Wipes the persisted client-side state (settings + dashboard layout) by expiring
-// those cookies. Positions live on the server now, so clearing them is a separate
-// call (positionsApi.replacePositions([])) - see Settings "Clear Data".
+// Wipes the persisted client-side layout by expiring its cookie. Positions and the
+// risk profile live on the server now, so clearing them is a separate call (see
+// Settings "Clear Data": positionsApi.replacePositions([]) + settingsApi.setRiskTier(null)).
 export function clearAllData(): void {
-  for (const name of [SETTINGS_COOKIE, LAYOUT_COOKIE]) {
-    document.cookie = `${name}=; path=/; max-age=0; SameSite=Lax`
-  }
+  clearLayout()
 }

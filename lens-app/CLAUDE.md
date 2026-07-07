@@ -69,7 +69,7 @@ There is **no test framework**. Do not introduce one unless explicitly asked. Ve
 
 ## 4. Routing and auth flow
 
-`src/App.tsx` wires the whole tree: `PersistQueryClientProvider` -> `ThemeProvider` -> `AuthProvider` -> `BrowserRouter` (with a `PositionsMigrationGate`, §5) -> `Routes`. The query client sets `gcTime: 24h` (must outlive the persister `maxAge` or restored entries get garbage-collected before rehydration) and persists to `localStorage` under key `lens-query-cache` (`maxAge: 24h`, `buster: 'v1'`). `shouldDehydrateQuery` persists **only successful queries AND excludes `['positions']`** — raw holdings are never written to disk at rest (they refetch from the server on load); the derived `['lens-analysis']` result stays persisted for instant paint. **Bump `buster` after any change to a cached query's response shape** to invalidate stale persisted caches across all users.
+`src/App.tsx` wires the whole tree: `PersistQueryClientProvider` -> `ThemeProvider` -> `AuthProvider` -> `BrowserRouter` -> `Routes`. The query client sets `gcTime: 24h` (must outlive the persister `maxAge` or restored entries get garbage-collected before rehydration) and persists to `localStorage` under key `lens-query-cache` (`maxAge: 24h`, `buster: 'v1'`). `shouldDehydrateQuery` persists **only successful queries AND excludes `['positions']`** — raw holdings are never written to disk at rest (they refetch from the server on load); the derived `['lens-analysis']` result stays persisted for instant paint. **Bump `buster` after any change to a cached query's response shape** to invalidate stale persisted caches across all users.
 
 | Path | Component | Guard |
 |---|---|---|
@@ -91,9 +91,10 @@ Real Fastify auth over an **httpOnly `session` cookie**. No token is ever stored
 - `login(username, password)` -> `POST /login` (cookie set by server), then a second `GET /me` to populate `user`. The `username` field accepts a username **or** an email (backend resolves both).
 - `signup(username, email, password)` -> `POST /signup`, then calls `login()` because **signup does not set a cookie** (only `/login` does).
 - `logout()` -> `POST /logout` (clears cookie), then clears local state.
+- `refreshUser()` -> refetches `GET /me` and `setUser(data.user)`. Called after the risk tier changes (Onboard "Launch Lens", Settings) so `useLensAnalysis` (which reads `user.risk_tier`) picks up the new value.
 - Errors are thrown as `Error(data.message ?? '...')`. The backend's error field on the wire is always `message`.
 
-`User` shape exposed by the context: `{ id, username, email, plan, subscription_status: 'inactive'|'active'|'cancelled', member_since?, beta_access?, email_verified? }`.
+`User` shape exposed by the context: `{ id, username, email, plan, subscription_status: 'inactive'|'active'|'cancelled', member_since?, beta_access?, email_verified?, risk_tier?: 'low'|'regular'|'high'|null }`. `risk_tier` is the user's onboarding risk profile, `null` until onboarding sets it.
 
 `useAuth()` throws if called outside `AuthProvider`.
 
@@ -105,7 +106,7 @@ Returns `null` while `loading` (avoids a login flash on refresh), redirects to `
 
 ## 5. Data flow: positions, settings, and analysis
 
-**Positions are stored in Postgres per user** via the Fastify `/positions` endpoints (see `../CLAUDE.md` §4) and read/mutated through react-query. **Only the risk tier and the dashboard layout still live in cookies** (by design). The old `lens_positions` cookie is gone; a one-time migration folds any legacy cookie into the server on first load (see "Legacy positions migration" below).
+**Positions and the risk tier are both stored in Postgres per user** (Fastify `/positions` and `/settings/risk-tier`, see `../CLAUDE.md` §4) and read/mutated through react-query / `AuthContext`. **Only the dashboard layout still lives in a cookie** (`lens_layout`, by design). The old `lens_positions` and `lens_settings` cookies are both gone, with no migration path — this is what makes a fresh account on a shared browser truly start empty (through onboarding, nothing assumed) instead of inheriting a previous user's holdings or risk tier.
 
 ### Server-backed positions (`src/api/positions.ts`, `src/hooks/usePositions.ts`, `src/hooks/usePositionsManager.ts`)
 
@@ -113,18 +114,17 @@ Returns `null` while `loading` (avoids a login flash on refresh), redirects to `
 - **`src/hooks/usePositions.ts`** — the single source of truth for the portfolio: a react-query query keyed `['positions']`, `enabled` only when authenticated, calling `positionsApi.getPositions`. Every component/hook that needs holdings reads `const { data: positions = [] } = usePositions()` (Dashboard, Analysis, Profile, Settings, `useLensAnalysis`, `usePortfolioHistory`, `PositionsWidget`, `CompositionWidget`, `BriefText`, `GeneratingBrief`). This query is deliberately **excluded from the localStorage persister** (see §4) so raw holdings are not written to disk at rest; it refetches from the server on load.
 - **`src/hooks/usePositionsManager.ts`** — add/edit/delete via `positionsApi`, then invalidate **both** `['positions']` and `['lens-analysis']` after every mutation (the analyze query is keyed off the positions array, so it must refetch). Its external interface (`positions`, `addPosition`, `removePosition`, `updateShares`) is unchanged from the cookie era, so `PositionsManagerContext` and its consumers did not change; only the mutations now hit the server. Reads its current `positions` from `usePositions` (shared cache). Onboarding's "Launch Lens" instead calls `positionsApi.replacePositions` directly (bulk PUT) and primes the `['positions']` cache with the saved rows before navigating.
 
+### Server-backed risk tier (`src/api/settings.ts`)
+
+The **risk profile is stored per user in Postgres** (`users.risk_tier`), not a cookie. `src/api/settings.ts` exports the `RiskTier` type (`'low'|'regular'|'high'`) and `settingsApi.setRiskTier(tier | null)` (`PUT /settings/risk-tier`, via `backendFetch`). The current value is read back on `AuthContext.user.risk_tier` (from `/me`). Writers call `settingsApi.setRiskTier(...)` then `refreshUser()` so the auth user (and thus `useLensAnalysis`) reflects the change: **Onboard** "Launch Lens" sets it before saving positions; **Settings** `changeRisk` sets it and invalidates `['lens-analysis']`; **Settings** "Clear Data" sets it to `null` (alongside clearing positions) so the account returns to a true no-info state and re-enters onboarding. `RiskTier` is imported from `@/api/settings` by `Onboard`, `Settings`, `RiskProfileCards`, and `AuthContext`.
+
 ### Cookies (`src/lib/cookies.ts`)
 
-Two cookies remain, both `path=/`, `max-age` 30 days, `SameSite=Lax`:
+Only **one** cookie remains — `lens_layout` (`path=/`, `max-age` 30 days, `SameSite=Lax`):
 
-- `lens_settings` — `{ risk_tier: 'low'|'regular'|'high' }`. Default when unset/malformed is `{ risk_tier: 'regular' }`. **risk_tier stays a cookie on purpose** (not yet moved to the server).
 - `lens_layout` — JSON array of `SavedLayoutItem` (`{ widgetId, x, y, w }`, grid-cell units) for the dashboard widget grid. **Placement only — `h` is deliberately NOT persisted** (it is always re-measured on load, so content growth can never restore a stale, clipping height). Written on every edit-mode change (drag drop, add, delete) **and once when the default pack is first computed** (so the last layout is always the current one); cleared by "Reset layout".
 
-Accessors: `getSettings()`, `setSettings()`, `getLayout()`, `setLayout()`, `clearLayout()`, and `clearAllData()` (expires the settings + layout cookies — used by Settings → Data & Refresh, which **also** clears server positions via `positionsApi.replacePositions([])`). All are defensive (malformed JSON returns the empty/default). `getLayout()` returns `SavedLayoutItem[] | null` — `null` when there is no saved layout or it is malformed, which signals `WidgetGrid` to fall back to the default measured pack. `setLayout(layout: LayoutItem[])` strips `h` before writing. `clearLayout()` expires the cookie (reset). `RiskTier`/`StoredSettings` types are exported here; `LayoutItem`/`SavedLayoutItem` come from `@/lib/widgetLayout`. The file also keeps `readLegacyPositions()` / `clearLegacyPositions()` **only** for the one-time cookie migration (delete once no beta user could still carry the old `lens_positions` cookie).
-
-### Legacy positions migration (`src/components/PositionsMigrationGate.tsx`)
-
-Mounted once in `App.tsx` (inside `AuthProvider`/`BrowserRouter`, renders `null`). On the first authenticated load where `GET /positions` resolves **empty** AND a legacy `lens_positions` cookie still has data, it bulk-`PUT`s the cookie positions to the server, deletes the cookie, and invalidates `['positions']` + `['lens-analysis']`. Guarded by a ref to run at most once and only **after** the positions query has successfully resolved empty (never during loading, so it can't clobber real server data); on write failure the ref is released so a later load can retry.
+Accessors: `getLayout()`, `setLayout()`, `clearLayout()`, and `clearAllData()` (expires the layout cookie — used by Settings → Data & Refresh, which **also** clears the server positions via `positionsApi.replacePositions([])` and the server risk tier via `settingsApi.setRiskTier(null)`). All are defensive (malformed JSON returns the empty/default). `getLayout()` returns `SavedLayoutItem[] | null` — `null` when there is no saved layout or it is malformed, which signals `WidgetGrid` to fall back to the default measured pack. `setLayout(layout: LayoutItem[])` strips `h` before writing. `clearLayout()` expires the cookie (reset). `LayoutItem`/`SavedLayoutItem` come from `@/lib/widgetLayout`. There is no positions or settings cookie anymore, and no legacy-cookie migration.
 
 ### Dashboard widget grid (`src/lib/widgetRegistry.tsx`, `src/lib/widgetLayout.ts`, `src/hooks/useGridMetrics.ts`, `src/components/dashboard/WidgetGrid.tsx`)
 
@@ -139,19 +139,21 @@ The dashboard renders a **data-driven** 12-column square-cell grid, not a hardco
 
 ### useLensAnalysis (`src/hooks/useLensAnalysis.ts`)
 
-The single react-query hook the whole app shares. It now sources positions from `usePositions` (server), not the cookie; risk tier still comes from the settings cookie:
+The single react-query hook the whole app shares. It sources positions from `usePositions` (server) and the risk tier from `AuthContext.user.risk_tier` (server, via `/me`) — neither is a cookie anymore:
 
 ```ts
-const { data: positions } = usePositions()   // server-backed
+const { data: positions } = usePositions()      // server-backed
+const { user } = useAuth()
+const riskTier = user?.risk_tier ?? 'regular'    // server-backed; fallback only if unset
 const list = positions ?? []
-queryKey: ['lens-analysis', list, settings.risk_tier]
-queryFn: () => lensApi.analyze({ positions: list, settings: { risk_tier } })
+queryKey: ['lens-analysis', list, riskTier]
+queryFn: () => lensApi.analyze({ positions: list, settings: { risk_tier: riskTier } })
 enabled: list.length > 0    // requires positions loaded AND non-empty
 staleTime: 5 * 60 * 1000   // 5 min
 retry: 1
 ```
 
-Dashboard, Analysis, and Profile all call `useLensAnalysis()` and share the cached result (same query key), so the portfolio is sent to the Railway engine once per `(positions, risk_tier)` state. The positions array is part of the query key and **react-query hashes keys by value**, so an identical holdings set reproduces the same key (persisted `['lens-analysis']` still matches after a positions refetch, even though `['positions']` itself is not persisted). **When you mutate positions or risk tier, invalidate `['lens-analysis']`** (and `['positions']` for position mutations) so the cache refetches — `usePositionsManager` does both after every mutation, and `Settings.changeRisk` invalidates `['lens-analysis']`. Match that pattern.
+Dashboard, Analysis, and Profile all call `useLensAnalysis()` and share the cached result (same query key), so the portfolio is sent to the Railway engine once per `(positions, risk_tier)` state. The positions array is part of the query key and **react-query hashes keys by value**, so an identical holdings set reproduces the same key (persisted `['lens-analysis']` still matches after a positions refetch, even though `['positions']` itself is not persisted). **When you mutate positions or risk tier, invalidate `['lens-analysis']`** (and `['positions']` for position mutations) so the cache refetches — `usePositionsManager` does both after every mutation, and `Settings.changeRisk` calls `refreshUser()` (so `user.risk_tier` changes, which re-keys the query) then invalidates `['lens-analysis']`. Match that pattern.
 
 ### lensData.ts (`src/lib/lensData.ts`) — the derivation layer
 
@@ -229,7 +231,7 @@ All authed screens render inside `AppShell` (`src/components/layout/AppShell.tsx
 | Page | File | Behavior |
 |---|---|---|
 | **Login** | `pages/Login.tsx` | Sign in / Sign up tabs (local `tab` state, no route change). Sign-in field is "Username or email". Sign-up posts username/email/password then auto-logs-in. On success -> `/dashboard`. Has a non-functional "Forgot password?" / "Remember me" and a TOS/Privacy notice with `href="#"` placeholders (not yet wired). |
-| **Onboard** | `pages/Onboard.tsx` | 2-step wizard with a `StepDots` indicator. Step 1 = `RiskProfileCards` (tier select). Step 2 = add positions via `AddPositionModal`, multi-select to remove; pressing `a` on step 2 opens the add-position modal (via `useHotkey`). "Launch Lens" writes the `setSettings` risk-tier cookie, then **awaits `positionsApi.replacePositions` (PUT bulk)** to save the portfolio to the server, primes the `['positions']` cache + invalidates `['lens-analysis']`, and navigates `/dashboard` (button shows "Launching..." while the write is in flight). Guarded but **not** subscription-gated (a user must be able to onboard before paying). |
+| **Onboard** | `pages/Onboard.tsx` | 2-step wizard with a `StepDots` indicator. Step 1 = `RiskProfileCards` (tier select). Step 2 = add positions via `AddPositionModal`, multi-select to remove; pressing `a` on step 2 opens the add-position modal (via `useHotkey`). "Launch Lens" writes the risk tier to the server (`settingsApi.setRiskTier` + `refreshUser`), then **awaits `positionsApi.replacePositions` (PUT bulk)** to save the portfolio to the server, primes the `['positions']` cache + invalidates `['lens-analysis']`, and navigates `/dashboard` (button shows "Launching..." while the write is in flight). Guarded but **not** subscription-gated (a user must be able to onboard before paying). |
 | **Dashboard** | `pages/Dashboard.tsx` | `DashboardBody` uses `usePositions`: while the query is **loading** it renders `<PageLoader/>` (never redirects mid-load); it redirects to `/onboard` only once the query has loaded and is **empty**. Wraps its body in `DashboardEditProvider` and (once subscribed) a `PositionsManagerProvider` whose value is the `usePositionsManager()` created here. If `!isSubscribed(user)` renders `<UpgradePrompt/>`. Otherwise it is **just** `<WidgetGrid result={result} />` (the data-driven grid + edit mode, see §5; 10 widgets in the registry, 8 shown by default - Sharpe and Beta are hidden by default but addable) - there is no fixed top row anymore. Both the **Lens Brief** (`lens-brief`, `7×3`) and the **Position Actions** box (`position-actions`, `2×3`, add / manage holdings) are now grid widgets, movable/removable like any other. Loading shows `<PageLoader/>` (the app-wide loading treatment); error shows a retry panel. The three header buttons (`WidgetHeaderControls`): **Pencil** toggles edit mode (accent `teal` variant when on), **Plus** opens the Add Widget menu (turning edit mode on first), **Trash2** resets the layout to the default (behind a small inline confirm popover; calls `gridActions.resetLayout` → `clearLayout()` + default pack). Widgets are removed via the X on each card in edit mode. |
 | **Analysis** | `pages/Analysis.tsx` | Same positions-loading gate as Dashboard (`usePositions`: `<PageLoader/>` while loading, redirect to `/onboard` only when loaded-and-empty) + subscription gate. Renders Lens Brief (with a fixed legal `DISCLAIMER`), Caution gauge + CTA list, two Monte Carlo charts (current vs "With All Lens Projections +$X"), a projection-explanation panel (uses `result.full_report`), and current vs projected sector pies. The MC fan and projected allocation are derived (see §5). |
 | **Profile** | `pages/Profile.tsx` | Avatar (first initial), username, member-since, total equity (from `useLensAnalysis`), and an info table (username/email/plan badge/member since/beta access). Read-only. |
@@ -285,7 +287,7 @@ Single typed client object `lensApi`:
 - **Theme tokens go in `src/index.css` `@theme`**, not `tailwind.config.js` (which is dead). Don't hardcode hex in components except in recharts color props.
 - **The lens-api key is exposed client-side (`src/api/lens.ts`).** This is the single biggest pre-launch item: move `/analyze`, `/ticker/*/info`, and `/health` behind Fastify (server-to-server, cookie-authed) and delete the hardcoded key. Don't add new browser-direct lens-api calls that widen this exposure without flagging it.
 - **Live config debt to watch:** the Stripe `cancel_url` on the backend points at `/portfolio` (per `../CLAUDE.md`), but this app has no `/portfolio` route (it's `/onboard`/`/dashboard`). If you touch the checkout flow, reconcile the redirect targets with the actual routes here (`/success` exists; `/portfolio` does not).
-- **Positions are server-backed** (Postgres, via the Fastify `/positions` endpoints — `src/api/positions.ts` + `usePositions` + `usePositionsManager`, see §5). **Only `risk_tier` (settings cookie) and the dashboard layout cookie remain client-side.** The `/analyze` path is still browser-direct to lens-api with positions assembled on the client — storing positions on the server did **not** move analyze server-to-server. When you touch positions, invalidate `['positions']` + `['lens-analysis']` and keep `['positions']` out of the localStorage persister.
+- **Positions and `risk_tier` are both server-backed** (Postgres — positions via the Fastify `/positions` endpoints; `risk_tier` via `PUT /settings/risk-tier`, read on `AuthContext.user`, see §5). **Only the dashboard layout cookie remains client-side.** The `/analyze` path is still browser-direct to lens-api with positions assembled on the client — storing positions on the server did **not** move analyze server-to-server. When you touch positions, invalidate `['positions']` + `['lens-analysis']` and keep `['positions']` out of the localStorage persister.
 - **No tests, no CI.** Verify against `npm run dev` at `localhost:5173`. Confirm the Fastify dev server (`../backend`, port 3000) and your network access to the Railway lens-api are up, or `/me` and `/analyze` will fail.
 
 ---

@@ -4,7 +4,8 @@ import { useQueryClient } from '@tanstack/react-query'
 import { X, LayoutGrid, ArrowRight } from 'lucide-react'
 import { type Position } from '@/api/lens'
 import { positionsApi } from '@/api/positions'
-import { setSettings, type RiskTier } from '@/lib/cookies'
+import { settingsApi, type RiskTier } from '@/api/settings'
+import { useAuth } from '@/contexts/AuthContext'
 import { RiskProfileCards } from '@/components/common/RiskProfileCards'
 import { AddPositionModal } from '@/components/common/AddPositionModal'
 import { useHotkey } from '@/hooks/useHotkey'
@@ -28,6 +29,7 @@ const STEPS = [
 export function Onboard() {
   const navigate = useNavigate()
   const qc = useQueryClient()
+  const { refreshUser } = useAuth()
   const [step, setStep] = useState<1 | 2>(1)
   const [risk, setRisk] = useState<RiskTier | null>(null)
   const [positions, setPositionsState] = useState<Position[]>([])
@@ -52,11 +54,14 @@ export function Onboard() {
   async function launch() {
     if (!risk || positions.length === 0 || launching) return
     setLaunching(true)
-    setSettings({ risk_tier: risk })
     try {
-      // Persist the built portfolio to the server (bulk replace) and prime the
-      // ['positions'] cache with the saved rows before navigating, so the
-      // dashboard paints without racing an empty fetch.
+      // Persist the risk tier to the server (per user, Postgres) and refresh the
+      // auth user so useLensAnalysis runs with the chosen tier. Then persist the
+      // built portfolio to the server (bulk replace) and prime the ['positions']
+      // cache with the saved rows before navigating, so the dashboard paints
+      // without racing an empty fetch.
+      await settingsApi.setRiskTier(risk)
+      await refreshUser()
       const saved = await positionsApi.replacePositions(positions)
       qc.setQueryData(['positions'], saved)
       qc.invalidateQueries({ queryKey: ['lens-analysis'] })

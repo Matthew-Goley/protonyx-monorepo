@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react'
 import { BACKEND_URL } from '@/lib/backend'
+import { type RiskTier } from '@/api/settings'
 
 interface User {
   id: number
@@ -10,6 +11,9 @@ interface User {
   member_since?: string
   beta_access?: boolean
   email_verified?: boolean
+  // The user's onboarding risk profile, sourced from Postgres. null means the user
+  // has not chosen one yet (a brand-new account that should go through onboarding).
+  risk_tier?: RiskTier | null
 }
 
 interface AuthContextValue {
@@ -19,6 +23,9 @@ interface AuthContextValue {
   login: (username: string, password: string) => Promise<void>
   signup: (username: string, email: string, password: string) => Promise<void>
   logout: () => Promise<void>
+  // Refetch GET /me and update `user` (e.g. after changing the risk tier) so
+  // consumers like useLensAnalysis see the new value.
+  refreshUser: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
@@ -91,8 +98,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsAuthenticated(false)
   }
 
+  async function refreshUser() {
+    const res = await fetch(`${BACKEND_URL}/me`, { credentials: 'include' })
+    if (res.ok) {
+      const data = await res.json()
+      setUser(data.user)
+    }
+  }
+
   return (
-    <AuthContext.Provider value={{ isAuthenticated, loading, user, login, signup, logout }}>
+    <AuthContext.Provider
+      value={{ isAuthenticated, loading, user, login, signup, logout, refreshUser }}
+    >
       {children}
     </AuthContext.Provider>
   )

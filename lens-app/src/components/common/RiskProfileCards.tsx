@@ -1,4 +1,4 @@
-import { type RiskTier } from '@/lib/cookies'
+import { type RiskTier } from '@/api/settings'
 import { cn } from '@/lib/utils'
 
 interface Option {
