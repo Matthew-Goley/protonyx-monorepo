@@ -1,0 +1,305 @@
+SEAM TRIAGE: dominant weight of every concentration_flag_actionable portfolio
+------------------------------------------------------------------------------
+    struct-two                   dominant_weight=50.0000%   [named extreme: 50/50 end]
+    bound-conc-eq-50             dominant_weight=50.0000%
+    bound-vol-just-over-high     dominant_weight=50.0000%
+    bound-vol-moderate           dominant_weight=50.0000%
+    bound-beta-high              dominant_weight=50.0000%
+    bound-perf-eq-moderate       dominant_weight=50.0000%
+    data-unknown-sector          dominant_weight=50.0000%
+    data-malformed-sector        dominant_weight=50.0000%
+    data-missing-optionals       dominant_weight=50.0000%
+    adv-tier-inversion-highsev   dominant_weight=50.0000%
+    adv-two-share-classes        dominant_weight=45.0000%   [named extreme: single-issuer end]
+
+SELECTED MIDDLE PORTFOLIOS (nearest the midpoint dominant weight):
+    extremes: struct-two=50.0000%  |  adv-two-share-classes=45.0000%  |  midpoint=47.5000%
+    picked: bound-conc-eq-50             dominant_weight=50.0000%
+    picked: bound-vol-just-over-high     dominant_weight=50.0000%
+    picked: bound-vol-moderate           dominant_weight=50.0000%
+    NOTE: the individual dominant weights across the flagged set are nearly uniform (~50%); the real gradient is in the secondary structure (single-issuer aggregation, sector make-up), not the top single weight.
+
+DUMP ORDER: ['adv-two-share-classes', 'bound-conc-eq-50', 'bound-vol-just-over-high', 'bound-vol-moderate', 'struct-two']
+
+==============================================================================
+PORTFOLIO: adv-two-share-classes
+==============================================================================
+[1] IDENTITY
+    id        : adv-two-share-classes
+    label     : GOOG + GOOGL (same issuer, split sector accounting)
+    category  : adversarial
+    targets   : one class Unknown, one Comm Services -> sector double-count
+    settings  : {"risk_tier": "regular"}
+    risk_tier : regular
+    total_equity (current market value): 100000.00
+
+[2] INPUT POSITIONS (sorted by current weight desc)
+    ticker   sector                           shares           equity        cur_value   weight%
+    GOOG     Unknown                      123.169561         45000.00         45000.00  45.0000%  <== DOMINANT
+    GOOGL    Communication Services       122.120006         45000.00         45000.00  45.0000%  <== DOMINANT
+    KO       Consumer Defensive           118.807179         10000.00         10000.00  10.0000%
+
+[3] BRIEF (verbatim)
+    The portfolio is showing mixed signals — 1 advancing versus 0 declining, with a net slope of +18.4%. GOOG reports in 16 days — the stock is relatively flat going into results, with no strong directional signal either way. GOOG is 45% of your portfolio — a large single-name position to be aware of, even though no trade clears your current risk setting.
+
+[4] SCORES
+    caution_score : 60
+    threat_level  : 0.6
+    action_type   : hold
+
+[5] CTAS (full list)
+    [0] action=hold ticker='GOOG' dollars=0.0 reason=concentration_informational severity=high priority=6
+        sector(from details)=''  details={"current_weight": 45.0, "weight_pct": 45.0}
+    [1] action=hold ticker='GOOGL' dollars=0.0 reason=concentration_informational severity=high priority=6
+        sector(from details)=''  details={"current_weight": 45.0, "weight_pct": 45.0}
+
+[6] CONCENTRATION ANALYZER OUTPUT (pool_results['concentration'])
+    portfolio_result:
+        value    : 45.0
+        severity : low
+        flag     : False
+        details  : {"concentration_type": "sector", "heaviest_sector": "Communication Services", "heaviest_sector_weight": 45.0, "sector_count": 2, "sector_weights": {"Unknown": 45.0, "Communication Services": 45.0, "Consumer Defensive": 10.0}}
+    ticker_results (per held ticker):
+        GOOG:
+            value    : 45.0
+            severity : high
+            flag     : True
+            weight   : 0.45
+            details  : {"sub_signals": ["stock_concentration"], "weight_pct": 45.0, "entry_weight_pct": 45.0, "drift_multiple": 1.0, "heaviest_concentration_type": "stock_concentration"}
+        GOOGL:
+            value    : 45.0
+            severity : high
+            flag     : True
+            weight   : 0.45
+            details  : {"sub_signals": ["stock_concentration"], "weight_pct": 45.0, "entry_weight_pct": 45.0, "drift_multiple": 1.0, "heaviest_concentration_type": "stock_concentration"}
+        KO:
+            value    : 10.0
+            severity : none
+            flag     : False
+            weight   : 0.1
+            details  : {"sub_signals": [], "weight_pct": 10.0, "entry_weight_pct": 10.0, "drift_multiple": 1.0, "heaviest_concentration_type": "none"}
+
+[7] SOFT-CHECK FLAGS (from edge_report.json)
+    (SOFT) concentration_flag_actionable: high/critical concentration on ['GOOG', 'GOOGL'] but no actionable CTA (only holds)
+           offending={"flagged_tickers": ["GOOG", "GOOGL"], "cta_actions": [["hold", "concentration_informational"], ["hold", "concentration_informational"]]}
+
+==============================================================================
+PORTFOLIO: bound-conc-eq-50
+==============================================================================
+[1] IDENTITY
+    id        : bound-conc-eq-50
+    label     : single-stock weight exactly 50% (regular critical threshold)
+    category  : numeric_boundary
+    targets   : weight==50.0% -> strict-'>' means still the band BELOW critical
+    settings  : {"risk_tier": "regular"}
+    risk_tier : regular
+    total_equity (current market value): 100000.00
+
+[2] INPUT POSITIONS (sorted by current weight desc)
+    ticker   sector                           shares           equity        cur_value   weight%
+    KO       Consumer Defensive           594.035893         50000.00         50000.00  50.0000%  <== DOMINANT
+    JNJ      Healthcare                   186.647249         50000.00         50000.00  50.0000%  <== DOMINANT
+
+[3] BRIEF (verbatim)
+    The portfolio is in a mixed state with 0 advancing and 0 depreciating (net slope: +0.0%). None of the held positions have imminent ex-dividend dates — portfolio-wide yield sits at 0.0% trailing. KO carries outsized weight at 50% of the book — noted as a concentration risk, though no action clears your current tier.
+
+[4] SCORES
+    caution_score : 61
+    threat_level  : 0.61
+    action_type   : hold
+
+[5] CTAS (full list)
+    [0] action=hold ticker='KO' dollars=0.0 reason=concentration_informational severity=high priority=6
+        sector(from details)=''  details={"current_weight": 50.0, "weight_pct": 50.0}
+    [1] action=hold ticker='JNJ' dollars=0.0 reason=concentration_informational severity=high priority=6
+        sector(from details)=''  details={"current_weight": 50.0, "weight_pct": 50.0}
+
+[6] CONCENTRATION ANALYZER OUTPUT (pool_results['concentration'])
+    portfolio_result:
+        value    : 50.0
+        severity : moderate
+        flag     : True
+        details  : {"concentration_type": "sector", "heaviest_sector": "Consumer Defensive", "heaviest_sector_weight": 50.0, "sector_count": 2, "sector_weights": {"Consumer Defensive": 50.0, "Healthcare": 50.0}}
+    ticker_results (per held ticker):
+        KO:
+            value    : 50.0
+            severity : high
+            flag     : True
+            weight   : 0.5
+            details  : {"sub_signals": ["stock_concentration"], "weight_pct": 50.0, "entry_weight_pct": 50.0, "drift_multiple": 1.0, "heaviest_concentration_type": "stock_concentration"}
+        JNJ:
+            value    : 50.0
+            severity : high
+            flag     : True
+            weight   : 0.5
+            details  : {"sub_signals": ["stock_concentration"], "weight_pct": 50.0, "entry_weight_pct": 50.0, "drift_multiple": 1.0, "heaviest_concentration_type": "stock_concentration"}
+
+[7] SOFT-CHECK FLAGS (from edge_report.json)
+    (SOFT) concentration_flag_actionable: high/critical concentration on ['KO', 'JNJ'] but no actionable CTA (only holds)
+           offending={"flagged_tickers": ["KO", "JNJ"], "cta_actions": [["hold", "concentration_informational"], ["hold", "concentration_informational"]]}
+
+==============================================================================
+PORTFOLIO: bound-vol-just-over-high
+==============================================================================
+[1] IDENTITY
+    id        : bound-vol-just-over-high
+    label     : volatility just over regular high (PLTR ~51.8%)
+    category  : numeric_boundary
+    targets   : PLTR vol 51.8 > regular high 50 at >15% weight -> vol sell
+    settings  : {"risk_tier": "regular"}
+    risk_tier : regular
+    total_equity (current market value): 100000.00
+
+[2] INPUT POSITIONS (sorted by current weight desc)
+    ticker   sector                           shares           equity        cur_value   weight%
+    PLTR     Technology                   366.985958         50000.00         50000.00  50.0000%  <== DOMINANT
+    KO       Consumer Defensive           594.035893         50000.00         50000.00  50.0000%  <== DOMINANT
+
+[3] BRIEF (verbatim)
+    The portfolio is showing mixed signals — 0 advancing versus 0 declining, with a net slope of +0.0%. The portfolio's trailing yield is 0.0% with no dividend dates expected in the near term. Roughly 50% of your portfolio sits in PLTR — a concentration worth monitoring even if current signals don't trigger a trim.
+
+[4] SCORES
+    caution_score : 61
+    threat_level  : 0.61
+    action_type   : hold
+
+[5] CTAS (full list)
+    [0] action=hold ticker='PLTR' dollars=0.0 reason=concentration_informational severity=high priority=6
+        sector(from details)=''  details={"current_weight": 50.0, "weight_pct": 50.0}
+    [1] action=hold ticker='KO' dollars=0.0 reason=concentration_informational severity=high priority=6
+        sector(from details)=''  details={"current_weight": 50.0, "weight_pct": 50.0}
+
+[6] CONCENTRATION ANALYZER OUTPUT (pool_results['concentration'])
+    portfolio_result:
+        value    : 50.0
+        severity : moderate
+        flag     : True
+        details  : {"concentration_type": "sector", "heaviest_sector": "Technology", "heaviest_sector_weight": 50.0, "sector_count": 2, "sector_weights": {"Technology": 50.0, "Consumer Defensive": 50.0}}
+    ticker_results (per held ticker):
+        PLTR:
+            value    : 50.0
+            severity : high
+            flag     : True
+            weight   : 0.5
+            details  : {"sub_signals": ["stock_concentration"], "weight_pct": 50.0, "entry_weight_pct": 50.0, "drift_multiple": 1.0, "heaviest_concentration_type": "stock_concentration"}
+        KO:
+            value    : 50.0
+            severity : high
+            flag     : True
+            weight   : 0.5
+            details  : {"sub_signals": ["stock_concentration"], "weight_pct": 50.0, "entry_weight_pct": 50.0, "drift_multiple": 1.0, "heaviest_concentration_type": "stock_concentration"}
+
+[7] SOFT-CHECK FLAGS (from edge_report.json)
+    (SOFT) concentration_flag_actionable: high/critical concentration on ['PLTR', 'KO'] but no actionable CTA (only holds)
+           offending={"flagged_tickers": ["PLTR", "KO"], "cta_actions": [["hold", "concentration_informational"], ["hold", "concentration_informational"]]}
+
+==============================================================================
+PORTFOLIO: bound-vol-moderate
+==============================================================================
+[1] IDENTITY
+    id        : bound-vol-moderate
+    label     : volatility in moderate band (F ~36.7%)
+    category  : numeric_boundary
+    targets   : F vol 36.7 in (35,50] -> moderate, no flag
+    settings  : {"risk_tier": "regular"}
+    risk_tier : regular
+    total_equity (current market value): 100000.00
+
+[2] INPUT POSITIONS (sorted by current weight desc)
+    ticker   sector                           shares           equity        cur_value   weight%
+    F        Consumer Cyclical           3662.547516         50000.00         50000.00  50.0000%  <== DOMINANT
+    KO       Consumer Defensive           594.035893         50000.00         50000.00  50.0000%  <== DOMINANT
+
+[3] BRIEF (verbatim)
+    Some winners, some losers — 0 advancing and 0 declining, blending to a +0.0% annualized slope. Dividend catalysts are quiet — no ex-dates are approaching within 30 days for any held ticker. F is 50% of your portfolio — a large single-name position to be aware of, even though no trade clears your current risk setting.
+
+[4] SCORES
+    caution_score : 61
+    threat_level  : 0.61
+    action_type   : hold
+
+[5] CTAS (full list)
+    [0] action=hold ticker='F' dollars=0.0 reason=concentration_informational severity=high priority=6
+        sector(from details)=''  details={"current_weight": 50.0, "weight_pct": 50.0}
+    [1] action=hold ticker='KO' dollars=0.0 reason=concentration_informational severity=high priority=6
+        sector(from details)=''  details={"current_weight": 50.0, "weight_pct": 50.0}
+
+[6] CONCENTRATION ANALYZER OUTPUT (pool_results['concentration'])
+    portfolio_result:
+        value    : 50.0
+        severity : moderate
+        flag     : True
+        details  : {"concentration_type": "sector", "heaviest_sector": "Consumer Cyclical", "heaviest_sector_weight": 50.0, "sector_count": 2, "sector_weights": {"Consumer Cyclical": 50.0, "Consumer Defensive": 50.0}}
+    ticker_results (per held ticker):
+        F:
+            value    : 50.0
+            severity : high
+            flag     : True
+            weight   : 0.5
+            details  : {"sub_signals": ["stock_concentration"], "weight_pct": 50.0, "entry_weight_pct": 50.0, "drift_multiple": 1.0, "heaviest_concentration_type": "stock_concentration"}
+        KO:
+            value    : 50.0
+            severity : high
+            flag     : True
+            weight   : 0.5
+            details  : {"sub_signals": ["stock_concentration"], "weight_pct": 50.0, "entry_weight_pct": 50.0, "drift_multiple": 1.0, "heaviest_concentration_type": "stock_concentration"}
+
+[7] SOFT-CHECK FLAGS (from edge_report.json)
+    (SOFT) concentration_flag_actionable: high/critical concentration on ['F', 'KO'] but no actionable CTA (only holds)
+           offending={"flagged_tickers": ["F", "KO"], "cta_actions": [["hold", "concentration_informational"], ["hold", "concentration_informational"]]}
+
+==============================================================================
+PORTFOLIO: struct-two
+==============================================================================
+[1] IDENTITY
+    id        : struct-two
+    label     : two positions
+    category  : structural
+    targets   : 2 holdings, 50/50
+    settings  : {"risk_tier": "regular"}
+    risk_tier : regular
+    total_equity (current market value): 100000.00
+
+[2] INPUT POSITIONS (sorted by current weight desc)
+    ticker   sector                           shares           equity        cur_value   weight%
+    AAPL     Technology                   159.611415         50000.00         50000.00  50.0000%  <== DOMINANT
+    XOM      Energy                       358.422939         50000.00         50000.00  50.0000%  <== DOMINANT
+
+[3] BRIEF (verbatim)
+    Strength across holdings — 2 of 2 positions are appreciating, driving the portfolio slope to +26.1%. AAPL's earnings are approaching in 23 days — recent price action and momentum indicators lean constructive. Roughly 50% of your portfolio sits in AAPL — a concentration worth monitoring even if current signals don't trigger a trim.
+
+[4] SCORES
+    caution_score : 61
+    threat_level  : 0.61
+    action_type   : hold
+
+[5] CTAS (full list)
+    [0] action=hold ticker='AAPL' dollars=0.0 reason=concentration_informational severity=high priority=6
+        sector(from details)=''  details={"current_weight": 50.0, "weight_pct": 50.0}
+    [1] action=hold ticker='XOM' dollars=0.0 reason=concentration_informational severity=high priority=6
+        sector(from details)=''  details={"current_weight": 50.0, "weight_pct": 50.0}
+
+[6] CONCENTRATION ANALYZER OUTPUT (pool_results['concentration'])
+    portfolio_result:
+        value    : 50.0
+        severity : moderate
+        flag     : True
+        details  : {"concentration_type": "sector", "heaviest_sector": "Technology", "heaviest_sector_weight": 50.0, "sector_count": 2, "sector_weights": {"Technology": 50.0, "Energy": 50.0}}
+    ticker_results (per held ticker):
+        AAPL:
+            value    : 50.0
+            severity : high
+            flag     : True
+            weight   : 0.5
+            details  : {"sub_signals": ["stock_concentration"], "weight_pct": 50.0, "entry_weight_pct": 50.0, "drift_multiple": 1.0, "heaviest_concentration_type": "stock_concentration"}
+        XOM:
+            value    : 50.0
+            severity : high
+            flag     : True
+            weight   : 0.5
+            details  : {"sub_signals": ["stock_concentration"], "weight_pct": 50.0, "entry_weight_pct": 50.0, "drift_multiple": 1.0, "heaviest_concentration_type": "stock_concentration"}
+
+[7] SOFT-CHECK FLAGS (from edge_report.json)
+    (SOFT) concentration_flag_actionable: high/critical concentration on ['AAPL', 'XOM'] but no actionable CTA (only holds)
+           offending={"flagged_tickers": ["AAPL", "XOM"], "cta_actions": [["hold", "concentration_informational"], ["hold", "concentration_informational"]]}
+
