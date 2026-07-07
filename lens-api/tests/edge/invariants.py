@@ -23,9 +23,21 @@ import math
 from dataclasses import dataclass, field
 from typing import Any, Callable
 
-from engine.constants import INDEX_ETFS, sector_for
+from engine.constants import INDEX_ETFS, SECTOR_SUGGESTIONS, sector_for
 from engine.lens.cta_engine import _get_ticker_sector
 from engine.tuning import TUNING
+
+# Known dual-class / same-underlying ticker groups. Checker-side only (the engine
+# has no such notion). Used to (a) count EFFECTIVE holdings so a two-issuer book
+# masked as more positions is treated as the two-holding floor, and (b) surface
+# same-issuer aggregation as its own pathology. Kept tiny and explicit.
+SAME_ISSUER_GROUPS: tuple[frozenset[str], ...] = (
+    frozenset({"GOOG", "GOOGL"}),
+    frozenset({"BRK-A", "BRK-B"}),
+    frozenset({"FOX", "FOXA"}),
+    frozenset({"NWS", "NWSA"}),
+    frozenset({"UAA", "UA"}),
+)
 
 # ── tolerances / soft thresholds (adjust here) ───────────────────────────────
 DOLLAR_TOL = 11.0            # one _round10 step + epsilon, for dollar comparisons
@@ -489,17 +501,53 @@ def inv_min_sell_floor(ctx: Ctx) -> list[Violation]:
     return out
 
 
-def inv_concentration_flag_actionable(ctx: Ctx) -> list[Violation]:
-    """SOFT / JUDGMENT: when a non-index holding is flagged with high/critical
-    single-stock concentration, the engine is expected to offer an ACTIONABLE
-    response (trim it, or diversify around it) rather than only an informational
-    hold. Fires on the seam between the 40% high-concentration flag and the 50%
-    dominant-trim trigger: a ~40-50% position is flagged 'high' but is neither
-    trimmed nor diversified (its dilution buys get dropped by the budget / dedupe
-    path and are replaced by a bare concentration_informational hold).
+def _issuer_of(ticker: str) -> str:
+    """Collapse a ticker onto its underlying issuer key, folding known dual-class
+    share pairs (GOOG/GOOGL, ...) together. Unknown tickers map to themselves."""
+    for grp in SAME_ISSUER_GROUPS:
+        if ticker in grp:
+            return "|".join(sorted(grp))
+    return ticker
 
-    This is a debatable 'should', not a code guarantee - hence SOFT, never gates.
-    If you decide bare-hold on a ~45% position is acceptable, drop this check."""
+
+def _effective_holding_count(weights: dict[str, float]) -> int:
+    """Number of distinct ISSUERS held (dual-class pairs count once). A two-issuer
+    book -- even if it is 3 tickers because one issuer has two share classes -- is
+    'effectively two holdings' for concentration purposes."""
+    return len({_issuer_of(t) for t in weights})
+
+
+def _has_dilution_target(ctx: Ctx) -> bool:
+    """True if there is somewhere useful to redirect a trim: at least one
+    SECTOR_SUGGESTIONS sector the book does not currently hold. If every sector is
+    already held there is no under-weight sector to diversify into."""
+    held = {
+        s for s in (ctx.summary.get("sector_weights", {}) or {})
+        if s and s != "Unknown"
+    }
+    return any(s not in held for s in SECTOR_SUGGESTIONS)
+
+
+def inv_concentration_flag_actionable(ctx: Ctx) -> list[Violation]:
+    """SOFT / JUDGMENT: a high/critical single-stock concentration flag should draw
+    an ACTIONABLE response (trim, or diversify around it) rather than a bare
+    informational hold -- but ONLY when a useful action was actually available.
+
+    Tightened after triage to stop firing on the two-holding floor: in a genuine
+    two-holding (or two-issuer) book, ~50% per name is the MINIMUM possible
+    concentration, so the engine correctly flags it AND correctly holds -- there is
+    no useful trim (selling one just to fund the other is pointless). That case is
+    CORRECT engine behaviour and must not be reported. This check therefore fires
+    only when ALL of:
+      - a non-index holding is flagged high/critical concentration, AND
+      - the response is pure-hold (no sell/rebalance/buy), AND
+      - there are MORE than two EFFECTIVE holdings (dual-class pairs collapsed via
+        _issuer_of), so a real dilution across names is possible, AND
+      - a dilution target exists (an under-weight/unheld sector to redirect into).
+
+    Same-issuer aggregation (e.g. GOOG+GOOGL == ~90% one issuer masked as two
+    positions) is a DIFFERENT pathology and is handled by
+    inv_same_issuer_aggregation, not here. Still SOFT, never gates."""
     flagged = [
         t for t, d in (
             (ctx.result.get("pool_results", {}) or {})
@@ -513,11 +561,57 @@ def inv_concentration_flag_actionable(ctx: Ctx) -> list[Violation]:
     actionable = [c for c in ctx.ctas if c.get("action") in (_SELL_ACTIONS | _BUY_ACTIONS)]
     if actionable:
         return []
+    weights = ctx.summary.get("ticker_weights", {}) or {}
+    # Two-holding floor: at two-or-fewer effective holdings, a per-name >=50% flag
+    # is unavoidable and holding is the correct answer -> not a finding.
+    if _effective_holding_count(weights) <= 2:
+        return []
+    # No useful place to redirect a trim -> holding is also defensible.
+    if not _has_dilution_target(ctx):
+        return []
     return [Violation(
-        f"high/critical concentration on {flagged} but no actionable CTA "
-        f"(only holds)",
+        f"high/critical concentration on {flagged} with >2 effective holdings and "
+        f"an available dilution target, but no actionable CTA (only holds)",
         {"flagged_tickers": flagged,
+         "effective_holdings": _effective_holding_count(weights),
          "cta_actions": [(c.get("action"), c.get("reason")) for c in ctx.ctas]})]
+
+
+def inv_same_issuer_aggregation(ctx: Ctx) -> list[Violation]:
+    """SOFT / JUDGMENT: two or more held tickers of the SAME underlying issuer
+    (dual-class shares, e.g. GOOG + GOOGL) combine to a dominant slice of the book
+    while the engine sees only separate sub-threshold positions and holds. Because
+    the two share classes can land in different sectors, the portfolio-level
+    concentration flag understates the true single-issuer exposure.
+
+    Fires when a same-issuer group's COMBINED weight reaches the dominant-position
+    threshold (>50%) and the response is pure-hold. This is the RIGHT reason to
+    surface adv-two-share-classes, kept separate from the plain concentration seam.
+    Debatable 'should' -> SOFT, never gates. The issuer groups are a small static
+    list (SAME_ISSUER_GROUPS); extend it as needed."""
+    weights = ctx.summary.get("ticker_weights", {}) or {}
+    if not weights:
+        return []
+    actionable = [c for c in ctx.ctas if c.get("action") in (_SELL_ACTIONS | _BUY_ACTIONS)]
+    if actionable:
+        return []
+    combined: dict[str, float] = {}
+    members: dict[str, list[str]] = {}
+    for t, w in weights.items():
+        key = _issuer_of(t)
+        combined[key] = combined.get(key, 0.0) + float(w or 0.0)
+        members.setdefault(key, []).append(t)
+    dom = TUNING.cta.dominant_position_weight
+    out = []
+    for key, w in combined.items():
+        grp = sorted(members[key])
+        if len(grp) >= 2 and w > dom:
+            out.append(Violation(
+                f"same-issuer group {grp} is {w:.0%} of the book (masked as "
+                f"{len(grp)} share classes) but the response is only holds",
+                {"issuer_group": grp, "combined_weight": w,
+                 "cta_actions": [(c.get("action"), c.get("reason")) for c in ctx.ctas]}))
+    return out
 
 
 def inv_weight_sum(ctx: Ctx) -> list[Violation]:
@@ -575,7 +669,10 @@ CHECKS: list[Check] = [
           "deposit_amount / action_type / recommended_tickers match the top CTA"),
     # SOFT - judgment calls; report only, never gate.
     Check("concentration_flag_actionable", inv_concentration_flag_actionable, False,
-          "a high/critical concentration flag yields actionable advice, not only holds"),
+          "a high/critical concentration flag with >2 effective holdings + a "
+          "dilution target yields action, not only holds"),
+    Check("same_issuer_aggregation", inv_same_issuer_aggregation, False,
+          "same-issuer share classes summing to >50% of the book are not left as a bare hold"),
     Check("tier_monotonicity", inv_tier_monotonicity, False,
           "caution non-increasing across low >= regular >= high"),
     Check("clean_is_quiet", inv_clean_is_quiet, False,

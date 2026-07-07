@@ -122,7 +122,15 @@
         {
           "name": "concentration_flag_actionable",
           "hard": false,
-          "guarantee": "a high/critical concentration flag yields actionable advice, not only holds",
+          "guarantee": "a high/critical concentration flag with >2 effective holdings + a dilution target yields action, not only holds",
+          "applicable": true,
+          "passed": true,
+          "violations": []
+        },
+        {
+          "name": "same_issuer_aggregation",
+          "hard": false,
+          "guarantee": "same-issuer share classes summing to >50% of the book are not left as a bare hold",
           "applicable": true,
           "passed": true,
           "violations": []
@@ -294,7 +302,15 @@
         {
           "name": "concentration_flag_actionable",
           "hard": false,
-          "guarantee": "a high/critical concentration flag yields actionable advice, not only holds",
+          "guarantee": "a high/critical concentration flag with >2 effective holdings + a dilution target yields action, not only holds",
+          "applicable": true,
+          "passed": true,
+          "violations": []
+        },
+        {
+          "name": "same_issuer_aggregation",
+          "hard": false,
+          "guarantee": "same-issuer share classes summing to >50% of the book are not left as a bare hold",
           "applicable": true,
           "passed": true,
           "violations": []
@@ -477,30 +493,18 @@
         {
           "name": "concentration_flag_actionable",
           "hard": false,
-          "guarantee": "a high/critical concentration flag yields actionable advice, not only holds",
+          "guarantee": "a high/critical concentration flag with >2 effective holdings + a dilution target yields action, not only holds",
           "applicable": true,
-          "passed": false,
-          "violations": [
-            {
-              "reason": "high/critical concentration on ['AAPL', 'XOM'] but no actionable CTA (only holds)",
-              "offending": {
-                "flagged_tickers": [
-                  "AAPL",
-                  "XOM"
-                ],
-                "cta_actions": [
-                  [
-                    "hold",
-                    "concentration_informational"
-                  ],
-                  [
-                    "hold",
-                    "concentration_informational"
-                  ]
-                ]
-              }
-            }
-          ]
+          "passed": true,
+          "violations": []
+        },
+        {
+          "name": "same_issuer_aggregation",
+          "hard": false,
+          "guarantee": "same-issuer share classes summing to >50% of the book are not left as a bare hold",
+          "applicable": true,
+          "passed": true,
+          "violations": []
         },
         {
           "name": "tier_monotonicity",
@@ -731,7 +735,15 @@
         {
           "name": "concentration_flag_actionable",
           "hard": false,
-          "guarantee": "a high/critical concentration flag yields actionable advice, not only holds",
+          "guarantee": "a high/critical concentration flag with >2 effective holdings + a dilution target yields action, not only holds",
+          "applicable": true,
+          "passed": true,
+          "violations": []
+        },
+        {
+          "name": "same_issuer_aggregation",
+          "hard": false,
+          "guarantee": "same-issuer share classes summing to >50% of the book are not left as a bare hold",
           "applicable": true,
           "passed": true,
           "violations": []
@@ -902,7 +914,15 @@
         {
           "name": "concentration_flag_actionable",
           "hard": false,
-          "guarantee": "a high/critical concentration flag yields actionable advice, not only holds",
+          "guarantee": "a high/critical concentration flag with >2 effective holdings + a dilution target yields action, not only holds",
+          "applicable": true,
+          "passed": true,
+          "violations": []
+        },
+        {
+          "name": "same_issuer_aggregation",
+          "hard": false,
+          "guarantee": "same-issuer share classes summing to >50% of the book are not left as a bare hold",
           "applicable": true,
           "passed": true,
           "violations": []
@@ -1073,7 +1093,15 @@
         {
           "name": "concentration_flag_actionable",
           "hard": false,
-          "guarantee": "a high/critical concentration flag yields actionable advice, not only holds",
+          "guarantee": "a high/critical concentration flag with >2 effective holdings + a dilution target yields action, not only holds",
+          "applicable": true,
+          "passed": true,
+          "violations": []
+        },
+        {
+          "name": "same_issuer_aggregation",
+          "hard": false,
+          "guarantee": "same-issuer share classes summing to >50% of the book are not left as a bare hold",
           "applicable": true,
           "passed": true,
           "violations": []
@@ -1241,7 +1269,15 @@
         {
           "name": "concentration_flag_actionable",
           "hard": false,
-          "guarantee": "a high/critical concentration flag yields actionable advice, not only holds",
+          "guarantee": "a high/critical concentration flag with >2 effective holdings + a dilution target yields action, not only holds",
+          "applicable": true,
+          "passed": true,
+          "violations": []
+        },
+        {
+          "name": "same_issuer_aggregation",
+          "hard": false,
+          "guarantee": "same-issuer share classes summing to >50% of the book are not left as a bare hold",
           "applicable": true,
           "passed": true,
           "violations": []
@@ -1461,7 +1497,15 @@
         {
           "name": "concentration_flag_actionable",
           "hard": false,
-          "guarantee": "a high/critical concentration flag yields actionable advice, not only holds",
+          "guarantee": "a high/critical concentration flag with >2 effective holdings + a dilution target yields action, not only holds",
+          "applicable": true,
+          "passed": true,
+          "violations": []
+        },
+        {
+          "name": "same_issuer_aggregation",
+          "hard": false,
+          "guarantee": "same-issuer share classes summing to >50% of the book are not left as a bare hold",
           "applicable": true,
           "passed": true,
           "violations": []
@@ -1684,7 +1728,15 @@
         {
           "name": "concentration_flag_actionable",
           "hard": false,
-          "guarantee": "a high/critical concentration flag yields actionable advice, not only holds",
+          "guarantee": "a high/critical concentration flag with >2 effective holdings + a dilution target yields action, not only holds",
+          "applicable": true,
+          "passed": true,
+          "violations": []
+        },
+        {
+          "name": "same_issuer_aggregation",
+          "hard": false,
+          "guarantee": "same-issuer share classes summing to >50% of the book are not left as a bare hold",
           "applicable": true,
           "passed": true,
           "violations": []
@@ -1907,7 +1959,15 @@
         {
           "name": "concentration_flag_actionable",
           "hard": false,
-          "guarantee": "a high/critical concentration flag yields actionable advice, not only holds",
+          "guarantee": "a high/critical concentration flag with >2 effective holdings + a dilution target yields action, not only holds",
+          "applicable": true,
+          "passed": true,
+          "violations": []
+        },
+        {
+          "name": "same_issuer_aggregation",
+          "hard": false,
+          "guarantee": "same-issuer share classes summing to >50% of the book are not left as a bare hold",
           "applicable": true,
           "passed": true,
           "violations": []
@@ -2130,7 +2190,15 @@
         {
           "name": "concentration_flag_actionable",
           "hard": false,
-          "guarantee": "a high/critical concentration flag yields actionable advice, not only holds",
+          "guarantee": "a high/critical concentration flag with >2 effective holdings + a dilution target yields action, not only holds",
+          "applicable": true,
+          "passed": true,
+          "violations": []
+        },
+        {
+          "name": "same_issuer_aggregation",
+          "hard": false,
+          "guarantee": "same-issuer share classes summing to >50% of the book are not left as a bare hold",
           "applicable": true,
           "passed": true,
           "violations": []
@@ -2313,30 +2381,18 @@
         {
           "name": "concentration_flag_actionable",
           "hard": false,
-          "guarantee": "a high/critical concentration flag yields actionable advice, not only holds",
+          "guarantee": "a high/critical concentration flag with >2 effective holdings + a dilution target yields action, not only holds",
           "applicable": true,
-          "passed": false,
-          "violations": [
-            {
-              "reason": "high/critical concentration on ['KO', 'JNJ'] but no actionable CTA (only holds)",
-              "offending": {
-                "flagged_tickers": [
-                  "KO",
-                  "JNJ"
-                ],
-                "cta_actions": [
-                  [
-                    "hold",
-                    "concentration_informational"
-                  ],
-                  [
-                    "hold",
-                    "concentration_informational"
-                  ]
-                ]
-              }
-            }
-          ]
+          "passed": true,
+          "violations": []
+        },
+        {
+          "name": "same_issuer_aggregation",
+          "hard": false,
+          "guarantee": "same-issuer share classes summing to >50% of the book are not left as a bare hold",
+          "applicable": true,
+          "passed": true,
+          "violations": []
         },
         {
           "name": "tier_monotonicity",
@@ -2556,7 +2612,15 @@
         {
           "name": "concentration_flag_actionable",
           "hard": false,
-          "guarantee": "a high/critical concentration flag yields actionable advice, not only holds",
+          "guarantee": "a high/critical concentration flag with >2 effective holdings + a dilution target yields action, not only holds",
+          "applicable": true,
+          "passed": true,
+          "violations": []
+        },
+        {
+          "name": "same_issuer_aggregation",
+          "hard": false,
+          "guarantee": "same-issuer share classes summing to >50% of the book are not left as a bare hold",
           "applicable": true,
           "passed": true,
           "violations": []
@@ -2739,30 +2803,18 @@
         {
           "name": "concentration_flag_actionable",
           "hard": false,
-          "guarantee": "a high/critical concentration flag yields actionable advice, not only holds",
+          "guarantee": "a high/critical concentration flag with >2 effective holdings + a dilution target yields action, not only holds",
           "applicable": true,
-          "passed": false,
-          "violations": [
-            {
-              "reason": "high/critical concentration on ['PLTR', 'KO'] but no actionable CTA (only holds)",
-              "offending": {
-                "flagged_tickers": [
-                  "PLTR",
-                  "KO"
-                ],
-                "cta_actions": [
-                  [
-                    "hold",
-                    "concentration_informational"
-                  ],
-                  [
-                    "hold",
-                    "concentration_informational"
-                  ]
-                ]
-              }
-            }
-          ]
+          "passed": true,
+          "violations": []
+        },
+        {
+          "name": "same_issuer_aggregation",
+          "hard": false,
+          "guarantee": "same-issuer share classes summing to >50% of the book are not left as a bare hold",
+          "applicable": true,
+          "passed": true,
+          "violations": []
         },
         {
           "name": "tier_monotonicity",
@@ -2942,30 +2994,18 @@
         {
           "name": "concentration_flag_actionable",
           "hard": false,
-          "guarantee": "a high/critical concentration flag yields actionable advice, not only holds",
+          "guarantee": "a high/critical concentration flag with >2 effective holdings + a dilution target yields action, not only holds",
           "applicable": true,
-          "passed": false,
-          "violations": [
-            {
-              "reason": "high/critical concentration on ['F', 'KO'] but no actionable CTA (only holds)",
-              "offending": {
-                "flagged_tickers": [
-                  "F",
-                  "KO"
-                ],
-                "cta_actions": [
-                  [
-                    "hold",
-                    "concentration_informational"
-                  ],
-                  [
-                    "hold",
-                    "concentration_informational"
-                  ]
-                ]
-              }
-            }
-          ]
+          "passed": true,
+          "violations": []
+        },
+        {
+          "name": "same_issuer_aggregation",
+          "hard": false,
+          "guarantee": "same-issuer share classes summing to >50% of the book are not left as a bare hold",
+          "applicable": true,
+          "passed": true,
+          "violations": []
         },
         {
           "name": "tier_monotonicity",
@@ -3145,30 +3185,18 @@
         {
           "name": "concentration_flag_actionable",
           "hard": false,
-          "guarantee": "a high/critical concentration flag yields actionable advice, not only holds",
+          "guarantee": "a high/critical concentration flag with >2 effective holdings + a dilution target yields action, not only holds",
           "applicable": true,
-          "passed": false,
-          "violations": [
-            {
-              "reason": "high/critical concentration on ['F', 'KO'] but no actionable CTA (only holds)",
-              "offending": {
-                "flagged_tickers": [
-                  "F",
-                  "KO"
-                ],
-                "cta_actions": [
-                  [
-                    "hold",
-                    "concentration_informational"
-                  ],
-                  [
-                    "hold",
-                    "concentration_informational"
-                  ]
-                ]
-              }
-            }
-          ]
+          "passed": true,
+          "violations": []
+        },
+        {
+          "name": "same_issuer_aggregation",
+          "hard": false,
+          "guarantee": "same-issuer share classes summing to >50% of the book are not left as a bare hold",
+          "applicable": true,
+          "passed": true,
+          "violations": []
         },
         {
           "name": "tier_monotonicity",
@@ -3337,7 +3365,15 @@
         {
           "name": "concentration_flag_actionable",
           "hard": false,
-          "guarantee": "a high/critical concentration flag yields actionable advice, not only holds",
+          "guarantee": "a high/critical concentration flag with >2 effective holdings + a dilution target yields action, not only holds",
+          "applicable": true,
+          "passed": true,
+          "violations": []
+        },
+        {
+          "name": "same_issuer_aggregation",
+          "hard": false,
+          "guarantee": "same-issuer share classes summing to >50% of the book are not left as a bare hold",
           "applicable": true,
           "passed": true,
           "violations": []
@@ -3520,30 +3556,18 @@
         {
           "name": "concentration_flag_actionable",
           "hard": false,
-          "guarantee": "a high/critical concentration flag yields actionable advice, not only holds",
+          "guarantee": "a high/critical concentration flag with >2 effective holdings + a dilution target yields action, not only holds",
           "applicable": true,
-          "passed": false,
-          "violations": [
-            {
-              "reason": "high/critical concentration on ['AAPL', 'KO'] but no actionable CTA (only holds)",
-              "offending": {
-                "flagged_tickers": [
-                  "AAPL",
-                  "KO"
-                ],
-                "cta_actions": [
-                  [
-                    "hold",
-                    "concentration_informational"
-                  ],
-                  [
-                    "hold",
-                    "concentration_informational"
-                  ]
-                ]
-              }
-            }
-          ]
+          "passed": true,
+          "violations": []
+        },
+        {
+          "name": "same_issuer_aggregation",
+          "hard": false,
+          "guarantee": "same-issuer share classes summing to >50% of the book are not left as a bare hold",
+          "applicable": true,
+          "passed": true,
+          "violations": []
         },
         {
           "name": "tier_monotonicity",
@@ -3736,7 +3760,15 @@
         {
           "name": "concentration_flag_actionable",
           "hard": false,
-          "guarantee": "a high/critical concentration flag yields actionable advice, not only holds",
+          "guarantee": "a high/critical concentration flag with >2 effective holdings + a dilution target yields action, not only holds",
+          "applicable": true,
+          "passed": true,
+          "violations": []
+        },
+        {
+          "name": "same_issuer_aggregation",
+          "hard": false,
+          "guarantee": "same-issuer share classes summing to >50% of the book are not left as a bare hold",
           "applicable": true,
           "passed": true,
           "violations": []
@@ -3920,7 +3952,15 @@
         {
           "name": "concentration_flag_actionable",
           "hard": false,
-          "guarantee": "a high/critical concentration flag yields actionable advice, not only holds",
+          "guarantee": "a high/critical concentration flag with >2 effective holdings + a dilution target yields action, not only holds",
+          "applicable": true,
+          "passed": true,
+          "violations": []
+        },
+        {
+          "name": "same_issuer_aggregation",
+          "hard": false,
+          "guarantee": "same-issuer share classes summing to >50% of the book are not left as a bare hold",
           "applicable": true,
           "passed": true,
           "violations": []
@@ -4092,7 +4132,15 @@
         {
           "name": "concentration_flag_actionable",
           "hard": false,
-          "guarantee": "a high/critical concentration flag yields actionable advice, not only holds",
+          "guarantee": "a high/critical concentration flag with >2 effective holdings + a dilution target yields action, not only holds",
+          "applicable": true,
+          "passed": true,
+          "violations": []
+        },
+        {
+          "name": "same_issuer_aggregation",
+          "hard": false,
+          "guarantee": "same-issuer share classes summing to >50% of the book are not left as a bare hold",
           "applicable": true,
           "passed": true,
           "violations": []
@@ -4275,30 +4323,18 @@
         {
           "name": "concentration_flag_actionable",
           "hard": false,
-          "guarantee": "a high/critical concentration flag yields actionable advice, not only holds",
+          "guarantee": "a high/critical concentration flag with >2 effective holdings + a dilution target yields action, not only holds",
           "applicable": true,
-          "passed": false,
-          "violations": [
-            {
-              "reason": "high/critical concentration on ['GOOG', 'AAPL'] but no actionable CTA (only holds)",
-              "offending": {
-                "flagged_tickers": [
-                  "GOOG",
-                  "AAPL"
-                ],
-                "cta_actions": [
-                  [
-                    "hold",
-                    "concentration_informational"
-                  ],
-                  [
-                    "hold",
-                    "concentration_informational"
-                  ]
-                ]
-              }
-            }
-          ]
+          "passed": true,
+          "violations": []
+        },
+        {
+          "name": "same_issuer_aggregation",
+          "hard": false,
+          "guarantee": "same-issuer share classes summing to >50% of the book are not left as a bare hold",
+          "applicable": true,
+          "passed": true,
+          "violations": []
         },
         {
           "name": "tier_monotonicity",
@@ -4478,30 +4514,18 @@
         {
           "name": "concentration_flag_actionable",
           "hard": false,
-          "guarantee": "a high/critical concentration flag yields actionable advice, not only holds",
+          "guarantee": "a high/critical concentration flag with >2 effective holdings + a dilution target yields action, not only holds",
           "applicable": true,
-          "passed": false,
-          "violations": [
-            {
-              "reason": "high/critical concentration on ['AAPL', 'KO'] but no actionable CTA (only holds)",
-              "offending": {
-                "flagged_tickers": [
-                  "AAPL",
-                  "KO"
-                ],
-                "cta_actions": [
-                  [
-                    "hold",
-                    "concentration_informational"
-                  ],
-                  [
-                    "hold",
-                    "concentration_informational"
-                  ]
-                ]
-              }
-            }
-          ]
+          "passed": true,
+          "violations": []
+        },
+        {
+          "name": "same_issuer_aggregation",
+          "hard": false,
+          "guarantee": "same-issuer share classes summing to >50% of the book are not left as a bare hold",
+          "applicable": true,
+          "passed": true,
+          "violations": []
         },
         {
           "name": "tier_monotonicity",
@@ -4681,30 +4705,18 @@
         {
           "name": "concentration_flag_actionable",
           "hard": false,
-          "guarantee": "a high/critical concentration flag yields actionable advice, not only holds",
+          "guarantee": "a high/critical concentration flag with >2 effective holdings + a dilution target yields action, not only holds",
           "applicable": true,
-          "passed": false,
-          "violations": [
-            {
-              "reason": "high/critical concentration on ['AAPL', 'XOM'] but no actionable CTA (only holds)",
-              "offending": {
-                "flagged_tickers": [
-                  "AAPL",
-                  "XOM"
-                ],
-                "cta_actions": [
-                  [
-                    "hold",
-                    "concentration_informational"
-                  ],
-                  [
-                    "hold",
-                    "concentration_informational"
-                  ]
-                ]
-              }
-            }
-          ]
+          "passed": true,
+          "violations": []
+        },
+        {
+          "name": "same_issuer_aggregation",
+          "hard": false,
+          "guarantee": "same-issuer share classes summing to >50% of the book are not left as a bare hold",
+          "applicable": true,
+          "passed": true,
+          "violations": []
         },
         {
           "name": "tier_monotonicity",
@@ -4935,7 +4947,15 @@
         {
           "name": "concentration_flag_actionable",
           "hard": false,
-          "guarantee": "a high/critical concentration flag yields actionable advice, not only holds",
+          "guarantee": "a high/critical concentration flag with >2 effective holdings + a dilution target yields action, not only holds",
+          "applicable": true,
+          "passed": true,
+          "violations": []
+        },
+        {
+          "name": "same_issuer_aggregation",
+          "hard": false,
+          "guarantee": "same-issuer share classes summing to >50% of the book are not left as a bare hold",
           "applicable": true,
           "passed": true,
           "violations": []
@@ -5155,7 +5175,15 @@
         {
           "name": "concentration_flag_actionable",
           "hard": false,
-          "guarantee": "a high/critical concentration flag yields actionable advice, not only holds",
+          "guarantee": "a high/critical concentration flag with >2 effective holdings + a dilution target yields action, not only holds",
+          "applicable": true,
+          "passed": true,
+          "violations": []
+        },
+        {
+          "name": "same_issuer_aggregation",
+          "hard": false,
+          "guarantee": "same-issuer share classes summing to >50% of the book are not left as a bare hold",
           "applicable": true,
           "passed": true,
           "violations": []
@@ -5327,7 +5355,15 @@
         {
           "name": "concentration_flag_actionable",
           "hard": false,
-          "guarantee": "a high/critical concentration flag yields actionable advice, not only holds",
+          "guarantee": "a high/critical concentration flag with >2 effective holdings + a dilution target yields action, not only holds",
+          "applicable": true,
+          "passed": true,
+          "violations": []
+        },
+        {
+          "name": "same_issuer_aggregation",
+          "hard": false,
+          "guarantee": "same-issuer share classes summing to >50% of the book are not left as a bare hold",
           "applicable": true,
           "passed": true,
           "violations": []
@@ -5499,7 +5535,15 @@
         {
           "name": "concentration_flag_actionable",
           "hard": false,
-          "guarantee": "a high/critical concentration flag yields actionable advice, not only holds",
+          "guarantee": "a high/critical concentration flag with >2 effective holdings + a dilution target yields action, not only holds",
+          "applicable": true,
+          "passed": true,
+          "violations": []
+        },
+        {
+          "name": "same_issuer_aggregation",
+          "hard": false,
+          "guarantee": "same-issuer share classes summing to >50% of the book are not left as a bare hold",
           "applicable": true,
           "passed": true,
           "violations": []
@@ -5683,7 +5727,15 @@
         {
           "name": "concentration_flag_actionable",
           "hard": false,
-          "guarantee": "a high/critical concentration flag yields actionable advice, not only holds",
+          "guarantee": "a high/critical concentration flag with >2 effective holdings + a dilution target yields action, not only holds",
+          "applicable": true,
+          "passed": true,
+          "violations": []
+        },
+        {
+          "name": "same_issuer_aggregation",
+          "hard": false,
+          "guarantee": "same-issuer share classes summing to >50% of the book are not left as a bare hold",
           "applicable": true,
           "passed": true,
           "violations": []
@@ -5903,7 +5955,15 @@
         {
           "name": "concentration_flag_actionable",
           "hard": false,
-          "guarantee": "a high/critical concentration flag yields actionable advice, not only holds",
+          "guarantee": "a high/critical concentration flag with >2 effective holdings + a dilution target yields action, not only holds",
+          "applicable": true,
+          "passed": true,
+          "violations": []
+        },
+        {
+          "name": "same_issuer_aggregation",
+          "hard": false,
+          "guarantee": "same-issuer share classes summing to >50% of the book are not left as a bare hold",
           "applicable": true,
           "passed": true,
           "violations": []
@@ -6152,7 +6212,15 @@
         {
           "name": "concentration_flag_actionable",
           "hard": false,
-          "guarantee": "a high/critical concentration flag yields actionable advice, not only holds",
+          "guarantee": "a high/critical concentration flag with >2 effective holdings + a dilution target yields action, not only holds",
+          "applicable": true,
+          "passed": true,
+          "violations": []
+        },
+        {
+          "name": "same_issuer_aggregation",
+          "hard": false,
+          "guarantee": "same-issuer share classes summing to >50% of the book are not left as a bare hold",
           "applicable": true,
           "passed": true,
           "violations": []
@@ -6401,7 +6469,15 @@
         {
           "name": "concentration_flag_actionable",
           "hard": false,
-          "guarantee": "a high/critical concentration flag yields actionable advice, not only holds",
+          "guarantee": "a high/critical concentration flag with >2 effective holdings + a dilution target yields action, not only holds",
+          "applicable": true,
+          "passed": true,
+          "violations": []
+        },
+        {
+          "name": "same_issuer_aggregation",
+          "hard": false,
+          "guarantee": "same-issuer share classes summing to >50% of the book are not left as a bare hold",
           "applicable": true,
           "passed": true,
           "violations": []
@@ -6650,7 +6726,15 @@
         {
           "name": "concentration_flag_actionable",
           "hard": false,
-          "guarantee": "a high/critical concentration flag yields actionable advice, not only holds",
+          "guarantee": "a high/critical concentration flag with >2 effective holdings + a dilution target yields action, not only holds",
+          "applicable": true,
+          "passed": true,
+          "violations": []
+        },
+        {
+          "name": "same_issuer_aggregation",
+          "hard": false,
+          "guarantee": "same-issuer share classes summing to >50% of the book are not left as a bare hold",
           "applicable": true,
           "passed": true,
           "violations": []
@@ -6899,7 +6983,15 @@
         {
           "name": "concentration_flag_actionable",
           "hard": false,
-          "guarantee": "a high/critical concentration flag yields actionable advice, not only holds",
+          "guarantee": "a high/critical concentration flag with >2 effective holdings + a dilution target yields action, not only holds",
+          "applicable": true,
+          "passed": true,
+          "violations": []
+        },
+        {
+          "name": "same_issuer_aggregation",
+          "hard": false,
+          "guarantee": "same-issuer share classes summing to >50% of the book are not left as a bare hold",
           "applicable": true,
           "passed": true,
           "violations": []
@@ -7067,7 +7159,15 @@
         {
           "name": "concentration_flag_actionable",
           "hard": false,
-          "guarantee": "a high/critical concentration flag yields actionable advice, not only holds",
+          "guarantee": "a high/critical concentration flag with >2 effective holdings + a dilution target yields action, not only holds",
+          "applicable": true,
+          "passed": true,
+          "violations": []
+        },
+        {
+          "name": "same_issuer_aggregation",
+          "hard": false,
+          "guarantee": "same-issuer share classes summing to >50% of the book are not left as a bare hold",
           "applicable": true,
           "passed": true,
           "violations": []
@@ -7287,7 +7387,15 @@
         {
           "name": "concentration_flag_actionable",
           "hard": false,
-          "guarantee": "a high/critical concentration flag yields actionable advice, not only holds",
+          "guarantee": "a high/critical concentration flag with >2 effective holdings + a dilution target yields action, not only holds",
+          "applicable": true,
+          "passed": true,
+          "violations": []
+        },
+        {
+          "name": "same_issuer_aggregation",
+          "hard": false,
+          "guarantee": "same-issuer share classes summing to >50% of the book are not left as a bare hold",
           "applicable": true,
           "passed": true,
           "violations": []
@@ -7507,7 +7615,15 @@
         {
           "name": "concentration_flag_actionable",
           "hard": false,
-          "guarantee": "a high/critical concentration flag yields actionable advice, not only holds",
+          "guarantee": "a high/critical concentration flag with >2 effective holdings + a dilution target yields action, not only holds",
+          "applicable": true,
+          "passed": true,
+          "violations": []
+        },
+        {
+          "name": "same_issuer_aggregation",
+          "hard": false,
+          "guarantee": "same-issuer share classes summing to >50% of the book are not left as a bare hold",
           "applicable": true,
           "passed": true,
           "violations": []
@@ -7730,7 +7846,15 @@
         {
           "name": "concentration_flag_actionable",
           "hard": false,
-          "guarantee": "a high/critical concentration flag yields actionable advice, not only holds",
+          "guarantee": "a high/critical concentration flag with >2 effective holdings + a dilution target yields action, not only holds",
+          "applicable": true,
+          "passed": true,
+          "violations": []
+        },
+        {
+          "name": "same_issuer_aggregation",
+          "hard": false,
+          "guarantee": "same-issuer share classes summing to >50% of the book are not left as a bare hold",
           "applicable": true,
           "passed": true,
           "violations": []
@@ -7953,7 +8077,15 @@
         {
           "name": "concentration_flag_actionable",
           "hard": false,
-          "guarantee": "a high/critical concentration flag yields actionable advice, not only holds",
+          "guarantee": "a high/critical concentration flag with >2 effective holdings + a dilution target yields action, not only holds",
+          "applicable": true,
+          "passed": true,
+          "violations": []
+        },
+        {
+          "name": "same_issuer_aggregation",
+          "hard": false,
+          "guarantee": "same-issuer share classes summing to >50% of the book are not left as a bare hold",
           "applicable": true,
           "passed": true,
           "violations": []
@@ -8176,7 +8308,15 @@
         {
           "name": "concentration_flag_actionable",
           "hard": false,
-          "guarantee": "a high/critical concentration flag yields actionable advice, not only holds",
+          "guarantee": "a high/critical concentration flag with >2 effective holdings + a dilution target yields action, not only holds",
+          "applicable": true,
+          "passed": true,
+          "violations": []
+        },
+        {
+          "name": "same_issuer_aggregation",
+          "hard": false,
+          "guarantee": "same-issuer share classes summing to >50% of the book are not left as a bare hold",
           "applicable": true,
           "passed": true,
           "violations": []
@@ -8399,7 +8539,15 @@
         {
           "name": "concentration_flag_actionable",
           "hard": false,
-          "guarantee": "a high/critical concentration flag yields actionable advice, not only holds",
+          "guarantee": "a high/critical concentration flag with >2 effective holdings + a dilution target yields action, not only holds",
+          "applicable": true,
+          "passed": true,
+          "violations": []
+        },
+        {
+          "name": "same_issuer_aggregation",
+          "hard": false,
+          "guarantee": "same-issuer share classes summing to >50% of the book are not left as a bare hold",
           "applicable": true,
           "passed": true,
           "violations": []
@@ -8622,7 +8770,15 @@
         {
           "name": "concentration_flag_actionable",
           "hard": false,
-          "guarantee": "a high/critical concentration flag yields actionable advice, not only holds",
+          "guarantee": "a high/critical concentration flag with >2 effective holdings + a dilution target yields action, not only holds",
+          "applicable": true,
+          "passed": true,
+          "violations": []
+        },
+        {
+          "name": "same_issuer_aggregation",
+          "hard": false,
+          "guarantee": "same-issuer share classes summing to >50% of the book are not left as a bare hold",
           "applicable": true,
           "passed": true,
           "violations": []
@@ -8845,7 +9001,15 @@
         {
           "name": "concentration_flag_actionable",
           "hard": false,
-          "guarantee": "a high/critical concentration flag yields actionable advice, not only holds",
+          "guarantee": "a high/critical concentration flag with >2 effective holdings + a dilution target yields action, not only holds",
+          "applicable": true,
+          "passed": true,
+          "violations": []
+        },
+        {
+          "name": "same_issuer_aggregation",
+          "hard": false,
+          "guarantee": "same-issuer share classes summing to >50% of the book are not left as a bare hold",
           "applicable": true,
           "passed": true,
           "violations": []
@@ -9068,7 +9232,15 @@
         {
           "name": "concentration_flag_actionable",
           "hard": false,
-          "guarantee": "a high/critical concentration flag yields actionable advice, not only holds",
+          "guarantee": "a high/critical concentration flag with >2 effective holdings + a dilution target yields action, not only holds",
+          "applicable": true,
+          "passed": true,
+          "violations": []
+        },
+        {
+          "name": "same_issuer_aggregation",
+          "hard": false,
+          "guarantee": "same-issuer share classes summing to >50% of the book are not left as a bare hold",
           "applicable": true,
           "passed": true,
           "violations": []
@@ -9291,7 +9463,15 @@
         {
           "name": "concentration_flag_actionable",
           "hard": false,
-          "guarantee": "a high/critical concentration flag yields actionable advice, not only holds",
+          "guarantee": "a high/critical concentration flag with >2 effective holdings + a dilution target yields action, not only holds",
+          "applicable": true,
+          "passed": true,
+          "violations": []
+        },
+        {
+          "name": "same_issuer_aggregation",
+          "hard": false,
+          "guarantee": "same-issuer share classes summing to >50% of the book are not left as a bare hold",
           "applicable": true,
           "passed": true,
           "violations": []
@@ -9511,7 +9691,15 @@
         {
           "name": "concentration_flag_actionable",
           "hard": false,
-          "guarantee": "a high/critical concentration flag yields actionable advice, not only holds",
+          "guarantee": "a high/critical concentration flag with >2 effective holdings + a dilution target yields action, not only holds",
+          "applicable": true,
+          "passed": true,
+          "violations": []
+        },
+        {
+          "name": "same_issuer_aggregation",
+          "hard": false,
+          "guarantee": "same-issuer share classes summing to >50% of the book are not left as a bare hold",
           "applicable": true,
           "passed": true,
           "violations": []
@@ -9721,7 +9909,15 @@
         {
           "name": "concentration_flag_actionable",
           "hard": false,
-          "guarantee": "a high/critical concentration flag yields actionable advice, not only holds",
+          "guarantee": "a high/critical concentration flag with >2 effective holdings + a dilution target yields action, not only holds",
+          "applicable": true,
+          "passed": true,
+          "violations": []
+        },
+        {
+          "name": "same_issuer_aggregation",
+          "hard": false,
+          "guarantee": "same-issuer share classes summing to >50% of the book are not left as a bare hold",
           "applicable": true,
           "passed": true,
           "violations": []
@@ -9955,7 +10151,15 @@
         {
           "name": "concentration_flag_actionable",
           "hard": false,
-          "guarantee": "a high/critical concentration flag yields actionable advice, not only holds",
+          "guarantee": "a high/critical concentration flag with >2 effective holdings + a dilution target yields action, not only holds",
+          "applicable": true,
+          "passed": true,
+          "violations": []
+        },
+        {
+          "name": "same_issuer_aggregation",
+          "hard": false,
+          "guarantee": "same-issuer share classes summing to >50% of the book are not left as a bare hold",
           "applicable": true,
           "passed": true,
           "violations": []
@@ -10139,7 +10343,15 @@
         {
           "name": "concentration_flag_actionable",
           "hard": false,
-          "guarantee": "a high/critical concentration flag yields actionable advice, not only holds",
+          "guarantee": "a high/critical concentration flag with >2 effective holdings + a dilution target yields action, not only holds",
+          "applicable": true,
+          "passed": true,
+          "violations": []
+        },
+        {
+          "name": "same_issuer_aggregation",
+          "hard": false,
+          "guarantee": "same-issuer share classes summing to >50% of the book are not left as a bare hold",
           "applicable": true,
           "passed": true,
           "violations": []
@@ -10388,7 +10600,15 @@
         {
           "name": "concentration_flag_actionable",
           "hard": false,
-          "guarantee": "a high/critical concentration flag yields actionable advice, not only holds",
+          "guarantee": "a high/critical concentration flag with >2 effective holdings + a dilution target yields action, not only holds",
+          "applicable": true,
+          "passed": true,
+          "violations": []
+        },
+        {
+          "name": "same_issuer_aggregation",
+          "hard": false,
+          "guarantee": "same-issuer share classes summing to >50% of the book are not left as a bare hold",
           "applicable": true,
           "passed": true,
           "violations": []
@@ -10560,7 +10780,15 @@
         {
           "name": "concentration_flag_actionable",
           "hard": false,
-          "guarantee": "a high/critical concentration flag yields actionable advice, not only holds",
+          "guarantee": "a high/critical concentration flag with >2 effective holdings + a dilution target yields action, not only holds",
+          "applicable": true,
+          "passed": true,
+          "violations": []
+        },
+        {
+          "name": "same_issuer_aggregation",
+          "hard": false,
+          "guarantee": "same-issuer share classes summing to >50% of the book are not left as a bare hold",
           "applicable": true,
           "passed": true,
           "violations": []
@@ -10784,7 +11012,15 @@
         {
           "name": "concentration_flag_actionable",
           "hard": false,
-          "guarantee": "a high/critical concentration flag yields actionable advice, not only holds",
+          "guarantee": "a high/critical concentration flag with >2 effective holdings + a dilution target yields action, not only holds",
+          "applicable": true,
+          "passed": true,
+          "violations": []
+        },
+        {
+          "name": "same_issuer_aggregation",
+          "hard": false,
+          "guarantee": "same-issuer share classes summing to >50% of the book are not left as a bare hold",
           "applicable": true,
           "passed": true,
           "violations": []
@@ -11004,7 +11240,15 @@
         {
           "name": "concentration_flag_actionable",
           "hard": false,
-          "guarantee": "a high/critical concentration flag yields actionable advice, not only holds",
+          "guarantee": "a high/critical concentration flag with >2 effective holdings + a dilution target yields action, not only holds",
+          "applicable": true,
+          "passed": true,
+          "violations": []
+        },
+        {
+          "name": "same_issuer_aggregation",
+          "hard": false,
+          "guarantee": "same-issuer share classes summing to >50% of the book are not left as a bare hold",
           "applicable": true,
           "passed": true,
           "violations": []
@@ -11253,7 +11497,15 @@
         {
           "name": "concentration_flag_actionable",
           "hard": false,
-          "guarantee": "a high/critical concentration flag yields actionable advice, not only holds",
+          "guarantee": "a high/critical concentration flag with >2 effective holdings + a dilution target yields action, not only holds",
+          "applicable": true,
+          "passed": true,
+          "violations": []
+        },
+        {
+          "name": "same_issuer_aggregation",
+          "hard": false,
+          "guarantee": "same-issuer share classes summing to >50% of the book are not left as a bare hold",
           "applicable": true,
           "passed": true,
           "violations": []
@@ -11438,30 +11690,18 @@
         {
           "name": "concentration_flag_actionable",
           "hard": false,
-          "guarantee": "a high/critical concentration flag yields actionable advice, not only holds",
+          "guarantee": "a high/critical concentration flag with >2 effective holdings + a dilution target yields action, not only holds",
           "applicable": true,
-          "passed": false,
-          "violations": [
-            {
-              "reason": "high/critical concentration on ['PLTR', 'RIVN'] but no actionable CTA (only holds)",
-              "offending": {
-                "flagged_tickers": [
-                  "PLTR",
-                  "RIVN"
-                ],
-                "cta_actions": [
-                  [
-                    "hold",
-                    "unrealized_loss"
-                  ],
-                  [
-                    "hold",
-                    "unrealized_loss"
-                  ]
-                ]
-              }
-            }
-          ]
+          "passed": true,
+          "violations": []
+        },
+        {
+          "name": "same_issuer_aggregation",
+          "hard": false,
+          "guarantee": "same-issuer share classes summing to >50% of the book are not left as a bare hold",
+          "applicable": true,
+          "passed": true,
+          "violations": []
         },
         {
           "name": "tier_monotonicity",
@@ -11678,7 +11918,15 @@
         {
           "name": "concentration_flag_actionable",
           "hard": false,
-          "guarantee": "a high/critical concentration flag yields actionable advice, not only holds",
+          "guarantee": "a high/critical concentration flag with >2 effective holdings + a dilution target yields action, not only holds",
+          "applicable": true,
+          "passed": true,
+          "violations": []
+        },
+        {
+          "name": "same_issuer_aggregation",
+          "hard": false,
+          "guarantee": "same-issuer share classes summing to >50% of the book are not left as a bare hold",
           "applicable": true,
           "passed": true,
           "violations": []
@@ -11901,7 +12149,15 @@
         {
           "name": "concentration_flag_actionable",
           "hard": false,
-          "guarantee": "a high/critical concentration flag yields actionable advice, not only holds",
+          "guarantee": "a high/critical concentration flag with >2 effective holdings + a dilution target yields action, not only holds",
+          "applicable": true,
+          "passed": true,
+          "violations": []
+        },
+        {
+          "name": "same_issuer_aggregation",
+          "hard": false,
+          "guarantee": "same-issuer share classes summing to >50% of the book are not left as a bare hold",
           "applicable": true,
           "passed": true,
           "violations": []
@@ -12135,7 +12391,15 @@
         {
           "name": "concentration_flag_actionable",
           "hard": false,
-          "guarantee": "a high/critical concentration flag yields actionable advice, not only holds",
+          "guarantee": "a high/critical concentration flag with >2 effective holdings + a dilution target yields action, not only holds",
+          "applicable": true,
+          "passed": true,
+          "violations": []
+        },
+        {
+          "name": "same_issuer_aggregation",
+          "hard": false,
+          "guarantee": "same-issuer share classes summing to >50% of the book are not left as a bare hold",
           "applicable": true,
           "passed": true,
           "violations": []
@@ -12318,17 +12582,26 @@
         {
           "name": "concentration_flag_actionable",
           "hard": false,
-          "guarantee": "a high/critical concentration flag yields actionable advice, not only holds",
+          "guarantee": "a high/critical concentration flag with >2 effective holdings + a dilution target yields action, not only holds",
+          "applicable": true,
+          "passed": true,
+          "violations": []
+        },
+        {
+          "name": "same_issuer_aggregation",
+          "hard": false,
+          "guarantee": "same-issuer share classes summing to >50% of the book are not left as a bare hold",
           "applicable": true,
           "passed": false,
           "violations": [
             {
-              "reason": "high/critical concentration on ['GOOG', 'GOOGL'] but no actionable CTA (only holds)",
+              "reason": "same-issuer group ['GOOG', 'GOOGL'] is 90% of the book (masked as 2 share classes) but the response is only holds",
               "offending": {
-                "flagged_tickers": [
+                "issuer_group": [
                   "GOOG",
                   "GOOGL"
                 ],
+                "combined_weight": 0.9,
                 "cta_actions": [
                   [
                     "hold",
@@ -12561,7 +12834,15 @@
         {
           "name": "concentration_flag_actionable",
           "hard": false,
-          "guarantee": "a high/critical concentration flag yields actionable advice, not only holds",
+          "guarantee": "a high/critical concentration flag with >2 effective holdings + a dilution target yields action, not only holds",
+          "applicable": true,
+          "passed": true,
+          "violations": []
+        },
+        {
+          "name": "same_issuer_aggregation",
+          "hard": false,
+          "guarantee": "same-issuer share classes summing to >50% of the book are not left as a bare hold",
           "applicable": true,
           "passed": true,
           "violations": []
@@ -12781,7 +13062,15 @@
         {
           "name": "concentration_flag_actionable",
           "hard": false,
-          "guarantee": "a high/critical concentration flag yields actionable advice, not only holds",
+          "guarantee": "a high/critical concentration flag with >2 effective holdings + a dilution target yields action, not only holds",
+          "applicable": true,
+          "passed": true,
+          "violations": []
+        },
+        {
+          "name": "same_issuer_aggregation",
+          "hard": false,
+          "guarantee": "same-issuer share classes summing to >50% of the book are not left as a bare hold",
           "applicable": true,
           "passed": true,
           "violations": []
@@ -13004,7 +13293,15 @@
         {
           "name": "concentration_flag_actionable",
           "hard": false,
-          "guarantee": "a high/critical concentration flag yields actionable advice, not only holds",
+          "guarantee": "a high/critical concentration flag with >2 effective holdings + a dilution target yields action, not only holds",
+          "applicable": true,
+          "passed": true,
+          "violations": []
+        },
+        {
+          "name": "same_issuer_aggregation",
+          "hard": false,
+          "guarantee": "same-issuer share classes summing to >50% of the book are not left as a bare hold",
           "applicable": true,
           "passed": true,
           "violations": []
@@ -13172,7 +13469,15 @@
         {
           "name": "concentration_flag_actionable",
           "hard": false,
-          "guarantee": "a high/critical concentration flag yields actionable advice, not only holds",
+          "guarantee": "a high/critical concentration flag with >2 effective holdings + a dilution target yields action, not only holds",
+          "applicable": true,
+          "passed": true,
+          "violations": []
+        },
+        {
+          "name": "same_issuer_aggregation",
+          "hard": false,
+          "guarantee": "same-issuer share classes summing to >50% of the book are not left as a bare hold",
           "applicable": true,
           "passed": true,
           "violations": []

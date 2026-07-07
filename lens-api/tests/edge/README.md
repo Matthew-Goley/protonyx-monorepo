@@ -75,21 +75,46 @@ the top of `invariants.py`):
 - `clean_is_quiet` - a portfolio tagged clean emits no CTA >= `QUIET_MAX_SEVERITY`.
 - `min_sell_floor` - non-dead-weight sells clear the min-sell / min-position floors.
 - `weight_sum` - ticker weights sum to ~1.0.
-- `concentration_flag_actionable` - a high/critical concentration flag yields
-  actionable advice (trim or diversify), not only informational holds.
+- `concentration_flag_actionable` - a high/critical concentration flag draws an
+  actionable response (trim or diversify) **only when an action was genuinely
+  available**: more than two *effective* holdings (dual-class share pairs collapsed
+  to one issuer) and an under-weight sector to redirect into. See the tightening
+  note below.
+- `same_issuer_aggregation` - two+ share classes of one issuer (e.g. GOOG + GOOGL)
+  summing to > 50% of the book are not left as a bare hold.
 
-## Current result (2026-07-07)
+### Tightening note: `concentration_flag_actionable` (2026-07-07 triage)
 
-63 portfolios, **0 HARD violations**, **11 SOFT** findings, all from
-`concentration_flag_actionable`.
+The first version of this check fired on any high/critical per-ticker concentration
+flag that got only hold CTAs. Triage showed that was a **false positive** on
+two-holding books: in a genuine 50/50 (or 45/45/10) portfolio, ~50% per name is the
+FLOOR - you cannot be less concentrated with two names - so the engine correctly
+flags "high concentration" AND correctly holds, because there is no useful trim
+(selling one name just to fund the other is pointless). **That flag-then-hold is
+correct engine behaviour and is NOT a finding.** The engine was not changed.
 
-The soft cluster is one real seam: a position between the **40% high-concentration
-flag** and the **50% dominant-trim trigger** is flagged `high` but receives only a
-`concentration_informational` hold - its dilution buys are dropped by the
-budget/dedupe path and replaced by a bare hold. It ranges from clearly worth
-acting on (`adv-two-share-classes`: ~90% in one issuer via GOOG+GOOGL) to
-arguably fine (`struct-two`: a 50/50 two-sector split). That spread is why the
-check is SOFT: it flags candidates for human triage, it does not assert a bug.
+The check now excludes that case: it fires only when the response is pure-hold AND
+there are **more than two effective holdings** (dual-class pairs collapsed via a
+small static `SAME_ISSUER_GROUPS` map) AND a **dilution target exists** (a
+`SECTOR_SUGGESTIONS` sector the book does not already hold). The ~90%-single-issuer
+case (`adv-two-share-classes`) is a *different* pathology - the two share classes
+land in different sectors so the portfolio-level flag understates the real exposure
+- and was moved OUT of this check into the separate `same_issuer_aggregation` check
+so the two problems are not conflated (chose option (b): a distinct pathology gets a
+distinct check).
 
-Nothing here has been "fixed". Triage the soft findings before deciding which,
-if any, are engine bugs.
+## Current result (2026-07-07, post-tightening)
+
+63 portfolios, **0 HARD violations**, **1 SOFT** finding.
+
+| check | hits | portfolios |
+|---|---|---|
+| `same_issuer_aggregation` | 1 | `adv-two-share-classes` (GOOG+GOOGL == 90% one issuer, pure hold) |
+| `concentration_flag_actionable` | 0 | (the ~10 two-holding-floor books no longer fire) |
+| all others | 0 | - |
+
+The single remaining finding is surfaced for the right reason: ~90% of the book is
+one issuer masked as two positions, yet the response is only informational holds.
+Nothing here has been "fixed" - triage before deciding if it is an engine bug.
+Parity (`tests/parity/parity_harness.py`) stays `[PASS] 150/150`, confirming the
+engine is byte-for-byte untouched.
