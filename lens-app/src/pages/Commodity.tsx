@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useParams } from 'react-router-dom'
-import { TrendingUp, TrendingDown, Info, ShieldCheck, Star } from 'lucide-react'
+import { TrendingUp, TrendingDown, Info, ShieldCheck } from 'lucide-react'
 import { AppShell } from '@/components/layout/AppShell'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Panel, CardLabel } from '@/components/common/Panel'
@@ -94,12 +94,6 @@ export function Commodity() {
       <PageHeader
         title="Markets"
         breadcrumb={`Search / ${symbol?.toUpperCase() ?? c.symbol}`}
-        right={
-          <Button variant="outline" size="sm">
-            <Star size={15} />
-            Add to watchlist
-          </Button>
-        }
       />
 
       {/* ── Identity + live price ─────────────────────────────────────────── */}
