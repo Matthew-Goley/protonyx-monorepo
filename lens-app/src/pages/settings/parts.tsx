@@ -382,7 +382,7 @@ export function PositionsManagerPanel({
                         <span className="block truncate text-xs text-secondary">{p.name}</span>
                       )}
                     </span>
-                    <span className="w-20 shrink-0 text-right text-base font-medium text-accent-blue">
+                    <span className="w-20 shrink-0 text-right text-base font-medium text-primary">
                       {p.shares} sh
                     </span>
                     <span aria-hidden className="w-4 shrink-0" />

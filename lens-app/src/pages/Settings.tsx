@@ -92,10 +92,7 @@ export function Settings() {
         <div className="min-w-0 flex-1">
           {active === 'positions' ? (
             <Panel className="flex max-h-[70vh] flex-col">
-              <h3 className="mb-1 text-xl font-semibold text-primary">Positions</h3>
-              <p className="mb-4 text-sm text-secondary">
-                Add, edit, and remove the holdings Lens analyzes.
-              </p>
+              <h3 className="mb-4 text-xl font-semibold text-primary">Positions</h3>
               <PositionsManagerPanel ctrl={ctrl} heightClass="max-h-none" />
             </Panel>
           ) : activeSection ? (
