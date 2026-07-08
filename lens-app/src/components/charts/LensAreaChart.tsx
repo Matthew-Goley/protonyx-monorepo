@@ -48,7 +48,7 @@ export interface LensAreaChartProps {
 }
 
 /**
- * Area chart wrapper, primarily for sparklines (e.g. Total Equity). Each area's
+ * Area chart wrapper, primarily for sparklines (e.g. Portfolio Value). Each area's
  * fill is a vertical gradient from `color` at the top fading to transparent at
  * the bottom; no axes/grid by default. (styling.md §Charts.)
  */

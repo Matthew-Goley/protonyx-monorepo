@@ -4,7 +4,7 @@ import {
   PositionActionsWidget,
   LensBriefWidget,
   CautionScoreWidget,
-  TotalEquityWidget,
+  PortfolioValueWidget,
   SharpeWidget,
   CompositionWidget,
   PositionsWidget,
@@ -59,7 +59,7 @@ export interface WidgetRegistryEntry {
 // defaultVisible widgets). The default layout tiles cleanly into three 12-wide
 // rows:
 //   position-actions (2) | lens-brief (7) | caution (3)        = 12
-//   total-equity (6) | composition (6)                          = 12
+//   portfolio-value (6) | composition (6)                       = 12
 //   positions (5) | portfolio-momentum (3) | dividend-calendar (4) = 12
 // sharpe and beta are defaultVisible:false (deliberately not in the default
 // layout) but remain in the registry so they can be added from the Add menu.
@@ -95,9 +95,9 @@ export const WIDGET_REGISTRY: WidgetRegistryEntry[] = [
     lockHeight: true,
   },
   {
-    id: 'total-equity',
-    title: 'Total Equity',
-    render: (r) => <TotalEquityWidget result={r} />,
+    id: 'portfolio-value',
+    title: 'Portfolio Value',
+    render: (r) => <PortfolioValueWidget result={r} />,
     defaultSpan: { w: 6, h: 4 },
     minSpan: { w: 4, h: 3 },
     maxSpan: { w: 12, h: 5 },
@@ -166,6 +166,13 @@ export const WIDGET_REGISTRY: WidgetRegistryEntry[] = [
   },
 ]
 
+// Back-compat for renamed widget ids so a saved layout persisted under an old id
+// still resolves after a rename (e.g. 'total-equity' -> 'portfolio-value').
+const ID_ALIASES: Record<string, string> = {
+  'total-equity': 'portfolio-value',
+}
+
 export function getWidget(id: string): WidgetRegistryEntry | undefined {
-  return WIDGET_REGISTRY.find((w) => w.id === id)
+  const resolved = ID_ALIASES[id] ?? id
+  return WIDGET_REGISTRY.find((w) => w.id === resolved)
 }

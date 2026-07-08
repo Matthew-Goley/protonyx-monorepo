@@ -144,7 +144,7 @@ export function PositionsWidget({ result }: { result: LensResult }) {
 }
 
 // ---------------------------------------------------------------------------
-// Total Equity
+// Portfolio Value
 // ---------------------------------------------------------------------------
 
 const TIMEFRAMES: Timeframe[] = ['1D', '1W', '1M', '3M', '1Y', 'ALL']
@@ -200,7 +200,7 @@ function synthPoints(tf: Timeframe, equity: number, slope: number): EquityChartP
   })
 }
 
-export function TotalEquityWidget({ result }: { result: LensResult }) {
+export function PortfolioValueWidget({ result }: { result: LensResult }) {
   const equity = totalEquity(result)
   const slope = portfolioSlopePct(result)
   // One fetch of the max range; timeframe switching then just re-slices locally.
@@ -303,7 +303,7 @@ export function TotalEquityWidget({ result }: { result: LensResult }) {
     <Panel>
       <div className="flex items-start justify-between">
         <div>
-          <h3 className="text-xl font-semibold text-primary">Total Equity</h3>
+          <h3 className="text-xl font-semibold text-primary">Portfolio Value</h3>
           {/* Equity at the inspected point (hover / selection), else live total. */}
           <RollingNumber
             value={formatCurrency(displayEquity)}
@@ -357,7 +357,7 @@ export function TotalEquityWidget({ result }: { result: LensResult }) {
   )
 }
 
-// Zoom-transition tuning (see TotalEquityWidget). Window width in days ranks the
+// Zoom-transition tuning (see PortfolioValueWidget). Window width in days ranks the
 // timeframes so a step's direction is width-based (handles the cycler wraparound).
 const ZOOM_MS = 460
 const ZOOM_EASING = 'cubic-bezier(0.16, 1, 0.3, 1)'

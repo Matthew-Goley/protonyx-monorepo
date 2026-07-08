@@ -11,7 +11,7 @@ export interface EquityPoint {
  * Builds the real portfolio equity curve from the lens-api `/tickers/history`
  * endpoint (daily closes for all holdings in ONE batched request). For each
  * trading day present across all positions, equity = Σ (shares × close). This is
- * real, jagged market data — unlike the Total Equity / Monte Carlo lead-in
+ * real, jagged market data — unlike the Portfolio Value / Monte Carlo lead-in
  * surfaces, which otherwise synthesize a straight line from the single
  * annualized-slope scalar in the /analyze response.
  *
