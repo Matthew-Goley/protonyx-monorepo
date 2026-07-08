@@ -51,10 +51,28 @@ Read-only on `engine/` and `engine/tuning.py`. Nothing here changes engine behav
 
 ## Per-leg measurement
 
-For both timelines, realized annualized volatility over the leg's real forward
+For all three timelines, realized annualized volatility over the leg's real forward
 closes (same method as the calibration study: stdev of daily log returns x sqrt(252)
 x 100). Realized max drawdown is also computed per leg but treated only as a
 secondary end-of-path aggregate (it is unreliable at 25-day windows).
+
+**Return dimension (added alongside volatility, not replacing it).** From the SAME
+cash-inclusive value series the volatility already reads (`V_day = cash + sum(shares
+x price)`), the per-leg realized log return is `R_leg = ln(V_end / V_start)`, i.e.
+the sum of the same daily log returns whose stdev gives the vol. Because cash is
+already in that value series, it dilutes return by the same proportion it dilutes
+vol (a book that is x% cash has both scaled by `equity / (equity + cash)`); cash
+contributes zero return and zero vol by the same construction, no separate handling.
+Per-leg log returns are summed to a **cumulative log return** per path, displayed as
+a **simple percent** (`exp(cumulative_log) - 1`). **Not annualized** (annualizing a
+25-day figure by ~10x is high variance and misleading). Both the log and simple-%
+forms are stored; simple % is the display figure.
+
+**Return given up vs twin (the cost-side companion to "vol avoided").** Per path,
+`twin_cumulative_simple_% - path_cumulative_simple_%`, for both the managed and
+random arms. **Positive = the path forfeited return** by de-risking into cash;
+**negative = de-risking into cash improved return** over staying fully invested.
+This is the direct counterpart to "cumulative volatility avoided."
 
 ## Headline metrics
 
@@ -104,17 +122,88 @@ chained legs per path (so the ~250 paths are the independent sample, not 1,250
 legs). Earnings and dividends are neutralized, so this tests the price/structure
 part of the engine, not catalyst timing.
 
+## Return dimension results (as produced, not tuned)
+
+Tradeoff at the median (all 250 paths):
+
+| Arm | Median cum vol avoided | Median cum return given up |
+|---|---|---|
+| Managed | +18.7 vol pts | **-0.2%** (essentially none) |
+| Random-trim | +15.3 vol pts | **+0.0%** |
+
+Means: managed gave up **+2.7%** return, random **+2.6%**. So at the median the risk
+reduction cost effectively no return (the managed median is slightly negative, i.e.
+de-risking these speculative-heavy books marginally helped), and even on the mean the
+return forfeited was small relative to the volatility avoided. It is **material only
+in a right-skewed tail** (individual paths range from about -39% to +247% given up),
+the books whose trimmed names later rose. Managed and random give up nearly identical
+return, as expected: both bank the same dollars into cash, so the choice of which name
+to cut barely moves aggregate return.
+
+**This is the cost side only. It does NOT establish any net risk-adjusted benefit;
+this test is not built to support that claim.** Return figures here are for internal
+engineering evaluation and **must not be used in public-facing materials without
+separate review.**
+
+## Supplementary: buy-side arms (report only, N too small to chart)
+
+Two arms were investigated and deliberately **not built as simulation arms or chart
+lines** because the real data is too thin to produce a meaningful 250-path line. The
+tables below are included for **engineering reference only** and are **not evidence
+of anything at corpus scale.**
+
+**Buy-only arm** (would act only on `buy_new` tops). An executable `buy_new`
+(suggested ticker present in the frozen 44-ticker universe) is the top CTA on only
+**32 legs across 11 of 250 portfolios**, and the suggestions collapse to **just 3
+tickers: UNH (21), AAPL (9), JPM (2)**. On the other 239 portfolios this arm would be
+identical to the do-nothing twin. It also has **no internal funding source** (it never
+trims), so it cannot act without an external-capital mechanism, which is out of scope.
+
+| Portfolio | Leg(s) | Suggested ticker | Reason |
+|---|---|---|---|
+| 4 | 1, 2 | UNH | sector_underweight |
+| 11 | 1, 2, 5 | UNH | sector_underweight |
+| 15 | 1, 2, 3, 4, 5 | UNH | reduce_concentration |
+| 18 | 1, 5 | UNH | sector_underweight |
+| 31 | 2, 5 | JPM | reduce_concentration |
+| 38 | 3 | UNH | sector_underweight |
+| 42 | 1, 2, 5 | UNH | reduce_concentration |
+| 156 | 1, 2, 3, 4, 5 | AAPL | reduce_concentration |
+| 162 | 1, 2, 3, 4 | AAPL | reduce_concentration |
+| 168 | 4 | UNH | reduce_concentration |
+| 204 | 1, 3, 4, 5 | UNH | reduce_concentration |
+
+**Full-advice arm** (managed, plus spend accumulated cash on a later executable buy).
+The trigger condition (prior cash on hand AND a later executable `buy_new` top)
+actually occurs on only **7 of 250 portfolios, 9 legs total**. Structural reason: books
+that bank cash are the risky ones that keep getting trimmed and almost never surface a
+buy as top; books whose top is a buy are the healthy ones that rarely trim. The two
+populations barely overlap.
+
+| Portfolio | Cash banked on leg(s) | Buy fired on leg(s) | Ticker |
+|---|---|---|---|
+| 10 | 3 | 4 | PG |
+| 11 | 3, 4 | 5 | UNH |
+| 18 | 3, 4 | 5 | UNH |
+| 31 | 3 | 4, 5 | JPM |
+| 42 | 3, 4 | 5 | UNH |
+| 150 | 1 | 2, 3 | UNH |
+| 168 | 1, 2, 3, 4 | 5 | UNH |
+
 ## Files
 
-- `run_walkforward.py` - runs the simulation, writes `walkforward_raw.{csv,json}`
-  and `walkforward_summary.json` to `output/`.
-- `make_walkforward_chart.py` - renders `output/walkforward.png`.
+- `run_walkforward.py` - runs the simulation (3 arms, vol + return), writes
+  `walkforward_raw.{csv,json}` and `walkforward_summary.json` to `output/`.
+- `make_walkforward_chart.py` - renders `output/walkforward.png` (volatility avoided).
+- `make_return_chart.py` - renders `output/walkforward_return.png` (return given up
+  vs twin, the cost-side companion).
 
 ## Run
 
 ```bash
 python metrics/run_walkforward.py         # writes walkforward_raw.* + walkforward_summary.json
 python metrics/make_walkforward_chart.py  # writes output/walkforward.png
+python metrics/make_return_chart.py       # writes output/walkforward_return.png
 ```
 
 ## Guardrail

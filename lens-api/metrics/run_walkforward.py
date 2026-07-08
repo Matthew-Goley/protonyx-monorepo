@@ -67,12 +67,16 @@ RANDOM_TRIM_SEED = 20260707  # fixed seed: reproducible random-pick baseline
 
 def _leg_realized(shares: dict[str, float], cash: float,
                   master: dict[str, list[float]], t0: int, h: int = LEG_LEN) -> dict:
-    """Realized annualized vol + max drawdown over master[t0 : t0+h], INCLUDING a
-    constant cash balance. Same vol/maxDD method as the calibration study.
+    """Realized annualized vol + max drawdown + realized log return over
+    master[t0 : t0+h], INCLUDING a constant cash balance. Same value series for
+    all three metrics.
 
     Value_day = cash + sum(shares_i * price_i(day)). Cash is constant, so it
-    dampens both realized vol and drawdown exactly as a real idle cash sleeve
-    would. A fully-cash portfolio has zero vol and zero drawdown.
+    dampens realized vol, drawdown, AND return by the same proportion (equity /
+    (equity + cash)). A fully-cash portfolio has zero vol, zero drawdown, and zero
+    return. The realized log return is ``ln(V_end / V_start)`` over this leg's
+    window, i.e. the SUM of the same daily log returns whose stdev gives the vol,
+    so cash dilutes return exactly as it dilutes volatility (no separate handling).
     """
     values: list[float] = []
     for day in range(t0, t0 + h):
@@ -84,7 +88,7 @@ def _leg_realized(shares: dict[str, float], cash: float,
         values.append(v)
 
     if len(values) < 3 or any(v <= 0 for v in values):
-        return {"vol": float("nan"), "max_dd": float("nan")}
+        return {"vol": float("nan"), "max_dd": float("nan"), "logret": float("nan")}
 
     arr = np.array(values, dtype=float)
     log_ret = np.diff(np.log(arr))
@@ -93,7 +97,11 @@ def _leg_realized(shares: dict[str, float], cash: float,
     running_peak = np.maximum.accumulate(arr)
     drawdowns = (arr - running_peak) / running_peak
     max_dd = float(-np.min(drawdowns) * 100)  # positive % magnitude
-    return {"vol": vol, "max_dd": max_dd}
+
+    # Realized log return over the leg = ln(V_end / V_start) = sum of the daily
+    # log returns above. NOT annualized (per spec: 25-day annualization is noisy).
+    leg_logret = float(math.log(arr[-1] / arr[0]))
+    return {"vol": vol, "max_dd": max_dd, "logret": leg_logret}
 
 
 def _starting_holdings(weights: dict[str, float], store: AsOfStore) -> dict[str, float]:
@@ -186,6 +194,10 @@ def run() -> dict:
 
         cum_managed = 0.0
         cum_random = 0.0
+        # Cumulative log returns per arm (sum of per-leg ln(V_end/V_start)).
+        cum_twin_lr = 0.0
+        cum_managed_lr = 0.0
+        cum_random_lr = 0.0
         any_cta = False
         path_rows: list[dict] = []
 
@@ -255,6 +267,25 @@ def run() -> dict:
             if math.isfinite(leg_random_av):
                 cum_random += leg_random_av
 
+            # Per-leg log returns (same value series as the vol above).
+            twin_lr = twin_out["logret"]
+            managed_lr = managed_out["logret"]
+            random_lr = random_out["logret"]
+            if math.isfinite(twin_lr):
+                cum_twin_lr += twin_lr
+            if math.isfinite(managed_lr):
+                cum_managed_lr += managed_lr
+            if math.isfinite(random_lr):
+                cum_random_lr += random_lr
+            # Cumulative simple-% equivalents (display figure) and return given up
+            # vs twin (twin return minus path return; positive = path forfeited
+            # return, negative = path gained return by de-risking into cash).
+            twin_ret_pct = (math.exp(cum_twin_lr) - 1.0) * 100
+            managed_ret_pct = (math.exp(cum_managed_lr) - 1.0) * 100
+            random_ret_pct = (math.exp(cum_random_lr) - 1.0) * 100
+            managed_given_up = twin_ret_pct - managed_ret_pct
+            random_given_up = twin_ret_pct - random_ret_pct
+
             row = {
                 "portfolio_id": pid,
                 "archetype": archetype,
@@ -280,13 +311,28 @@ def run() -> dict:
                 "random_maxDD": round(random_out["max_dd"], 4) if math.isfinite(random_out["max_dd"]) else None,
                 "managed_cash": round(managed_cash, 2),
                 "random_cash": round(random_cash, 2),
+                # Return dimension (log return per leg; cumulative log + simple %).
+                "twin_logret": round(twin_lr, 6) if math.isfinite(twin_lr) else None,
+                "managed_logret": round(managed_lr, 6) if math.isfinite(managed_lr) else None,
+                "random_logret": round(random_lr, 6) if math.isfinite(random_lr) else None,
+                "cum_twin_logret": round(cum_twin_lr, 6),
+                "cum_managed_logret": round(cum_managed_lr, 6),
+                "cum_random_logret": round(cum_random_lr, 6),
+                "cum_twin_ret_pct": round(twin_ret_pct, 4),
+                "cum_managed_ret_pct": round(managed_ret_pct, 4),
+                "cum_random_ret_pct": round(random_ret_pct, 4),
+                "managed_return_given_up_pct": round(managed_given_up, 4),
+                "random_return_given_up_pct": round(random_given_up, 4),
             }
             rows.append(row)
             path_rows.append(row)
 
-        # Cumulative curves: leg 0 = 0.0, then running sum after each leg.
+        # Cumulative vol-avoided curves: leg 0 = 0.0, then running sum after each leg.
         managed_curve = [0.0]
         random_curve = [0.0]
+        # Cumulative "return given up vs twin" curves (simple %), leg 0 = 0.0.
+        managed_giveup_curve = [0.0]
+        random_giveup_curve = [0.0]
         rm = rr = 0.0
         for r in path_rows:
             lm = r["leg_managed_vol_avoided"]
@@ -295,8 +341,12 @@ def run() -> dict:
             rr += lr if lr is not None else 0.0
             managed_curve.append(round(rm, 4))
             random_curve.append(round(rr, 4))
+            # Given-up is already a cumulative simple-% figure per row.
+            managed_giveup_curve.append(r["managed_return_given_up_pct"])
+            random_giveup_curve.append(r["random_return_given_up_pct"])
 
         gap_final = round(managed_curve[-1] - random_curve[-1], 4)
+        last = path_rows[-1]
         paths.append({
             "portfolio_id": pid,
             "archetype": archetype,
@@ -313,6 +363,14 @@ def run() -> dict:
             "total_maxDD_avoided_random": round(sum(
                 (r["twin_maxDD"] or 0.0) - (r["random_maxDD"] or 0.0) for r in path_rows
             ), 4),
+            # Return dimension (final cumulative figures + given-up curves).
+            "final_twin_ret_pct": last["cum_twin_ret_pct"],
+            "final_managed_ret_pct": last["cum_managed_ret_pct"],
+            "final_random_ret_pct": last["cum_random_ret_pct"],
+            "final_managed_return_given_up_pct": last["managed_return_given_up_pct"],
+            "final_random_return_given_up_pct": last["random_return_given_up_pct"],
+            "managed_giveup_curve": managed_giveup_curve,
+            "random_giveup_curve": random_giveup_curve,
         })
 
     return {"rows": rows, "paths": paths, "n_portfolios": len(portfolios)}
@@ -342,6 +400,10 @@ def summarize(paths: list[dict]) -> dict:
     ties = sum(1 for g in gaps if g == 0)
     random_beats_managed = sum(1 for g in gaps if g < 0)
 
+    # Return dimension: cumulative return given up vs twin (simple %), all paths.
+    managed_giveup = [p["final_managed_return_given_up_pct"] for p in paths]
+    random_giveup = [p["final_random_return_given_up_pct"] for p in paths]
+
     return {
         "total_paths": n,
         "lens_ever_trimmed_paths": len(ever),
@@ -364,6 +426,26 @@ def summarize(paths: list[dict]) -> dict:
         "random_beats_managed_count": random_beats_managed,
         "ties_count": ties,
         "diverging_denominator": len(ever),
+
+        # Return dimension: cumulative return given up vs twin (simple %). Positive
+        # = the path forfeited return vs staying fully invested; negative = the
+        # path's de-risking into cash actually improved return over the twin.
+        "median_managed_return_given_up_pct": round(_med(managed_giveup), 4),
+        "mean_managed_return_given_up_pct": round(_mean(managed_giveup), 4),
+        "median_random_return_given_up_pct": round(_med(random_giveup), 4),
+        "mean_random_return_given_up_pct": round(_mean(random_giveup), 4),
+
+        # One-look tradeoff table (medians): vol avoided vs return given up.
+        "tradeoff_table": {
+            "managed": {
+                "median_cum_vol_avoided": round(_med(managed_finals), 4),
+                "median_cum_return_given_up_pct": round(_med(managed_giveup), 4),
+            },
+            "random_trim": {
+                "median_cum_vol_avoided": round(_med(random_finals), 4),
+                "median_cum_return_given_up_pct": round(_med(random_giveup), 4),
+            },
+        },
     }
 
 
@@ -391,6 +473,15 @@ def main() -> None:
                             "portfolio at the final leg. Isolates Lens's choice of "
                             "WHICH position to cut from the mechanical cash-drag "
                             "effect (both paths bank the same dollars into cash).",
+            "return_metric": "Per-leg realized log return ln(V_end/V_start) on the "
+                             "SAME cash-inclusive value series as the vol, summed to a "
+                             "cumulative log return, shown as simple % = exp(sum)-1 (NOT "
+                             "annualized). 'return given up vs twin' = twin simple % "
+                             "minus path simple %; positive = return forfeited, negative "
+                             "= de-risking into cash improved return.",
+            "return_disclaimer": "Return figures are for internal engineering "
+                                 "evaluation only and must not be used in public-facing "
+                                 "materials without separate review.",
             "note": "Point-in-time, no look-ahead. Managed applies only the single "
                     "top-priority CTA per leg; random baseline trims the same dollars "
                     "from a uniform-random held name on exactly those legs. "
@@ -435,7 +526,20 @@ def main() -> None:
           f"({s['managed_beats_random_count']}/{s['diverging_denominator']})   "
           f"random wins {s['random_beats_managed_count']}   ties {s['ties_count']}")
     print("-" * 68)
-    print("units: annualized volatility points (constructed risk-avoided measure).")
+    print("RETURN DIMENSION - tradeoff (medians, all paths):")
+    print(f"  {'arm':<12} {'cum vol avoided':>16} {'cum return given up %':>22}")
+    tt = s["tradeoff_table"]
+    print(f"  {'managed':<12} {tt['managed']['median_cum_vol_avoided']:>+16.2f} "
+          f"{tt['managed']['median_cum_return_given_up_pct']:>+22.2f}")
+    print(f"  {'random-trim':<12} {tt['random_trim']['median_cum_vol_avoided']:>+16.2f} "
+          f"{tt['random_trim']['median_cum_return_given_up_pct']:>+22.2f}")
+    print(f"  (mean return given up: managed {s['mean_managed_return_given_up_pct']:+.2f}%, "
+          f"random {s['mean_random_return_given_up_pct']:+.2f}%)")
+    print("  positive given-up = forfeited return vs staying invested; negative = "
+          "de-risking into cash improved return.")
+    print("-" * 68)
+    print("units: vol = annualized volatility points (constructed); return = cumulative "
+          "simple % over the ridden horizon, not annualized.")
     print(f"wrote walkforward_raw.csv/json + walkforward_summary.json to {OUTPUT_DIR}")
 
 
