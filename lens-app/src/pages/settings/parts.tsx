@@ -339,9 +339,14 @@ export function PositionsManagerPanel({
         </Button>
       </div>
 
-      <div className="mt-2 flex items-center justify-between px-1 text-[11px] uppercase tracking-wider text-secondary">
-        <span>{positions.length} holdings</span>
-        <span>{query ? `${filtered.length} shown` : 'Shares · Value'}</span>
+      <div className="mt-2 flex items-center gap-3 px-3 text-[11px] uppercase tracking-wider text-secondary">
+        <span className="min-w-0 flex-1">
+          {positions.length} holdings{query ? ` · ${filtered.length} shown` : ''}
+        </span>
+        <span className="w-20 text-right">Shares</span>
+        <span aria-hidden className="w-4 text-center text-muted">|</span>
+        <span className="w-28 text-right">Value</span>
+        <span aria-hidden className="w-16" />
       </div>
 
       <div className={cn('mt-2 min-h-0 flex-1 overflow-y-auto pr-1', heightClass)}>
@@ -371,20 +376,20 @@ export function PositionsManagerPanel({
                         : 'border-subtle hover:border-accent-teal/40 hover:bg-card-hover',
                     )}
                   >
-                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-subtle bg-elevated text-[11px] font-semibold text-accent-teal">
-                      {p.ticker.slice(0, 3)}
-                    </span>
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-sm font-medium text-primary">{p.ticker}</span>
                       {!compact && p.name && (
                         <span className="block truncate text-xs text-secondary">{p.name}</span>
                       )}
                     </span>
-                    <span className="shrink-0 text-right">
-                      <span className="block text-sm text-primary">{p.shares} sh</span>
-                      <span className="block text-xs text-secondary">{money(p.equity)}</span>
+                    <span className="w-20 shrink-0 text-right text-base font-medium text-accent-blue">
+                      {p.shares} sh
                     </span>
-                    <span className="flex shrink-0 items-center gap-1 opacity-0 transition-opacity duration-200 ease-out group-hover:opacity-100">
+                    <span aria-hidden className="w-4 shrink-0" />
+                    <span className="w-28 shrink-0 text-right text-base text-primary">
+                      {money(p.equity)}
+                    </span>
+                    <span className="flex w-16 shrink-0 items-center justify-end gap-1 opacity-0 transition-opacity duration-200 ease-out group-hover:opacity-100">
                       <button
                         type="button"
                         aria-label={`Edit ${p.ticker}`}
