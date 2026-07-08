@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { TrendingUp, TrendingDown, Info, ShieldCheck, AlertTriangle } from 'lucide-react'
@@ -125,10 +125,6 @@ export function Commodity() {
   const change = c.price !== null && c.prev_close !== null ? c.price - c.prev_close : null
   const changePct = change !== null && c.prev_close ? (change / c.prev_close) * 100 : null
   const up = (change ?? 0) >= 0
-  const dayRangePct =
-    c.price !== null && c.day_low !== null && c.day_high !== null && c.day_high > c.day_low
-      ? ((c.price - c.day_low) / (c.day_high - c.day_low)) * 100
-      : null
 
   return (
     <AppShell>
@@ -137,9 +133,6 @@ export function Commodity() {
       {/* Identity + live price */}
       <Panel className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
         <div className="flex items-center gap-4">
-          <div className="flex h-14 w-14 items-center justify-center rounded-lg border border-subtle bg-elevated text-lg font-semibold text-primary">
-            {c.symbol.slice(0, 2)}
-          </div>
           <div>
             <div className="flex items-center gap-2">
               <h2 className="text-xl font-semibold tracking-[-0.02em] text-primary">{c.symbol}</h2>
@@ -211,26 +204,6 @@ export function Commodity() {
               readoutSize="lg"
             />
           )}
-
-          {/* Day range track: where the current price sits between low and high. */}
-          {dayRangePct !== null && (
-            <div className="mt-6">
-              <div className="mb-2 flex items-center justify-between text-xs text-secondary">
-                <span>Day low {money(c.day_low, c.currency)}</span>
-                <span>Day high {money(c.day_high, c.currency)}</span>
-              </div>
-              <div className="relative h-1.5 w-full rounded-full bg-elevated">
-                <div
-                  className="absolute inset-y-0 left-0 rounded-full bg-accent-teal"
-                  style={{ width: `${dayRangePct}%` }}
-                />
-                <div
-                  className="absolute top-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-base bg-primary"
-                  style={{ left: `${dayRangePct}%` }}
-                />
-              </div>
-            </div>
-          )}
         </Panel>
 
         <Panel>
@@ -266,12 +239,18 @@ export function Commodity() {
           <CardLabel className="mb-3 flex items-center gap-2">
             <Info size={14} /> About {c.name}
           </CardLabel>
-          <p className="text-sm leading-relaxed text-secondary">
-            {c.description ??
-              `${c.name} is listed on ${c.exchange || 'a major exchange'}. A detailed business description is not available for this instrument.`}
-          </p>
+          <ExpandableText
+            text={
+              c.description ??
+              `${c.name} is listed on ${c.exchange || 'a major exchange'}. A detailed business description is not available for this instrument.`
+            }
+          />
 
-          <div className="gradient-hairline my-6" />
+          {/* Wrapper carries the spacing: .gradient-hairline sets `margin: 0`
+              (unlayered) which would override a `my-*` utility on the line itself. */}
+          <div className="py-10">
+            <div className="gradient-hairline" />
+          </div>
 
           <div className="grid grid-cols-[repeat(2,minmax(0,max-content))] gap-x-16 gap-y-6 sm:grid-cols-[repeat(3,minmax(0,max-content))]">
             <Fact label="Sector" value={c.sector ?? '--'} />
@@ -309,6 +288,43 @@ export function Commodity() {
         />
       )}
     </AppShell>
+  )
+}
+
+// Business description, clamped to 4 lines with a Show more / Show less toggle.
+// The toggle only appears when the text actually overflows 4 lines: we measure
+// once while collapsed (scrollHeight vs the clamped clientHeight).
+function ExpandableText({ text }: { text: string }) {
+  const [expanded, setExpanded] = useState(false)
+  const [overflows, setOverflows] = useState(false)
+  const ref = useRef<HTMLParagraphElement>(null)
+
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    // Measured on the initial (collapsed) render; not re-run on expand, so the
+    // toggle stays put once shown.
+    setOverflows(el.scrollHeight > el.clientHeight + 1)
+  }, [text])
+
+  return (
+    <div>
+      <p
+        ref={ref}
+        className={cn('text-sm leading-relaxed text-secondary', !expanded && 'line-clamp-4')}
+      >
+        {text}
+      </p>
+      {overflows && (
+        <button
+          type="button"
+          onClick={() => setExpanded((v) => !v)}
+          className="mt-1 text-sm font-medium text-accent-teal transition-colors duration-200 ease-out hover:text-primary"
+        >
+          {expanded ? 'Show less' : 'Show more'}
+        </button>
+      )}
+    </div>
   )
 }
 
