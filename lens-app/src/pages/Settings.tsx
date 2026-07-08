@@ -25,6 +25,7 @@ import { PageHeader } from '@/components/layout/PageHeader'
 import { Panel } from '@/components/common/Panel'
 import { RiskProfileCards } from '@/components/common/RiskProfileCards'
 import { AddPositionModal } from '@/components/common/AddPositionModal'
+import { EditPositionModal } from '@/components/common/EditPositionModal'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
@@ -150,6 +151,7 @@ export function Settings() {
   const [risk, setRisk] = useState<RiskTier>(user?.risk_tier ?? 'regular')
   const [selected, setSelected] = useState<string | null>(null)
   const [modalOpen, setModalOpen] = useState(false)
+  const [editOpen, setEditOpen] = useState(false)
 
   const [clearConfirm, setClearConfirm] = useState(false)
   const [portalLoading, setPortalLoading] = useState(false)
@@ -204,6 +206,13 @@ export function Settings() {
     if (!selected) return
     manager.removePosition(selected)
     setSelected(null)
+  }
+
+  const selectedPosition = positions.find((p) => p.ticker === selected) ?? null
+
+  async function editShares(ticker: string, shares: number) {
+    // Persisted to the server (PATCH, recomputes equity) + query-invalidated.
+    await manager.updateShares(ticker, shares)
   }
 
   async function handleClearData() {
@@ -446,7 +455,7 @@ export function Settings() {
             <Button variant="red" onClick={removeSelected} disabled={!selected}>
               Remove Selected Position
             </Button>
-            <Button variant="ghost" disabled>
+            <Button variant="ghost" onClick={() => setEditOpen(true)} disabled={!selected}>
               Edit Selected Holding
             </Button>
           </div>
@@ -474,6 +483,13 @@ export function Settings() {
 
       {modalOpen && (
         <AddPositionModal onClose={() => setModalOpen(false)} onAdd={addPosition} />
+      )}
+      {editOpen && selectedPosition && (
+        <EditPositionModal
+          position={selectedPosition}
+          onClose={() => setEditOpen(false)}
+          onSave={editShares}
+        />
       )}
     </AppShell>
   )
