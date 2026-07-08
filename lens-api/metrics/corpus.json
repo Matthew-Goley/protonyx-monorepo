@@ -1,0 +1,3208 @@
+{
+  "_meta": {
+    "seed": 20260707,
+    "n_portfolios": 250,
+    "universe_size": 43,
+    "archetype_counts": {
+      "diversified_sleepy": 50,
+      "diversified_mixed": 62,
+      "balanced_small": 50,
+      "concentrated": 50,
+      "speculative_heavy": 38
+    },
+    "tier_counts": {
+      "low": 84,
+      "regular": 83,
+      "high": 83
+    },
+    "note": "Stratified on input-space archetypes (holding count / sub-universe / concentration). Outcome-blind; forward outcomes are not consulted here."
+  },
+  "portfolios": [
+    {
+      "id": 0,
+      "archetype": "diversified_sleepy",
+      "tier": "low",
+      "weights": {
+        "UNH": 0.151436,
+        "AAPL": 0.138693,
+        "SCHD": 0.081721,
+        "GOOG": 0.028573,
+        "PG": 0.081039,
+        "JPM": 0.040143,
+        "MSFT": 0.175489,
+        "XOM": 0.114199,
+        "VYM": 0.101991,
+        "VXUS": 0.086716
+      }
+    },
+    {
+      "id": 1,
+      "archetype": "diversified_sleepy",
+      "tier": "regular",
+      "weights": {
+        "UNH": 0.118046,
+        "JPM": 0.149237,
+        "XOM": 0.066671,
+        "VYM": 0.132744,
+        "AAPL": 0.028734,
+        "VXUS": 0.07933,
+        "GOOG": 0.067239,
+        "PG": 0.052644,
+        "MSFT": 0.169118,
+        "SCHD": 0.136236
+      }
+    },
+    {
+      "id": 2,
+      "archetype": "diversified_sleepy",
+      "tier": "high",
+      "weights": {
+        "AAPL": 0.065662,
+        "UNH": 0.111082,
+        "VYM": 0.157933,
+        "XOM": 0.17069,
+        "VXUS": 0.21455,
+        "SCHD": 0.177907,
+        "MSFT": 0.049599,
+        "PG": 0.052576
+      }
+    },
+    {
+      "id": 3,
+      "archetype": "diversified_sleepy",
+      "tier": "low",
+      "weights": {
+        "AAPL": 0.075993,
+        "VYM": 0.064847,
+        "JPM": 0.150778,
+        "VXUS": 0.075758,
+        "MSFT": 0.07058,
+        "XOM": 0.11224,
+        "SCHD": 0.128912,
+        "UNH": 0.104549,
+        "GOOG": 0.137193,
+        "PG": 0.079152
+      }
+    },
+    {
+      "id": 4,
+      "archetype": "diversified_sleepy",
+      "tier": "regular",
+      "weights": {
+        "PG": 0.275536,
+        "AAPL": 0.110124,
+        "SCHD": 0.273123,
+        "VYM": 0.118376,
+        "MSFT": 0.22284
+      }
+    },
+    {
+      "id": 5,
+      "archetype": "diversified_sleepy",
+      "tier": "high",
+      "weights": {
+        "VXUS": 0.029765,
+        "PG": 0.108502,
+        "VYM": 0.102988,
+        "GOOG": 0.147354,
+        "SCHD": 0.085042,
+        "AAPL": 0.085728,
+        "JPM": 0.071858,
+        "MSFT": 0.08622,
+        "UNH": 0.106428,
+        "XOM": 0.176114
+      }
+    },
+    {
+      "id": 6,
+      "archetype": "diversified_sleepy",
+      "tier": "low",
+      "weights": {
+        "GOOG": 0.142082,
+        "XOM": 0.091154,
+        "AAPL": 0.156559,
+        "VYM": 0.068244,
+        "UNH": 0.186085,
+        "JPM": 0.058009,
+        "SCHD": 0.063747,
+        "MSFT": 0.111663,
+        "PG": 0.056087,
+        "VXUS": 0.06637
+      }
+    },
+    {
+      "id": 7,
+      "archetype": "diversified_sleepy",
+      "tier": "regular",
+      "weights": {
+        "UNH": 0.144452,
+        "GOOG": 0.095447,
+        "AAPL": 0.074317,
+        "VYM": 0.043939,
+        "XOM": 0.108041,
+        "SCHD": 0.113361,
+        "PG": 0.05623,
+        "MSFT": 0.09971,
+        "JPM": 0.13862,
+        "VXUS": 0.125882
+      }
+    },
+    {
+      "id": 8,
+      "archetype": "diversified_sleepy",
+      "tier": "high",
+      "weights": {
+        "MSFT": 0.139635,
+        "GOOG": 0.063047,
+        "SCHD": 0.097626,
+        "VYM": 0.155441,
+        "AAPL": 0.075142,
+        "PG": 0.196548,
+        "UNH": 0.16213,
+        "JPM": 0.110431
+      }
+    },
+    {
+      "id": 9,
+      "archetype": "diversified_sleepy",
+      "tier": "low",
+      "weights": {
+        "PG": 0.108085,
+        "VXUS": 0.107303,
+        "XOM": 0.128143,
+        "GOOG": 0.156972,
+        "JPM": 0.078264,
+        "UNH": 0.098183,
+        "VYM": 0.092817,
+        "SCHD": 0.071384,
+        "MSFT": 0.069357,
+        "AAPL": 0.089491
+      }
+    },
+    {
+      "id": 10,
+      "archetype": "diversified_sleepy",
+      "tier": "regular",
+      "weights": {
+        "XOM": 0.236402,
+        "JPM": 0.173254,
+        "GOOG": 0.237859,
+        "UNH": 0.216871,
+        "AAPL": 0.135613
+      }
+    },
+    {
+      "id": 11,
+      "archetype": "diversified_sleepy",
+      "tier": "high",
+      "weights": {
+        "SCHD": 0.197227,
+        "GOOG": 0.15361,
+        "AAPL": 0.152061,
+        "MSFT": 0.290165,
+        "VYM": 0.206938
+      }
+    },
+    {
+      "id": 12,
+      "archetype": "diversified_sleepy",
+      "tier": "low",
+      "weights": {
+        "PG": 0.034957,
+        "UNH": 0.0459,
+        "GOOG": 0.217445,
+        "JPM": 0.087623,
+        "VXUS": 0.165359,
+        "XOM": 0.127878,
+        "VYM": 0.066095,
+        "MSFT": 0.100971,
+        "SCHD": 0.110564,
+        "AAPL": 0.043207
+      }
+    },
+    {
+      "id": 13,
+      "archetype": "diversified_sleepy",
+      "tier": "regular",
+      "weights": {
+        "SCHD": 0.190243,
+        "VXUS": 0.163596,
+        "MSFT": 0.196348,
+        "GOOG": 0.202041,
+        "JPM": 0.247773
+      }
+    },
+    {
+      "id": 14,
+      "archetype": "diversified_sleepy",
+      "tier": "high",
+      "weights": {
+        "VXUS": 0.242826,
+        "JPM": 0.183757,
+        "MSFT": 0.169072,
+        "AAPL": 0.193542,
+        "PG": 0.210803
+      }
+    },
+    {
+      "id": 15,
+      "archetype": "diversified_sleepy",
+      "tier": "low",
+      "weights": {
+        "JPM": 0.4257,
+        "PG": 0.127138,
+        "VXUS": 0.129606,
+        "AAPL": 0.135727,
+        "GOOG": 0.18183
+      }
+    },
+    {
+      "id": 16,
+      "archetype": "diversified_sleepy",
+      "tier": "regular",
+      "weights": {
+        "XOM": 0.206929,
+        "JPM": 0.077222,
+        "PG": 0.105161,
+        "GOOG": 0.108187,
+        "VXUS": 0.18557,
+        "UNH": 0.14401,
+        "SCHD": 0.098543,
+        "MSFT": 0.074379
+      }
+    },
+    {
+      "id": 17,
+      "archetype": "diversified_sleepy",
+      "tier": "high",
+      "weights": {
+        "AAPL": 0.092417,
+        "JPM": 0.10151,
+        "VXUS": 0.034978,
+        "PG": 0.182501,
+        "GOOG": 0.197042,
+        "MSFT": 0.140428,
+        "SCHD": 0.148993,
+        "VYM": 0.10213
+      }
+    },
+    {
+      "id": 18,
+      "archetype": "diversified_sleepy",
+      "tier": "low",
+      "weights": {
+        "GOOG": 0.210884,
+        "MSFT": 0.246164,
+        "SCHD": 0.065908,
+        "VXUS": 0.265091,
+        "AAPL": 0.211954
+      }
+    },
+    {
+      "id": 19,
+      "archetype": "diversified_sleepy",
+      "tier": "regular",
+      "weights": {
+        "PG": 0.289223,
+        "AAPL": 0.064845,
+        "JPM": 0.027974,
+        "MSFT": 0.071536,
+        "VYM": 0.099679,
+        "GOOG": 0.120059,
+        "XOM": 0.091118,
+        "SCHD": 0.089065,
+        "VXUS": 0.068348,
+        "UNH": 0.078154
+      }
+    },
+    {
+      "id": 20,
+      "archetype": "diversified_sleepy",
+      "tier": "high",
+      "weights": {
+        "PG": 0.044319,
+        "MSFT": 0.079945,
+        "JPM": 0.166214,
+        "UNH": 0.132389,
+        "VYM": 0.062721,
+        "SCHD": 0.039321,
+        "AAPL": 0.099394,
+        "VXUS": 0.07755,
+        "XOM": 0.209475,
+        "GOOG": 0.088672
+      }
+    },
+    {
+      "id": 21,
+      "archetype": "diversified_sleepy",
+      "tier": "low",
+      "weights": {
+        "VYM": 0.040525,
+        "SCHD": 0.075367,
+        "PG": 0.174727,
+        "AAPL": 0.050326,
+        "MSFT": 0.134684,
+        "VXUS": 0.174852,
+        "JPM": 0.090163,
+        "UNH": 0.058448,
+        "GOOG": 0.06701,
+        "XOM": 0.133898
+      }
+    },
+    {
+      "id": 22,
+      "archetype": "diversified_sleepy",
+      "tier": "regular",
+      "weights": {
+        "JPM": 0.162317,
+        "XOM": 0.124806,
+        "UNH": 0.084008,
+        "GOOG": 0.087224,
+        "VXUS": 0.144048,
+        "PG": 0.174821,
+        "VYM": 0.070044,
+        "SCHD": 0.152731
+      }
+    },
+    {
+      "id": 23,
+      "archetype": "diversified_sleepy",
+      "tier": "high",
+      "weights": {
+        "GOOG": 0.222636,
+        "JPM": 0.202863,
+        "SCHD": 0.22457,
+        "XOM": 0.262719,
+        "UNH": 0.087212
+      }
+    },
+    {
+      "id": 24,
+      "archetype": "diversified_sleepy",
+      "tier": "low",
+      "weights": {
+        "SCHD": 0.092776,
+        "PG": 0.085694,
+        "VYM": 0.087743,
+        "VXUS": 0.064565,
+        "AAPL": 0.085465,
+        "JPM": 0.0755,
+        "GOOG": 0.073073,
+        "UNH": 0.145474,
+        "MSFT": 0.189688,
+        "XOM": 0.100022
+      }
+    },
+    {
+      "id": 25,
+      "archetype": "diversified_sleepy",
+      "tier": "regular",
+      "weights": {
+        "SCHD": 0.111861,
+        "UNH": 0.086499,
+        "MSFT": 0.17567,
+        "XOM": 0.106152,
+        "VYM": 0.076756,
+        "GOOG": 0.037046,
+        "AAPL": 0.096974,
+        "JPM": 0.147627,
+        "VXUS": 0.109589,
+        "PG": 0.051824
+      }
+    },
+    {
+      "id": 26,
+      "archetype": "diversified_sleepy",
+      "tier": "high",
+      "weights": {
+        "JPM": 0.071696,
+        "PG": 0.052777,
+        "UNH": 0.093034,
+        "MSFT": 0.087267,
+        "XOM": 0.159005,
+        "VYM": 0.102498,
+        "SCHD": 0.099833,
+        "VXUS": 0.097327,
+        "GOOG": 0.143603,
+        "AAPL": 0.09296
+      }
+    },
+    {
+      "id": 27,
+      "archetype": "diversified_sleepy",
+      "tier": "low",
+      "weights": {
+        "JPM": 0.213109,
+        "XOM": 0.164494,
+        "GOOG": 0.10301,
+        "VYM": 0.243884,
+        "VXUS": 0.275503
+      }
+    },
+    {
+      "id": 28,
+      "archetype": "diversified_sleepy",
+      "tier": "regular",
+      "weights": {
+        "SCHD": 0.08317,
+        "UNH": 0.145144,
+        "VYM": 0.092989,
+        "VXUS": 0.134197,
+        "JPM": 0.068254,
+        "MSFT": 0.047279,
+        "XOM": 0.106874,
+        "AAPL": 0.073315,
+        "GOOG": 0.059768,
+        "PG": 0.18901
+      }
+    },
+    {
+      "id": 29,
+      "archetype": "diversified_sleepy",
+      "tier": "high",
+      "weights": {
+        "UNH": 0.178267,
+        "JPM": 0.067514,
+        "XOM": 0.119863,
+        "SCHD": 0.057049,
+        "AAPL": 0.054651,
+        "GOOG": 0.083536,
+        "MSFT": 0.085395,
+        "VXUS": 0.027579,
+        "VYM": 0.108929,
+        "PG": 0.217217
+      }
+    },
+    {
+      "id": 30,
+      "archetype": "diversified_sleepy",
+      "tier": "low",
+      "weights": {
+        "JPM": 0.127622,
+        "VYM": 0.152155,
+        "SCHD": 0.073346,
+        "PG": 0.114654,
+        "XOM": 0.123977,
+        "UNH": 0.132407,
+        "VXUS": 0.099041,
+        "GOOG": 0.176797
+      }
+    },
+    {
+      "id": 31,
+      "archetype": "diversified_sleepy",
+      "tier": "regular",
+      "weights": {
+        "VYM": 0.094351,
+        "XOM": 0.134073,
+        "AAPL": 0.258735,
+        "UNH": 0.222377,
+        "GOOG": 0.290464
+      }
+    },
+    {
+      "id": 32,
+      "archetype": "diversified_sleepy",
+      "tier": "high",
+      "weights": {
+        "UNH": 0.063512,
+        "XOM": 0.123665,
+        "VXUS": 0.127434,
+        "PG": 0.11091,
+        "JPM": 0.128006,
+        "SCHD": 0.155619,
+        "GOOG": 0.155453,
+        "AAPL": 0.135402
+      }
+    },
+    {
+      "id": 33,
+      "archetype": "diversified_sleepy",
+      "tier": "low",
+      "weights": {
+        "XOM": 0.156064,
+        "VYM": 0.169722,
+        "SCHD": 0.142571,
+        "AAPL": 0.127607,
+        "PG": 0.027607,
+        "JPM": 0.13142,
+        "MSFT": 0.120571,
+        "VXUS": 0.124437
+      }
+    },
+    {
+      "id": 34,
+      "archetype": "diversified_sleepy",
+      "tier": "regular",
+      "weights": {
+        "VXUS": 0.120925,
+        "GOOG": 0.087996,
+        "JPM": 0.164065,
+        "MSFT": 0.052467,
+        "VYM": 0.086342,
+        "XOM": 0.113487,
+        "UNH": 0.092016,
+        "PG": 0.032884,
+        "SCHD": 0.085972,
+        "AAPL": 0.163845
+      }
+    },
+    {
+      "id": 35,
+      "archetype": "diversified_sleepy",
+      "tier": "high",
+      "weights": {
+        "VYM": 0.103245,
+        "GOOG": 0.03919,
+        "JPM": 0.041072,
+        "XOM": 0.088135,
+        "VXUS": 0.160533,
+        "MSFT": 0.114072,
+        "PG": 0.08521,
+        "SCHD": 0.102519,
+        "AAPL": 0.135541,
+        "UNH": 0.130482
+      }
+    },
+    {
+      "id": 36,
+      "archetype": "diversified_sleepy",
+      "tier": "low",
+      "weights": {
+        "MSFT": 0.100623,
+        "XOM": 0.127579,
+        "AAPL": 0.09075,
+        "PG": 0.054308,
+        "VXUS": 0.077681,
+        "VYM": 0.125362,
+        "GOOG": 0.147021,
+        "JPM": 0.070281,
+        "UNH": 0.078316,
+        "SCHD": 0.128079
+      }
+    },
+    {
+      "id": 37,
+      "archetype": "diversified_sleepy",
+      "tier": "regular",
+      "weights": {
+        "JPM": 0.11649,
+        "PG": 0.18342,
+        "VXUS": 0.083047,
+        "UNH": 0.16853,
+        "MSFT": 0.085972,
+        "GOOG": 0.128554,
+        "AAPL": 0.119281,
+        "XOM": 0.114705
+      }
+    },
+    {
+      "id": 38,
+      "archetype": "diversified_sleepy",
+      "tier": "high",
+      "weights": {
+        "VYM": 0.241647,
+        "JPM": 0.183707,
+        "VXUS": 0.103601,
+        "AAPL": 0.167223,
+        "PG": 0.303823
+      }
+    },
+    {
+      "id": 39,
+      "archetype": "diversified_sleepy",
+      "tier": "low",
+      "weights": {
+        "GOOG": 0.121861,
+        "VYM": 0.116497,
+        "VXUS": 0.099591,
+        "JPM": 0.076097,
+        "UNH": 0.083934,
+        "XOM": 0.149834,
+        "PG": 0.077561,
+        "MSFT": 0.110657,
+        "SCHD": 0.077414,
+        "AAPL": 0.086556
+      }
+    },
+    {
+      "id": 40,
+      "archetype": "diversified_sleepy",
+      "tier": "regular",
+      "weights": {
+        "JPM": 0.044855,
+        "PG": 0.064166,
+        "SCHD": 0.138784,
+        "XOM": 0.132495,
+        "VYM": 0.159817,
+        "MSFT": 0.148176,
+        "AAPL": 0.099174,
+        "VXUS": 0.059798,
+        "UNH": 0.092058,
+        "GOOG": 0.060677
+      }
+    },
+    {
+      "id": 41,
+      "archetype": "diversified_sleepy",
+      "tier": "high",
+      "weights": {
+        "MSFT": 0.052682,
+        "XOM": 0.107927,
+        "AAPL": 0.100891,
+        "SCHD": 0.0337,
+        "VYM": 0.070742,
+        "VXUS": 0.116571,
+        "PG": 0.114636,
+        "JPM": 0.157359,
+        "UNH": 0.122048,
+        "GOOG": 0.123445
+      }
+    },
+    {
+      "id": 42,
+      "archetype": "diversified_sleepy",
+      "tier": "low",
+      "weights": {
+        "SCHD": 0.171896,
+        "MSFT": 0.176775,
+        "VYM": 0.198154,
+        "AAPL": 0.326935,
+        "XOM": 0.126241
+      }
+    },
+    {
+      "id": 43,
+      "archetype": "diversified_sleepy",
+      "tier": "regular",
+      "weights": {
+        "VXUS": 0.107661,
+        "GOOG": 0.127632,
+        "UNH": 0.082921,
+        "SCHD": 0.087102,
+        "PG": 0.149908,
+        "JPM": 0.121804,
+        "XOM": 0.082092,
+        "MSFT": 0.046829,
+        "VYM": 0.056961,
+        "AAPL": 0.13709
+      }
+    },
+    {
+      "id": 44,
+      "archetype": "diversified_sleepy",
+      "tier": "high",
+      "weights": {
+        "GOOG": 0.295752,
+        "MSFT": 0.1564,
+        "UNH": 0.31825,
+        "SCHD": 0.126591,
+        "VXUS": 0.103007
+      }
+    },
+    {
+      "id": 45,
+      "archetype": "diversified_sleepy",
+      "tier": "low",
+      "weights": {
+        "GOOG": 0.102924,
+        "VYM": 0.102317,
+        "UNH": 0.105102,
+        "JPM": 0.141833,
+        "VXUS": 0.12087,
+        "MSFT": 0.103249,
+        "SCHD": 0.17462,
+        "PG": 0.149085
+      }
+    },
+    {
+      "id": 46,
+      "archetype": "diversified_sleepy",
+      "tier": "regular",
+      "weights": {
+        "XOM": 0.065096,
+        "UNH": 0.089719,
+        "PG": 0.072339,
+        "VYM": 0.226103,
+        "JPM": 0.095425,
+        "SCHD": 0.084592,
+        "VXUS": 0.069929,
+        "GOOG": 0.097534,
+        "AAPL": 0.11049,
+        "MSFT": 0.088774
+      }
+    },
+    {
+      "id": 47,
+      "archetype": "diversified_sleepy",
+      "tier": "high",
+      "weights": {
+        "SCHD": 0.110709,
+        "GOOG": 0.122186,
+        "UNH": 0.10959,
+        "VXUS": 0.090339,
+        "PG": 0.073486,
+        "JPM": 0.111675,
+        "AAPL": 0.043347,
+        "VYM": 0.071602,
+        "MSFT": 0.153536,
+        "XOM": 0.11353
+      }
+    },
+    {
+      "id": 48,
+      "archetype": "diversified_sleepy",
+      "tier": "low",
+      "weights": {
+        "UNH": 0.073163,
+        "XOM": 0.058418,
+        "JPM": 0.053841,
+        "MSFT": 0.102632,
+        "GOOG": 0.137827,
+        "VXUS": 0.083386,
+        "AAPL": 0.097437,
+        "PG": 0.086836,
+        "VYM": 0.200688,
+        "SCHD": 0.105772
+      }
+    },
+    {
+      "id": 49,
+      "archetype": "diversified_sleepy",
+      "tier": "regular",
+      "weights": {
+        "VXUS": 0.104526,
+        "UNH": 0.178919,
+        "VYM": 0.047825,
+        "JPM": 0.076989,
+        "AAPL": 0.118808,
+        "GOOG": 0.16879,
+        "MSFT": 0.195203,
+        "XOM": 0.108941
+      }
+    },
+    {
+      "id": 50,
+      "archetype": "diversified_mixed",
+      "tier": "high",
+      "weights": {
+        "FCEL": 0.073239,
+        "SLB": 0.176023,
+        "SPCE": 0.099687,
+        "PLUG": 0.100746,
+        "GOOG": 0.137461,
+        "AAPL": 0.069501,
+        "QUBT": 0.098558,
+        "CHPT": 0.04415,
+        "UEC": 0.033744,
+        "DJT": 0.063029,
+        "GME": 0.072656,
+        "SCHD": 0.031203
+      }
+    },
+    {
+      "id": 51,
+      "archetype": "diversified_mixed",
+      "tier": "low",
+      "weights": {
+        "MSTR": 0.167544,
+        "AMC": 0.105764,
+        "TQQQ": 0.058677,
+        "CLSK": 0.094826,
+        "EOG": 0.140658,
+        "VXUS": 0.075391,
+        "MSFT": 0.159646,
+        "CHPT": 0.155776,
+        "FCEL": 0.030875,
+        "PLTR": 0.010844
+      }
+    },
+    {
+      "id": 52,
+      "archetype": "diversified_mixed",
+      "tier": "regular",
+      "weights": {
+        "HL": 0.118609,
+        "OPEN": 0.080303,
+        "RGTI": 0.071517,
+        "RIOT": 0.17148,
+        "IONQ": 0.071519,
+        "HOOD": 0.064813,
+        "RUN": 0.10523,
+        "GME": 0.100475,
+        "GOOG": 0.029459,
+        "CDE": 0.186594
+      }
+    },
+    {
+      "id": 53,
+      "archetype": "diversified_mixed",
+      "tier": "high",
+      "weights": {
+        "MSFT": 0.085899,
+        "QUBT": 0.437919,
+        "F": 0.060873,
+        "SOFI": 0.2036,
+        "COIN": 0.211709
+      }
+    },
+    {
+      "id": 54,
+      "archetype": "diversified_mixed",
+      "tier": "low",
+      "weights": {
+        "SPCE": 0.027029,
+        "SOUN": 0.18273,
+        "F": 0.167599,
+        "SCHD": 0.034003,
+        "OPEN": 0.080344,
+        "CDE": 0.111992,
+        "GOOG": 0.062631,
+        "MARA": 0.074172,
+        "JPM": 0.21231,
+        "CLSK": 0.04719
+      }
+    },
+    {
+      "id": 55,
+      "archetype": "diversified_mixed",
+      "tier": "regular",
+      "weights": {
+        "CHPT": 0.055099,
+        "SOUN": 0.12242,
+        "COIN": 0.125538,
+        "SOFI": 0.133109,
+        "XOM": 0.030157,
+        "QUBT": 0.101456,
+        "BBAI": 0.066355,
+        "GOOG": 0.059483,
+        "CLSK": 0.045958,
+        "VXUS": 0.047102,
+        "MARA": 0.101748,
+        "TQQQ": 0.111574
+      }
+    },
+    {
+      "id": 56,
+      "archetype": "diversified_mixed",
+      "tier": "high",
+      "weights": {
+        "SLB": 0.048363,
+        "BBAI": 0.074755,
+        "EOG": 0.137884,
+        "IONQ": 0.097865,
+        "GOOG": 0.107431,
+        "FUBO": 0.117725,
+        "SOUN": 0.221138,
+        "VYM": 0.194839
+      }
+    },
+    {
+      "id": 57,
+      "archetype": "diversified_mixed",
+      "tier": "low",
+      "weights": {
+        "CLSK": 0.086878,
+        "AMC": 0.147294,
+        "MSTR": 0.122015,
+        "GME": 0.117875,
+        "FUBO": 0.110398,
+        "VXUS": 0.237258,
+        "SPCE": 0.121277,
+        "RGTI": 0.057004
+      }
+    },
+    {
+      "id": 58,
+      "archetype": "diversified_mixed",
+      "tier": "regular",
+      "weights": {
+        "PG": 0.101028,
+        "CDE": 0.066211,
+        "RGTI": 0.04589,
+        "MSTR": 0.113986,
+        "VXUS": 0.054489,
+        "SCHD": 0.111543,
+        "PLTR": 0.122769,
+        "HL": 0.157479,
+        "VYM": 0.064509,
+        "CHPT": 0.162095
+      }
+    },
+    {
+      "id": 59,
+      "archetype": "diversified_mixed",
+      "tier": "high",
+      "weights": {
+        "JPM": 0.057084,
+        "COIN": 0.101718,
+        "AMC": 0.237297,
+        "UEC": 0.162217,
+        "CHPT": 0.03885,
+        "UNH": 0.076945,
+        "DJT": 0.114901,
+        "SPCE": 0.210989
+      }
+    },
+    {
+      "id": 60,
+      "archetype": "diversified_mixed",
+      "tier": "low",
+      "weights": {
+        "LCID": 0.162617,
+        "OPEN": 0.060772,
+        "UNH": 0.071864,
+        "GOOG": 0.074975,
+        "AMC": 0.076856,
+        "F": 0.040479,
+        "SOUN": 0.164965,
+        "TQQQ": 0.078766,
+        "RUN": 0.096891,
+        "IONQ": 0.054007,
+        "QUBT": 0.098855,
+        "COIN": 0.018952
+      }
+    },
+    {
+      "id": 61,
+      "archetype": "diversified_mixed",
+      "tier": "regular",
+      "weights": {
+        "IONQ": 0.062166,
+        "F": 0.036387,
+        "CHPT": 0.099966,
+        "SCHD": 0.073061,
+        "SLB": 0.133628,
+        "JPM": 0.174417,
+        "LCID": 0.074694,
+        "BBAI": 0.159643,
+        "FUBO": 0.113076,
+        "DJT": 0.072961
+      }
+    },
+    {
+      "id": 62,
+      "archetype": "diversified_mixed",
+      "tier": "high",
+      "weights": {
+        "HOOD": 0.253706,
+        "PLUG": 0.236488,
+        "COIN": 0.177976,
+        "UNH": 0.180034,
+        "CDE": 0.151796
+      }
+    },
+    {
+      "id": 63,
+      "archetype": "diversified_mixed",
+      "tier": "low",
+      "weights": {
+        "F": 0.117978,
+        "AMC": 0.150562,
+        "GOOG": 0.197794,
+        "FUBO": 0.0826,
+        "RIOT": 0.037584,
+        "CLSK": 0.191111,
+        "AAPL": 0.043727,
+        "UEC": 0.178645
+      }
+    },
+    {
+      "id": 64,
+      "archetype": "diversified_mixed",
+      "tier": "regular",
+      "weights": {
+        "LCID": 0.210628,
+        "GME": 0.141054,
+        "SPCE": 0.057303,
+        "SCHD": 0.065178,
+        "HOOD": 0.189904,
+        "TQQQ": 0.133106,
+        "AAPL": 0.063273,
+        "RIOT": 0.139555
+      }
+    },
+    {
+      "id": 65,
+      "archetype": "diversified_mixed",
+      "tier": "high",
+      "weights": {
+        "GOOG": 0.166282,
+        "FUBO": 0.132792,
+        "PLUG": 0.161891,
+        "UNH": 0.29435,
+        "TQQQ": 0.244684
+      }
+    },
+    {
+      "id": 66,
+      "archetype": "diversified_mixed",
+      "tier": "low",
+      "weights": {
+        "VYM": 0.040643,
+        "QUBT": 0.039056,
+        "MARA": 0.104444,
+        "AMC": 0.123628,
+        "SOUN": 0.109676,
+        "SPCE": 0.117646,
+        "GOOG": 0.064466,
+        "SCHD": 0.054565,
+        "UEC": 0.146832,
+        "PLUG": 0.049583,
+        "UNH": 0.06274,
+        "SLB": 0.086721
+      }
+    },
+    {
+      "id": 67,
+      "archetype": "diversified_mixed",
+      "tier": "regular",
+      "weights": {
+        "UEC": 0.084985,
+        "CLSK": 0.254795,
+        "HL": 0.136476,
+        "PLUG": 0.355071,
+        "LCID": 0.168673
+      }
+    },
+    {
+      "id": 68,
+      "archetype": "diversified_mixed",
+      "tier": "high",
+      "weights": {
+        "BBAI": 0.272895,
+        "XOM": 0.331096,
+        "SPCE": 0.149894,
+        "OPEN": 0.055315,
+        "HL": 0.1908
+      }
+    },
+    {
+      "id": 69,
+      "archetype": "diversified_mixed",
+      "tier": "low",
+      "weights": {
+        "SCHD": 0.136483,
+        "MSFT": 0.090282,
+        "FCEL": 0.191664,
+        "SLB": 0.13213,
+        "SOFI": 0.021329,
+        "SPCE": 0.050735,
+        "UNH": 0.045686,
+        "MARA": 0.089052,
+        "UEC": 0.181843,
+        "CHPT": 0.060795
+      }
+    },
+    {
+      "id": 70,
+      "archetype": "diversified_mixed",
+      "tier": "regular",
+      "weights": {
+        "PG": 0.319791,
+        "SOFI": 0.267267,
+        "SPCE": 0.097698,
+        "EOG": 0.118014,
+        "AAPL": 0.19723
+      }
+    },
+    {
+      "id": 71,
+      "archetype": "diversified_mixed",
+      "tier": "high",
+      "weights": {
+        "UNH": 0.084055,
+        "OPEN": 0.066256,
+        "AAPL": 0.17578,
+        "MSFT": 0.136401,
+        "F": 0.022668,
+        "RGTI": 0.279126,
+        "PLTR": 0.141193,
+        "SLB": 0.094521
+      }
+    },
+    {
+      "id": 72,
+      "archetype": "diversified_mixed",
+      "tier": "low",
+      "weights": {
+        "GME": 0.049341,
+        "JPM": 0.191786,
+        "PLTR": 0.092616,
+        "RUN": 0.285786,
+        "LCID": 0.034307,
+        "SPCE": 0.097311,
+        "FCEL": 0.113194,
+        "IONQ": 0.13566
+      }
+    },
+    {
+      "id": 73,
+      "archetype": "diversified_mixed",
+      "tier": "regular",
+      "weights": {
+        "RUN": 0.024245,
+        "MARA": 0.152428,
+        "SPCE": 0.14015,
+        "PLTR": 0.110812,
+        "VXUS": 0.067974,
+        "RGTI": 0.055271,
+        "XOM": 0.07952,
+        "MSFT": 0.099838,
+        "PLUG": 0.021426,
+        "DJT": 0.084239,
+        "SLB": 0.097898,
+        "FUBO": 0.066198
+      }
+    },
+    {
+      "id": 74,
+      "archetype": "diversified_mixed",
+      "tier": "high",
+      "weights": {
+        "MSTR": 0.113829,
+        "GOOG": 0.061099,
+        "HOOD": 0.359417,
+        "BBAI": 0.258931,
+        "AMC": 0.206724
+      }
+    },
+    {
+      "id": 75,
+      "archetype": "diversified_mixed",
+      "tier": "low",
+      "weights": {
+        "PG": 0.126202,
+        "PLUG": 0.038702,
+        "SLB": 0.035496,
+        "DJT": 0.148608,
+        "F": 0.039771,
+        "GOOG": 0.115393,
+        "MARA": 0.151968,
+        "HL": 0.041823,
+        "XOM": 0.078611,
+        "FCEL": 0.059989,
+        "JPM": 0.143286,
+        "CHPT": 0.020151
+      }
+    },
+    {
+      "id": 76,
+      "archetype": "diversified_mixed",
+      "tier": "regular",
+      "weights": {
+        "SCHD": 0.07991,
+        "CLSK": 0.049664,
+        "QUBT": 0.074378,
+        "JPM": 0.062114,
+        "HL": 0.13348,
+        "F": 0.059331,
+        "PG": 0.248026,
+        "LCID": 0.072373,
+        "IONQ": 0.129467,
+        "HOOD": 0.091258
+      }
+    },
+    {
+      "id": 77,
+      "archetype": "diversified_mixed",
+      "tier": "high",
+      "weights": {
+        "VYM": 0.051736,
+        "AMC": 0.150752,
+        "PG": 0.105194,
+        "UEC": 0.191289,
+        "HL": 0.12015,
+        "VXUS": 0.053117,
+        "CDE": 0.081824,
+        "UNH": 0.07166,
+        "SOFI": 0.083101,
+        "GOOG": 0.091176
+      }
+    },
+    {
+      "id": 78,
+      "archetype": "diversified_mixed",
+      "tier": "low",
+      "weights": {
+        "SOFI": 0.129814,
+        "MSTR": 0.029257,
+        "F": 0.132145,
+        "OPEN": 0.132495,
+        "GME": 0.095165,
+        "CLSK": 0.05872,
+        "XOM": 0.071807,
+        "AMC": 0.051743,
+        "UEC": 0.062295,
+        "PLTR": 0.031428,
+        "VYM": 0.051028,
+        "SLB": 0.154104
+      }
+    },
+    {
+      "id": 79,
+      "archetype": "diversified_mixed",
+      "tier": "regular",
+      "weights": {
+        "RIVN": 0.065997,
+        "SOXL": 0.154123,
+        "UNH": 0.173772,
+        "SPCE": 0.019451,
+        "HOOD": 0.042859,
+        "MSFT": 0.041764,
+        "F": 0.128441,
+        "AMC": 0.173366,
+        "AAPL": 0.031631,
+        "BBAI": 0.026538,
+        "TQQQ": 0.057682,
+        "JPM": 0.084375
+      }
+    },
+    {
+      "id": 80,
+      "archetype": "diversified_mixed",
+      "tier": "high",
+      "weights": {
+        "HL": 0.128553,
+        "UNH": 0.085719,
+        "OPEN": 0.04814,
+        "BBAI": 0.035836,
+        "FUBO": 0.051329,
+        "COIN": 0.056126,
+        "SLB": 0.080394,
+        "PLUG": 0.108495,
+        "SOFI": 0.074303,
+        "MARA": 0.130803,
+        "SPCE": 0.126084,
+        "TQQQ": 0.074218
+      }
+    },
+    {
+      "id": 81,
+      "archetype": "diversified_mixed",
+      "tier": "low",
+      "weights": {
+        "RUN": 0.199179,
+        "HL": 0.138086,
+        "SPCE": 0.05898,
+        "SOXL": 0.184922,
+        "F": 0.022148,
+        "OPEN": 0.02256,
+        "SOUN": 0.181715,
+        "VXUS": 0.034093,
+        "COIN": 0.06632,
+        "TQQQ": 0.091997
+      }
+    },
+    {
+      "id": 82,
+      "archetype": "diversified_mixed",
+      "tier": "regular",
+      "weights": {
+        "VYM": 0.046386,
+        "EOG": 0.074595,
+        "GME": 0.100257,
+        "SLB": 0.024773,
+        "MSFT": 0.088476,
+        "DJT": 0.119337,
+        "SOUN": 0.174833,
+        "LCID": 0.140822,
+        "GOOG": 0.114091,
+        "HL": 0.116431
+      }
+    },
+    {
+      "id": 83,
+      "archetype": "diversified_mixed",
+      "tier": "high",
+      "weights": {
+        "LCID": 0.140602,
+        "IONQ": 0.032542,
+        "MARA": 0.518738,
+        "BBAI": 0.18514,
+        "VXUS": 0.122979
+      }
+    },
+    {
+      "id": 84,
+      "archetype": "diversified_mixed",
+      "tier": "low",
+      "weights": {
+        "RUN": 0.101048,
+        "VYM": 0.114227,
+        "CHPT": 0.053545,
+        "TQQQ": 0.088036,
+        "CLSK": 0.072003,
+        "PLTR": 0.097512,
+        "COIN": 0.084871,
+        "SOXL": 0.043161,
+        "BBAI": 0.102828,
+        "GOOG": 0.242769
+      }
+    },
+    {
+      "id": 85,
+      "archetype": "diversified_mixed",
+      "tier": "regular",
+      "weights": {
+        "UEC": 0.092012,
+        "VYM": 0.122477,
+        "SOFI": 0.161407,
+        "CLSK": 0.047254,
+        "FCEL": 0.241169,
+        "AMC": 0.07084,
+        "RIOT": 0.222505,
+        "GOOG": 0.042336
+      }
+    },
+    {
+      "id": 86,
+      "archetype": "diversified_mixed",
+      "tier": "high",
+      "weights": {
+        "FCEL": 0.21732,
+        "DJT": 0.153533,
+        "F": 0.156361,
+        "RUN": 0.060339,
+        "SLB": 0.412448
+      }
+    },
+    {
+      "id": 87,
+      "archetype": "diversified_mixed",
+      "tier": "low",
+      "weights": {
+        "PLUG": 0.087654,
+        "FCEL": 0.151331,
+        "SLB": 0.052354,
+        "RIVN": 0.115135,
+        "CHPT": 0.206696,
+        "SOUN": 0.083162,
+        "CLSK": 0.16749,
+        "PG": 0.136177
+      }
+    },
+    {
+      "id": 88,
+      "archetype": "diversified_mixed",
+      "tier": "regular",
+      "weights": {
+        "FCEL": 0.079761,
+        "RUN": 0.100723,
+        "MARA": 0.163724,
+        "DJT": 0.129008,
+        "UEC": 0.083899,
+        "PLUG": 0.079657,
+        "GOOG": 0.075399,
+        "XOM": 0.049859,
+        "SOUN": 0.060174,
+        "VYM": 0.018922,
+        "UNH": 0.119885,
+        "TQQQ": 0.038988
+      }
+    },
+    {
+      "id": 89,
+      "archetype": "diversified_mixed",
+      "tier": "high",
+      "weights": {
+        "PG": 0.260474,
+        "QUBT": 0.261258,
+        "IONQ": 0.181083,
+        "SPCE": 0.2231,
+        "VYM": 0.074086
+      }
+    },
+    {
+      "id": 90,
+      "archetype": "diversified_mixed",
+      "tier": "low",
+      "weights": {
+        "SLB": 0.085436,
+        "CHPT": 0.077314,
+        "SOUN": 0.131579,
+        "SOFI": 0.111779,
+        "HOOD": 0.124764,
+        "TQQQ": 0.021427,
+        "VYM": 0.066058,
+        "PG": 0.037573,
+        "RGTI": 0.029459,
+        "GME": 0.132441,
+        "HL": 0.136784,
+        "UNH": 0.045386
+      }
+    },
+    {
+      "id": 91,
+      "archetype": "diversified_mixed",
+      "tier": "regular",
+      "weights": {
+        "BBAI": 0.245883,
+        "SLB": 0.145973,
+        "SCHD": 0.063217,
+        "RIVN": 0.329176,
+        "EOG": 0.215751
+      }
+    },
+    {
+      "id": 92,
+      "archetype": "diversified_mixed",
+      "tier": "high",
+      "weights": {
+        "COIN": 0.053338,
+        "RUN": 0.226852,
+        "EOG": 0.043404,
+        "SOXL": 0.063862,
+        "PLTR": 0.047272,
+        "HL": 0.045484,
+        "FUBO": 0.155467,
+        "TQQQ": 0.021702,
+        "QUBT": 0.039965,
+        "LCID": 0.121494,
+        "UEC": 0.059961,
+        "JPM": 0.121199
+      }
+    },
+    {
+      "id": 93,
+      "archetype": "diversified_mixed",
+      "tier": "low",
+      "weights": {
+        "SLB": 0.407502,
+        "HOOD": 0.137643,
+        "MSTR": 0.149038,
+        "IONQ": 0.175632,
+        "AMC": 0.130185
+      }
+    },
+    {
+      "id": 94,
+      "archetype": "diversified_mixed",
+      "tier": "regular",
+      "weights": {
+        "AMC": 0.139141,
+        "UEC": 0.101104,
+        "PLUG": 0.327148,
+        "LCID": 0.159086,
+        "EOG": 0.273521
+      }
+    },
+    {
+      "id": 95,
+      "archetype": "diversified_mixed",
+      "tier": "high",
+      "weights": {
+        "XOM": 0.049629,
+        "CHPT": 0.034343,
+        "CLSK": 0.07293,
+        "FUBO": 0.178976,
+        "MARA": 0.031125,
+        "SCHD": 0.205666,
+        "UEC": 0.040715,
+        "MSFT": 0.069783,
+        "PG": 0.03972,
+        "FCEL": 0.037083,
+        "SOUN": 0.115581,
+        "COIN": 0.124447
+      }
+    },
+    {
+      "id": 96,
+      "archetype": "diversified_mixed",
+      "tier": "low",
+      "weights": {
+        "QUBT": 0.127909,
+        "FCEL": 0.101936,
+        "VYM": 0.119667,
+        "SPCE": 0.40582,
+        "UEC": 0.244668
+      }
+    },
+    {
+      "id": 97,
+      "archetype": "diversified_mixed",
+      "tier": "regular",
+      "weights": {
+        "COIN": 0.092177,
+        "JPM": 0.116662,
+        "MSTR": 0.141796,
+        "SOFI": 0.054968,
+        "GME": 0.111793,
+        "F": 0.082794,
+        "AMC": 0.346709,
+        "MSFT": 0.053101
+      }
+    },
+    {
+      "id": 98,
+      "archetype": "diversified_mixed",
+      "tier": "high",
+      "weights": {
+        "LCID": 0.336406,
+        "SOFI": 0.163555,
+        "SOUN": 0.143774,
+        "IONQ": 0.182505,
+        "PLTR": 0.17376
+      }
+    },
+    {
+      "id": 99,
+      "archetype": "diversified_mixed",
+      "tier": "low",
+      "weights": {
+        "AAPL": 0.098099,
+        "RIVN": 0.137604,
+        "RUN": 0.090462,
+        "MSTR": 0.085165,
+        "QUBT": 0.073548,
+        "LCID": 0.044031,
+        "CHPT": 0.06423,
+        "VYM": 0.239701,
+        "SCHD": 0.122478,
+        "HL": 0.044682
+      }
+    },
+    {
+      "id": 100,
+      "archetype": "diversified_mixed",
+      "tier": "regular",
+      "weights": {
+        "MSTR": 0.056686,
+        "SOUN": 0.114052,
+        "VXUS": 0.041415,
+        "VYM": 0.180337,
+        "PLTR": 0.084123,
+        "EOG": 0.080388,
+        "SLB": 0.070851,
+        "AMC": 0.096371,
+        "GME": 0.016332,
+        "AAPL": 0.05223,
+        "RUN": 0.053388,
+        "TQQQ": 0.153828
+      }
+    },
+    {
+      "id": 101,
+      "archetype": "diversified_mixed",
+      "tier": "high",
+      "weights": {
+        "RUN": 0.07477,
+        "VYM": 0.11053,
+        "F": 0.114519,
+        "RIOT": 0.181118,
+        "VXUS": 0.274258,
+        "FUBO": 0.053851,
+        "SPCE": 0.100876,
+        "AMC": 0.090078
+      }
+    },
+    {
+      "id": 102,
+      "archetype": "diversified_mixed",
+      "tier": "low",
+      "weights": {
+        "FCEL": 0.048113,
+        "SOUN": 0.124842,
+        "AMC": 0.241853,
+        "UEC": 0.169057,
+        "DJT": 0.06384,
+        "F": 0.167765,
+        "LCID": 0.129923,
+        "VYM": 0.054607
+      }
+    },
+    {
+      "id": 103,
+      "archetype": "diversified_mixed",
+      "tier": "regular",
+      "weights": {
+        "VYM": 0.16522,
+        "COIN": 0.128799,
+        "PG": 0.427343,
+        "BBAI": 0.066296,
+        "CLSK": 0.212342
+      }
+    },
+    {
+      "id": 104,
+      "archetype": "diversified_mixed",
+      "tier": "high",
+      "weights": {
+        "GME": 0.086731,
+        "VYM": 0.080409,
+        "F": 0.133828,
+        "AMC": 0.100401,
+        "FUBO": 0.017428,
+        "SOUN": 0.199497,
+        "MARA": 0.105846,
+        "GOOG": 0.17496,
+        "SLB": 0.045043,
+        "RUN": 0.055856
+      }
+    },
+    {
+      "id": 105,
+      "archetype": "diversified_mixed",
+      "tier": "low",
+      "weights": {
+        "SOUN": 0.151647,
+        "MSFT": 0.121386,
+        "SOFI": 0.086863,
+        "F": 0.217234,
+        "MSTR": 0.126726,
+        "UNH": 0.029047,
+        "HOOD": 0.074128,
+        "RIOT": 0.035553,
+        "LCID": 0.030713,
+        "CLSK": 0.126702
+      }
+    },
+    {
+      "id": 106,
+      "archetype": "diversified_mixed",
+      "tier": "regular",
+      "weights": {
+        "OPEN": 0.114475,
+        "AMC": 0.068104,
+        "F": 0.201155,
+        "AAPL": 0.489211,
+        "SLB": 0.127054
+      }
+    },
+    {
+      "id": 107,
+      "archetype": "diversified_mixed",
+      "tier": "high",
+      "weights": {
+        "SOFI": 0.064105,
+        "CHPT": 0.033134,
+        "SPCE": 0.165923,
+        "PLTR": 0.158381,
+        "RIOT": 0.047026,
+        "PG": 0.115752,
+        "JPM": 0.100387,
+        "RGTI": 0.058851,
+        "RUN": 0.232266,
+        "XOM": 0.024174
+      }
+    },
+    {
+      "id": 108,
+      "archetype": "diversified_mixed",
+      "tier": "low",
+      "weights": {
+        "QUBT": 0.210305,
+        "CHPT": 0.039051,
+        "EOG": 0.050468,
+        "HOOD": 0.096818,
+        "PLTR": 0.074133,
+        "FCEL": 0.028274,
+        "DJT": 0.055778,
+        "SCHD": 0.0366,
+        "IONQ": 0.091955,
+        "PG": 0.093705,
+        "AMC": 0.141998,
+        "LCID": 0.080915
+      }
+    },
+    {
+      "id": 109,
+      "archetype": "diversified_mixed",
+      "tier": "regular",
+      "weights": {
+        "SOUN": 0.109504,
+        "LCID": 0.058957,
+        "VYM": 0.058041,
+        "GME": 0.229141,
+        "RIVN": 0.210513,
+        "CLSK": 0.237205,
+        "SOXL": 0.054382,
+        "BBAI": 0.042257
+      }
+    },
+    {
+      "id": 110,
+      "archetype": "diversified_mixed",
+      "tier": "high",
+      "weights": {
+        "HL": 0.248071,
+        "RUN": 0.153774,
+        "PG": 0.340262,
+        "CLSK": 0.124054,
+        "SOXL": 0.13384
+      }
+    },
+    {
+      "id": 111,
+      "archetype": "diversified_mixed",
+      "tier": "low",
+      "weights": {
+        "MSTR": 0.048809,
+        "FCEL": 0.28486,
+        "SCHD": 0.056377,
+        "RGTI": 0.081876,
+        "CDE": 0.133003,
+        "EOG": 0.09058,
+        "VYM": 0.153822,
+        "MSFT": 0.046789,
+        "MARA": 0.054519,
+        "GOOG": 0.049365
+      }
+    },
+    {
+      "id": 112,
+      "archetype": "balanced_small",
+      "tier": "regular",
+      "weights": {
+        "PLUG": 0.625392,
+        "OPEN": 0.374608
+      }
+    },
+    {
+      "id": 113,
+      "archetype": "balanced_small",
+      "tier": "high",
+      "weights": {
+        "MARA": 0.257934,
+        "F": 0.359788,
+        "AAPL": 0.224664,
+        "RGTI": 0.157615
+      }
+    },
+    {
+      "id": 114,
+      "archetype": "balanced_small",
+      "tier": "low",
+      "weights": {
+        "CLSK": 0.411778,
+        "RGTI": 0.08255,
+        "RIVN": 0.505672
+      }
+    },
+    {
+      "id": 115,
+      "archetype": "balanced_small",
+      "tier": "regular",
+      "weights": {
+        "SOFI": 0.375472,
+        "RIOT": 0.340616,
+        "AMC": 0.283912
+      }
+    },
+    {
+      "id": 116,
+      "archetype": "balanced_small",
+      "tier": "high",
+      "weights": {
+        "GME": 0.077376,
+        "SOFI": 0.181458,
+        "VYM": 0.287916,
+        "BBAI": 0.45325
+      }
+    },
+    {
+      "id": 117,
+      "archetype": "balanced_small",
+      "tier": "low",
+      "weights": {
+        "F": 0.483747,
+        "FUBO": 0.403298,
+        "EOG": 0.112954
+      }
+    },
+    {
+      "id": 118,
+      "archetype": "balanced_small",
+      "tier": "regular",
+      "weights": {
+        "LCID": 0.653636,
+        "XOM": 0.072464,
+        "SOFI": 0.2739
+      }
+    },
+    {
+      "id": 119,
+      "archetype": "balanced_small",
+      "tier": "high",
+      "weights": {
+        "SOFI": 0.255799,
+        "QUBT": 0.661461,
+        "CLSK": 0.082739
+      }
+    },
+    {
+      "id": 120,
+      "archetype": "balanced_small",
+      "tier": "low",
+      "weights": {
+        "AAPL": 0.224207,
+        "UNH": 0.345948,
+        "OPEN": 0.429844
+      }
+    },
+    {
+      "id": 121,
+      "archetype": "balanced_small",
+      "tier": "regular",
+      "weights": {
+        "PLTR": 0.192957,
+        "TQQQ": 0.324443,
+        "AAPL": 0.4826
+      }
+    },
+    {
+      "id": 122,
+      "archetype": "balanced_small",
+      "tier": "high",
+      "weights": {
+        "BBAI": 0.231132,
+        "MSFT": 0.228136,
+        "HOOD": 0.300533,
+        "AMC": 0.240199
+      }
+    },
+    {
+      "id": 123,
+      "archetype": "balanced_small",
+      "tier": "low",
+      "weights": {
+        "LCID": 0.760675,
+        "RGTI": 0.076303,
+        "GOOG": 0.163022
+      }
+    },
+    {
+      "id": 124,
+      "archetype": "balanced_small",
+      "tier": "regular",
+      "weights": {
+        "RGTI": 0.420752,
+        "LCID": 0.579248
+      }
+    },
+    {
+      "id": 125,
+      "archetype": "balanced_small",
+      "tier": "high",
+      "weights": {
+        "MSTR": 0.29495,
+        "HOOD": 0.70505
+      }
+    },
+    {
+      "id": 126,
+      "archetype": "balanced_small",
+      "tier": "low",
+      "weights": {
+        "MSFT": 0.205263,
+        "RUN": 0.441619,
+        "SOXL": 0.353118
+      }
+    },
+    {
+      "id": 127,
+      "archetype": "balanced_small",
+      "tier": "regular",
+      "weights": {
+        "PLTR": 0.548587,
+        "FCEL": 0.136411,
+        "PG": 0.315002
+      }
+    },
+    {
+      "id": 128,
+      "archetype": "balanced_small",
+      "tier": "high",
+      "weights": {
+        "CDE": 0.428398,
+        "MSTR": 0.178712,
+        "RIVN": 0.220528,
+        "IONQ": 0.172362
+      }
+    },
+    {
+      "id": 129,
+      "archetype": "balanced_small",
+      "tier": "low",
+      "weights": {
+        "TQQQ": 0.289327,
+        "SLB": 0.18427,
+        "IONQ": 0.217312,
+        "FCEL": 0.309091
+      }
+    },
+    {
+      "id": 130,
+      "archetype": "balanced_small",
+      "tier": "regular",
+      "weights": {
+        "F": 0.401533,
+        "CHPT": 0.598467
+      }
+    },
+    {
+      "id": 131,
+      "archetype": "balanced_small",
+      "tier": "high",
+      "weights": {
+        "MSTR": 0.260102,
+        "MARA": 0.21167,
+        "SOUN": 0.528228
+      }
+    },
+    {
+      "id": 132,
+      "archetype": "balanced_small",
+      "tier": "low",
+      "weights": {
+        "HOOD": 0.260043,
+        "DJT": 0.14891,
+        "OPEN": 0.591048
+      }
+    },
+    {
+      "id": 133,
+      "archetype": "balanced_small",
+      "tier": "regular",
+      "weights": {
+        "XOM": 0.412276,
+        "OPEN": 0.121832,
+        "IONQ": 0.246378,
+        "TQQQ": 0.219514
+      }
+    },
+    {
+      "id": 134,
+      "archetype": "balanced_small",
+      "tier": "high",
+      "weights": {
+        "CHPT": 0.229667,
+        "COIN": 0.582044,
+        "CLSK": 0.18829
+      }
+    },
+    {
+      "id": 135,
+      "archetype": "balanced_small",
+      "tier": "low",
+      "weights": {
+        "QUBT": 0.367589,
+        "FUBO": 0.19763,
+        "SOUN": 0.434781
+      }
+    },
+    {
+      "id": 136,
+      "archetype": "balanced_small",
+      "tier": "regular",
+      "weights": {
+        "OPEN": 0.183394,
+        "RIOT": 0.183045,
+        "FUBO": 0.436631,
+        "GOOG": 0.19693
+      }
+    },
+    {
+      "id": 137,
+      "archetype": "balanced_small",
+      "tier": "high",
+      "weights": {
+        "MSTR": 0.601128,
+        "CHPT": 0.245149,
+        "DJT": 0.083493,
+        "RUN": 0.07023
+      }
+    },
+    {
+      "id": 138,
+      "archetype": "balanced_small",
+      "tier": "low",
+      "weights": {
+        "TQQQ": 0.77319,
+        "AMC": 0.22681
+      }
+    },
+    {
+      "id": 139,
+      "archetype": "balanced_small",
+      "tier": "regular",
+      "weights": {
+        "VXUS": 0.550082,
+        "CLSK": 0.17417,
+        "CDE": 0.199374,
+        "RGTI": 0.076375
+      }
+    },
+    {
+      "id": 140,
+      "archetype": "balanced_small",
+      "tier": "high",
+      "weights": {
+        "TQQQ": 0.488529,
+        "RIVN": 0.511471
+      }
+    },
+    {
+      "id": 141,
+      "archetype": "balanced_small",
+      "tier": "low",
+      "weights": {
+        "PG": 0.280472,
+        "CLSK": 0.174647,
+        "GME": 0.30048,
+        "MARA": 0.244401
+      }
+    },
+    {
+      "id": 142,
+      "archetype": "balanced_small",
+      "tier": "regular",
+      "weights": {
+        "F": 0.320766,
+        "PLUG": 0.679234
+      }
+    },
+    {
+      "id": 143,
+      "archetype": "balanced_small",
+      "tier": "high",
+      "weights": {
+        "IONQ": 0.238068,
+        "UNH": 0.153768,
+        "SCHD": 0.054855,
+        "HL": 0.553309
+      }
+    },
+    {
+      "id": 144,
+      "archetype": "balanced_small",
+      "tier": "low",
+      "weights": {
+        "UNH": 0.448372,
+        "QUBT": 0.228227,
+        "JPM": 0.155407,
+        "GME": 0.167994
+      }
+    },
+    {
+      "id": 145,
+      "archetype": "balanced_small",
+      "tier": "regular",
+      "weights": {
+        "DJT": 0.196966,
+        "HL": 0.259296,
+        "SOUN": 0.543738
+      }
+    },
+    {
+      "id": 146,
+      "archetype": "balanced_small",
+      "tier": "high",
+      "weights": {
+        "F": 0.901896,
+        "FCEL": 0.098104
+      }
+    },
+    {
+      "id": 147,
+      "archetype": "balanced_small",
+      "tier": "low",
+      "weights": {
+        "SPCE": 0.135722,
+        "RUN": 0.218941,
+        "FUBO": 0.191087,
+        "F": 0.45425
+      }
+    },
+    {
+      "id": 148,
+      "archetype": "balanced_small",
+      "tier": "regular",
+      "weights": {
+        "JPM": 0.394904,
+        "FCEL": 0.178567,
+        "RUN": 0.323022,
+        "EOG": 0.103506
+      }
+    },
+    {
+      "id": 149,
+      "archetype": "balanced_small",
+      "tier": "high",
+      "weights": {
+        "RGTI": 0.376184,
+        "COIN": 0.623816
+      }
+    },
+    {
+      "id": 150,
+      "archetype": "balanced_small",
+      "tier": "low",
+      "weights": {
+        "TQQQ": 0.527855,
+        "MSFT": 0.472145
+      }
+    },
+    {
+      "id": 151,
+      "archetype": "balanced_small",
+      "tier": "regular",
+      "weights": {
+        "UNH": 0.18129,
+        "FCEL": 0.81871
+      }
+    },
+    {
+      "id": 152,
+      "archetype": "balanced_small",
+      "tier": "high",
+      "weights": {
+        "SPCE": 0.691287,
+        "FUBO": 0.308713
+      }
+    },
+    {
+      "id": 153,
+      "archetype": "balanced_small",
+      "tier": "low",
+      "weights": {
+        "HL": 0.182291,
+        "MSTR": 0.189622,
+        "SOFI": 0.275054,
+        "SOUN": 0.353033
+      }
+    },
+    {
+      "id": 154,
+      "archetype": "balanced_small",
+      "tier": "regular",
+      "weights": {
+        "DJT": 0.213562,
+        "XOM": 0.353647,
+        "SCHD": 0.309041,
+        "CLSK": 0.12375
+      }
+    },
+    {
+      "id": 155,
+      "archetype": "balanced_small",
+      "tier": "high",
+      "weights": {
+        "CDE": 0.387979,
+        "MARA": 0.180601,
+        "OPEN": 0.105937,
+        "CHPT": 0.325484
+      }
+    },
+    {
+      "id": 156,
+      "archetype": "balanced_small",
+      "tier": "low",
+      "weights": {
+        "GME": 0.324053,
+        "XOM": 0.396157,
+        "SCHD": 0.27979
+      }
+    },
+    {
+      "id": 157,
+      "archetype": "balanced_small",
+      "tier": "regular",
+      "weights": {
+        "MSTR": 0.388532,
+        "QUBT": 0.611468
+      }
+    },
+    {
+      "id": 158,
+      "archetype": "balanced_small",
+      "tier": "high",
+      "weights": {
+        "QUBT": 0.169475,
+        "SOXL": 0.294471,
+        "VYM": 0.110819,
+        "MSFT": 0.425234
+      }
+    },
+    {
+      "id": 159,
+      "archetype": "balanced_small",
+      "tier": "low",
+      "weights": {
+        "COIN": 0.443713,
+        "PLTR": 0.418527,
+        "VXUS": 0.13776
+      }
+    },
+    {
+      "id": 160,
+      "archetype": "balanced_small",
+      "tier": "regular",
+      "weights": {
+        "SCHD": 0.393778,
+        "OPEN": 0.056593,
+        "CLSK": 0.266912,
+        "PG": 0.282717
+      }
+    },
+    {
+      "id": 161,
+      "archetype": "balanced_small",
+      "tier": "high",
+      "weights": {
+        "JPM": 0.370935,
+        "CDE": 0.177328,
+        "IONQ": 0.451737
+      }
+    },
+    {
+      "id": 162,
+      "archetype": "concentrated",
+      "tier": "low",
+      "weights": {
+        "XOM": 0.285179,
+        "SOFI": 0.714821
+      }
+    },
+    {
+      "id": 163,
+      "archetype": "concentrated",
+      "tier": "regular",
+      "weights": {
+        "QUBT": 0.119553,
+        "DJT": 0.880447
+      }
+    },
+    {
+      "id": 164,
+      "archetype": "concentrated",
+      "tier": "high",
+      "weights": {
+        "CLSK": 1.0
+      }
+    },
+    {
+      "id": 165,
+      "archetype": "concentrated",
+      "tier": "low",
+      "weights": {
+        "F": 0.84342,
+        "SOXL": 0.15658
+      }
+    },
+    {
+      "id": 166,
+      "archetype": "concentrated",
+      "tier": "regular",
+      "weights": {
+        "SCHD": 0.312101,
+        "MSFT": 0.687899
+      }
+    },
+    {
+      "id": 167,
+      "archetype": "concentrated",
+      "tier": "high",
+      "weights": {
+        "JPM": 0.187255,
+        "SCHD": 0.812745
+      }
+    },
+    {
+      "id": 168,
+      "archetype": "concentrated",
+      "tier": "low",
+      "weights": {
+        "EOG": 0.554966,
+        "LCID": 0.000818,
+        "SOXL": 0.444216
+      }
+    },
+    {
+      "id": 169,
+      "archetype": "concentrated",
+      "tier": "regular",
+      "weights": {
+        "RGTI": 0.550568,
+        "UNH": 0.014235,
+        "SOUN": 0.435197
+      }
+    },
+    {
+      "id": 170,
+      "archetype": "concentrated",
+      "tier": "high",
+      "weights": {
+        "TQQQ": 0.994609,
+        "EOG": 0.005391
+      }
+    },
+    {
+      "id": 171,
+      "archetype": "concentrated",
+      "tier": "low",
+      "weights": {
+        "UNH": 0.986561,
+        "RIVN": 5.7e-05,
+        "QUBT": 0.013381
+      }
+    },
+    {
+      "id": 172,
+      "archetype": "concentrated",
+      "tier": "regular",
+      "weights": {
+        "UEC": 0.962246,
+        "VXUS": 0.037754
+      }
+    },
+    {
+      "id": 173,
+      "archetype": "concentrated",
+      "tier": "high",
+      "weights": {
+        "VYM": 1.0
+      }
+    },
+    {
+      "id": 174,
+      "archetype": "concentrated",
+      "tier": "low",
+      "weights": {
+        "PLUG": 1.0
+      }
+    },
+    {
+      "id": 175,
+      "archetype": "concentrated",
+      "tier": "regular",
+      "weights": {
+        "SOXL": 0.38184,
+        "F": 0.61816
+      }
+    },
+    {
+      "id": 176,
+      "archetype": "concentrated",
+      "tier": "high",
+      "weights": {
+        "MSFT": 1.0
+      }
+    },
+    {
+      "id": 177,
+      "archetype": "concentrated",
+      "tier": "low",
+      "weights": {
+        "SOUN": 0.043179,
+        "GME": 0.956821
+      }
+    },
+    {
+      "id": 178,
+      "archetype": "concentrated",
+      "tier": "regular",
+      "weights": {
+        "FCEL": 1.0
+      }
+    },
+    {
+      "id": 179,
+      "archetype": "concentrated",
+      "tier": "high",
+      "weights": {
+        "LCID": 0.0,
+        "CLSK": 0.997357,
+        "MSTR": 0.002643
+      }
+    },
+    {
+      "id": 180,
+      "archetype": "concentrated",
+      "tier": "low",
+      "weights": {
+        "TQQQ": 0.317776,
+        "SCHD": 0.187994,
+        "HL": 0.49423
+      }
+    },
+    {
+      "id": 181,
+      "archetype": "concentrated",
+      "tier": "regular",
+      "weights": {
+        "PLUG": 0.003191,
+        "CHPT": 0.996809
+      }
+    },
+    {
+      "id": 182,
+      "archetype": "concentrated",
+      "tier": "high",
+      "weights": {
+        "RUN": 0.166728,
+        "MSTR": 0.833272
+      }
+    },
+    {
+      "id": 183,
+      "archetype": "concentrated",
+      "tier": "low",
+      "weights": {
+        "SOFI": 1.0
+      }
+    },
+    {
+      "id": 184,
+      "archetype": "concentrated",
+      "tier": "regular",
+      "weights": {
+        "LCID": 1.0
+      }
+    },
+    {
+      "id": 185,
+      "archetype": "concentrated",
+      "tier": "high",
+      "weights": {
+        "SOUN": 1.0
+      }
+    },
+    {
+      "id": 186,
+      "archetype": "concentrated",
+      "tier": "low",
+      "weights": {
+        "SOXL": 1.0
+      }
+    },
+    {
+      "id": 187,
+      "archetype": "concentrated",
+      "tier": "regular",
+      "weights": {
+        "OPEN": 1.0
+      }
+    },
+    {
+      "id": 188,
+      "archetype": "concentrated",
+      "tier": "high",
+      "weights": {
+        "CDE": 0.049178,
+        "VXUS": 0.064541,
+        "UNH": 0.886281
+      }
+    },
+    {
+      "id": 189,
+      "archetype": "concentrated",
+      "tier": "low",
+      "weights": {
+        "SOUN": 0.404687,
+        "LCID": 0.338528,
+        "HL": 0.256785
+      }
+    },
+    {
+      "id": 190,
+      "archetype": "concentrated",
+      "tier": "regular",
+      "weights": {
+        "SOUN": 0.175564,
+        "OPEN": 0.089895,
+        "MSFT": 0.734541
+      }
+    },
+    {
+      "id": 191,
+      "archetype": "concentrated",
+      "tier": "high",
+      "weights": {
+        "PLTR": 0.329752,
+        "SOUN": 0.670248
+      }
+    },
+    {
+      "id": 192,
+      "archetype": "concentrated",
+      "tier": "low",
+      "weights": {
+        "MSFT": 0.074933,
+        "SOFI": 0.888842,
+        "LCID": 0.036225
+      }
+    },
+    {
+      "id": 193,
+      "archetype": "concentrated",
+      "tier": "regular",
+      "weights": {
+        "CLSK": 0.881507,
+        "HL": 0.030699,
+        "PLTR": 0.087794
+      }
+    },
+    {
+      "id": 194,
+      "archetype": "concentrated",
+      "tier": "high",
+      "weights": {
+        "UEC": 1.0
+      }
+    },
+    {
+      "id": 195,
+      "archetype": "concentrated",
+      "tier": "low",
+      "weights": {
+        "HOOD": 1.0
+      }
+    },
+    {
+      "id": 196,
+      "archetype": "concentrated",
+      "tier": "regular",
+      "weights": {
+        "HOOD": 0.738649,
+        "CDE": 0.261351
+      }
+    },
+    {
+      "id": 197,
+      "archetype": "concentrated",
+      "tier": "high",
+      "weights": {
+        "UEC": 0.297176,
+        "DJT": 0.702824
+      }
+    },
+    {
+      "id": 198,
+      "archetype": "concentrated",
+      "tier": "low",
+      "weights": {
+        "CDE": 1.0
+      }
+    },
+    {
+      "id": 199,
+      "archetype": "concentrated",
+      "tier": "regular",
+      "weights": {
+        "HL": 1.0
+      }
+    },
+    {
+      "id": 200,
+      "archetype": "concentrated",
+      "tier": "high",
+      "weights": {
+        "MSFT": 1.0
+      }
+    },
+    {
+      "id": 201,
+      "archetype": "concentrated",
+      "tier": "low",
+      "weights": {
+        "SPCE": 0.056282,
+        "XOM": 0.943718
+      }
+    },
+    {
+      "id": 202,
+      "archetype": "concentrated",
+      "tier": "regular",
+      "weights": {
+        "SOFI": 0.933509,
+        "PG": 3e-06,
+        "JPM": 0.066488
+      }
+    },
+    {
+      "id": 203,
+      "archetype": "concentrated",
+      "tier": "high",
+      "weights": {
+        "TQQQ": 1.0
+      }
+    },
+    {
+      "id": 204,
+      "archetype": "concentrated",
+      "tier": "low",
+      "weights": {
+        "PG": 0.381244,
+        "MSFT": 0.618756
+      }
+    },
+    {
+      "id": 205,
+      "archetype": "concentrated",
+      "tier": "regular",
+      "weights": {
+        "SCHD": 1.0
+      }
+    },
+    {
+      "id": 206,
+      "archetype": "concentrated",
+      "tier": "high",
+      "weights": {
+        "RUN": 1.0
+      }
+    },
+    {
+      "id": 207,
+      "archetype": "concentrated",
+      "tier": "low",
+      "weights": {
+        "MSFT": 7e-06,
+        "RIOT": 0.999993
+      }
+    },
+    {
+      "id": 208,
+      "archetype": "concentrated",
+      "tier": "regular",
+      "weights": {
+        "PG": 0.797846,
+        "BBAI": 0.202154
+      }
+    },
+    {
+      "id": 209,
+      "archetype": "concentrated",
+      "tier": "high",
+      "weights": {
+        "MSFT": 0.003782,
+        "DJT": 0.996218
+      }
+    },
+    {
+      "id": 210,
+      "archetype": "concentrated",
+      "tier": "low",
+      "weights": {
+        "F": 1.0
+      }
+    },
+    {
+      "id": 211,
+      "archetype": "concentrated",
+      "tier": "regular",
+      "weights": {
+        "RUN": 0.000211,
+        "CHPT": 0.966935,
+        "RIVN": 0.032854
+      }
+    },
+    {
+      "id": 212,
+      "archetype": "speculative_heavy",
+      "tier": "high",
+      "weights": {
+        "DJT": 0.043968,
+        "SOXL": 0.109615,
+        "RIOT": 0.168457,
+        "EOG": 0.24779,
+        "FCEL": 0.18674,
+        "OPEN": 0.097737,
+        "CLSK": 0.120081,
+        "SOUN": 0.02561
+      }
+    },
+    {
+      "id": 213,
+      "archetype": "speculative_heavy",
+      "tier": "low",
+      "weights": {
+        "HOOD": 0.31739,
+        "FUBO": 0.203265,
+        "TQQQ": 0.117372,
+        "OPEN": 0.265671,
+        "MARA": 0.096302
+      }
+    },
+    {
+      "id": 214,
+      "archetype": "speculative_heavy",
+      "tier": "regular",
+      "weights": {
+        "UEC": 0.154509,
+        "FUBO": 0.255543,
+        "OPEN": 0.30669,
+        "GME": 0.136549,
+        "RIOT": 0.146709
+      }
+    },
+    {
+      "id": 215,
+      "archetype": "speculative_heavy",
+      "tier": "high",
+      "weights": {
+        "HL": 0.176324,
+        "SOFI": 0.020725,
+        "UEC": 0.037181,
+        "PLUG": 0.3526,
+        "LCID": 0.081569,
+        "FCEL": 0.096232,
+        "CLSK": 0.103393,
+        "SLB": 0.131976
+      }
+    },
+    {
+      "id": 216,
+      "archetype": "speculative_heavy",
+      "tier": "low",
+      "weights": {
+        "GME": 0.014056,
+        "RUN": 0.053832,
+        "BBAI": 0.169501,
+        "PLUG": 0.168361,
+        "DJT": 0.021464,
+        "AMC": 0.297314,
+        "RGTI": 0.125793,
+        "F": 0.149678
+      }
+    },
+    {
+      "id": 217,
+      "archetype": "speculative_heavy",
+      "tier": "regular",
+      "weights": {
+        "BBAI": 0.091923,
+        "SOUN": 0.120821,
+        "HL": 0.152067,
+        "RIVN": 0.173969,
+        "MSTR": 0.090314,
+        "IONQ": 0.12351,
+        "HOOD": 0.094962,
+        "F": 0.152436
+      }
+    },
+    {
+      "id": 218,
+      "archetype": "speculative_heavy",
+      "tier": "high",
+      "weights": {
+        "UEC": 0.279464,
+        "SOFI": 0.371931,
+        "FUBO": 0.133567,
+        "CDE": 0.07561,
+        "CLSK": 0.139429
+      }
+    },
+    {
+      "id": 219,
+      "archetype": "speculative_heavy",
+      "tier": "low",
+      "weights": {
+        "LCID": 0.066466,
+        "FUBO": 0.207955,
+        "DJT": 0.158186,
+        "CLSK": 0.047065,
+        "RGTI": 0.119054,
+        "RUN": 0.119685,
+        "SPCE": 0.225285,
+        "CHPT": 0.056303
+      }
+    },
+    {
+      "id": 220,
+      "archetype": "speculative_heavy",
+      "tier": "regular",
+      "weights": {
+        "MSTR": 0.223394,
+        "PLTR": 0.153567,
+        "LCID": 0.202637,
+        "RGTI": 0.10905,
+        "QUBT": 0.038439,
+        "RIVN": 0.069814,
+        "BBAI": 0.070934,
+        "TQQQ": 0.132164
+      }
+    },
+    {
+      "id": 221,
+      "archetype": "speculative_heavy",
+      "tier": "high",
+      "weights": {
+        "DJT": 0.165137,
+        "RIVN": 0.120283,
+        "OPEN": 0.068806,
+        "MSTR": 0.14051,
+        "BBAI": 0.085469,
+        "SOFI": 0.065148,
+        "LCID": 0.145725,
+        "PLTR": 0.208921
+      }
+    },
+    {
+      "id": 222,
+      "archetype": "speculative_heavy",
+      "tier": "low",
+      "weights": {
+        "RGTI": 0.085671,
+        "SOXL": 0.174697,
+        "MSTR": 0.157971,
+        "IONQ": 0.059287,
+        "TQQQ": 0.117713,
+        "SPCE": 0.20753,
+        "EOG": 0.17039,
+        "MARA": 0.026741
+      }
+    },
+    {
+      "id": 223,
+      "archetype": "speculative_heavy",
+      "tier": "regular",
+      "weights": {
+        "RGTI": 0.204847,
+        "AMC": 0.08978,
+        "DJT": 0.031377,
+        "LCID": 0.094739,
+        "EOG": 0.141146,
+        "TQQQ": 0.051682,
+        "MARA": 0.157206,
+        "SOXL": 0.229221
+      }
+    },
+    {
+      "id": 224,
+      "archetype": "speculative_heavy",
+      "tier": "high",
+      "weights": {
+        "SPCE": 0.205383,
+        "PLTR": 0.120959,
+        "IONQ": 0.007112,
+        "AMC": 0.064167,
+        "SLB": 0.029445,
+        "HL": 0.053326,
+        "CLSK": 0.388026,
+        "RIVN": 0.131584
+      }
+    },
+    {
+      "id": 225,
+      "archetype": "speculative_heavy",
+      "tier": "low",
+      "weights": {
+        "MARA": 0.009114,
+        "HL": 0.180915,
+        "LCID": 0.073527,
+        "AMC": 0.160655,
+        "CDE": 0.334406,
+        "OPEN": 0.071587,
+        "UEC": 0.049741,
+        "COIN": 0.120055
+      }
+    },
+    {
+      "id": 226,
+      "archetype": "speculative_heavy",
+      "tier": "regular",
+      "weights": {
+        "SOFI": 0.14467,
+        "IONQ": 0.061488,
+        "MARA": 0.169176,
+        "LCID": 0.090295,
+        "OPEN": 0.069727,
+        "EOG": 0.286079,
+        "RIVN": 0.078551,
+        "SOXL": 0.100015
+      }
+    },
+    {
+      "id": 227,
+      "archetype": "speculative_heavy",
+      "tier": "high",
+      "weights": {
+        "AMC": 0.227031,
+        "SOUN": 0.094001,
+        "COIN": 0.122985,
+        "F": 0.204624,
+        "DJT": 0.146485,
+        "EOG": 0.160105,
+        "FCEL": 0.003652,
+        "UEC": 0.041117
+      }
+    },
+    {
+      "id": 228,
+      "archetype": "speculative_heavy",
+      "tier": "low",
+      "weights": {
+        "SOXL": 0.538473,
+        "SOUN": 0.122369,
+        "HOOD": 0.339158
+      }
+    },
+    {
+      "id": 229,
+      "archetype": "speculative_heavy",
+      "tier": "regular",
+      "weights": {
+        "PLUG": 0.217261,
+        "CHPT": 0.072497,
+        "RUN": 0.147866,
+        "MSTR": 0.137335,
+        "FCEL": 0.06908,
+        "F": 0.081218,
+        "IONQ": 0.173287,
+        "HL": 0.101456
+      }
+    },
+    {
+      "id": 230,
+      "archetype": "speculative_heavy",
+      "tier": "high",
+      "weights": {
+        "AMC": 0.248527,
+        "OPEN": 0.118032,
+        "CLSK": 0.024873,
+        "BBAI": 0.100055,
+        "SPCE": 0.100735,
+        "SLB": 0.257898,
+        "MARA": 0.050223,
+        "DJT": 0.099655
+      }
+    },
+    {
+      "id": 231,
+      "archetype": "speculative_heavy",
+      "tier": "low",
+      "weights": {
+        "OPEN": 0.159723,
+        "HOOD": 0.382629,
+        "CHPT": 0.457648
+      }
+    },
+    {
+      "id": 232,
+      "archetype": "speculative_heavy",
+      "tier": "regular",
+      "weights": {
+        "GME": 0.043993,
+        "FCEL": 0.217005,
+        "CLSK": 0.436538,
+        "HOOD": 0.223025,
+        "PLUG": 0.07944
+      }
+    },
+    {
+      "id": 233,
+      "archetype": "speculative_heavy",
+      "tier": "high",
+      "weights": {
+        "GME": 0.394258,
+        "IONQ": 0.420478,
+        "RGTI": 0.185264
+      }
+    },
+    {
+      "id": 234,
+      "archetype": "speculative_heavy",
+      "tier": "low",
+      "weights": {
+        "RIOT": 0.116069,
+        "OPEN": 0.042675,
+        "UEC": 0.214862,
+        "RIVN": 0.516034,
+        "EOG": 0.11036
+      }
+    },
+    {
+      "id": 235,
+      "archetype": "speculative_heavy",
+      "tier": "regular",
+      "weights": {
+        "MARA": 0.133994,
+        "FUBO": 0.326821,
+        "CHPT": 0.068435,
+        "QUBT": 0.203268,
+        "RGTI": 0.267483
+      }
+    },
+    {
+      "id": 236,
+      "archetype": "speculative_heavy",
+      "tier": "high",
+      "weights": {
+        "DJT": 0.103688,
+        "EOG": 0.083132,
+        "QUBT": 0.29041,
+        "HL": 0.1022,
+        "RIOT": 0.035877,
+        "FUBO": 0.024901,
+        "LCID": 0.168434,
+        "F": 0.191357
+      }
+    },
+    {
+      "id": 237,
+      "archetype": "speculative_heavy",
+      "tier": "low",
+      "weights": {
+        "HOOD": 0.345105,
+        "RIOT": 0.059908,
+        "SPCE": 0.166588,
+        "SOFI": 0.124657,
+        "OPEN": 0.027966,
+        "IONQ": 0.073151,
+        "DJT": 0.130687,
+        "MSTR": 0.071939
+      }
+    },
+    {
+      "id": 238,
+      "archetype": "speculative_heavy",
+      "tier": "regular",
+      "weights": {
+        "SPCE": 0.20898,
+        "TQQQ": 0.06828,
+        "RGTI": 0.174281,
+        "PLTR": 0.153634,
+        "RIVN": 0.394826
+      }
+    },
+    {
+      "id": 239,
+      "archetype": "speculative_heavy",
+      "tier": "high",
+      "weights": {
+        "LCID": 0.109772,
+        "QUBT": 0.236819,
+        "GME": 0.080347,
+        "CDE": 0.067013,
+        "CLSK": 0.193655,
+        "CHPT": 0.14413,
+        "TQQQ": 0.125305,
+        "SOUN": 0.042959
+      }
+    },
+    {
+      "id": 240,
+      "archetype": "speculative_heavy",
+      "tier": "low",
+      "weights": {
+        "FCEL": 0.310172,
+        "BBAI": 0.183556,
+        "RGTI": 0.17405,
+        "DJT": 0.191145,
+        "GME": 0.141078
+      }
+    },
+    {
+      "id": 241,
+      "archetype": "speculative_heavy",
+      "tier": "regular",
+      "weights": {
+        "HOOD": 0.358554,
+        "MSTR": 0.03879,
+        "CHPT": 0.602657
+      }
+    },
+    {
+      "id": 242,
+      "archetype": "speculative_heavy",
+      "tier": "high",
+      "weights": {
+        "FCEL": 0.149987,
+        "SPCE": 0.083768,
+        "SOFI": 0.225151,
+        "HOOD": 0.307199,
+        "CDE": 0.233895
+      }
+    },
+    {
+      "id": 243,
+      "archetype": "speculative_heavy",
+      "tier": "low",
+      "weights": {
+        "LCID": 0.230405,
+        "COIN": 0.288236,
+        "F": 0.048953,
+        "SOUN": 0.163742,
+        "HOOD": 0.268664
+      }
+    },
+    {
+      "id": 244,
+      "archetype": "speculative_heavy",
+      "tier": "regular",
+      "weights": {
+        "MARA": 0.065935,
+        "CHPT": 0.832615,
+        "IONQ": 0.10145
+      }
+    },
+    {
+      "id": 245,
+      "archetype": "speculative_heavy",
+      "tier": "high",
+      "weights": {
+        "PLTR": 0.303989,
+        "RGTI": 0.197345,
+        "RUN": 0.04566,
+        "CHPT": 0.158552,
+        "HL": 0.294455
+      }
+    },
+    {
+      "id": 246,
+      "archetype": "speculative_heavy",
+      "tier": "low",
+      "weights": {
+        "EOG": 0.041082,
+        "SOXL": 0.206302,
+        "GME": 0.298328,
+        "DJT": 0.283902,
+        "SOUN": 0.170385
+      }
+    },
+    {
+      "id": 247,
+      "archetype": "speculative_heavy",
+      "tier": "regular",
+      "weights": {
+        "UEC": 0.220459,
+        "SOXL": 0.150978,
+        "MSTR": 0.224884,
+        "QUBT": 0.182389,
+        "LCID": 0.22129
+      }
+    },
+    {
+      "id": 248,
+      "archetype": "speculative_heavy",
+      "tier": "high",
+      "weights": {
+        "SOXL": 0.119991,
+        "FCEL": 0.082707,
+        "F": 0.068536,
+        "CHPT": 0.114438,
+        "CDE": 0.018462,
+        "CLSK": 0.201552,
+        "AMC": 0.104139,
+        "QUBT": 0.290173
+      }
+    },
+    {
+      "id": 249,
+      "archetype": "speculative_heavy",
+      "tier": "low",
+      "weights": {
+        "CHPT": 0.082348,
+        "SOXL": 0.240352,
+        "CDE": 0.062386,
+        "HOOD": 0.076272,
+        "OPEN": 0.146549,
+        "SOFI": 0.092826,
+        "MARA": 0.139329,
+        "MSTR": 0.159938
+      }
+    }
+  ]
+}

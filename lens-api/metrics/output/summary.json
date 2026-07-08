@@ -1,0 +1,173 @@
+{
+  "_meta": {
+    "n_portfolios": 250,
+    "as_of_dates": [
+      124,
+      164,
+      204
+    ],
+    "forward_window_days": 40,
+    "observations": 750,
+    "skipped": 0,
+    "bands": [
+      "1-20",
+      "21-40",
+      "41-60",
+      "61-80",
+      "81-99"
+    ],
+    "pearson_score_vs_realized_vol": 0.7144,
+    "pearson_score_vs_max_drawdown": 0.7354,
+    "note": "portfolio count and as-of-date count are separate; observations = portfolios x dates but the 3 dates are disjoint time-points."
+  },
+  "summary_pooled": [
+    {
+      "band": "1-20",
+      "count": 98,
+      "mean_realized_vol": 11.608,
+      "median_realized_vol": 11.5763,
+      "mean_realized_max_drawdown": 3.6596
+    },
+    {
+      "band": "21-40",
+      "count": 45,
+      "mean_realized_vol": 11.5786,
+      "median_realized_vol": 11.5974,
+      "mean_realized_max_drawdown": 4.9095
+    },
+    {
+      "band": "41-60",
+      "count": 23,
+      "mean_realized_vol": 17.5606,
+      "median_realized_vol": 15.0597,
+      "mean_realized_max_drawdown": 7.0746
+    },
+    {
+      "band": "61-80",
+      "count": 62,
+      "mean_realized_vol": 40.0792,
+      "median_realized_vol": 37.5597,
+      "mean_realized_max_drawdown": 15.8806
+    },
+    {
+      "band": "81-99",
+      "count": 522,
+      "mean_realized_vol": 57.8816,
+      "median_realized_vol": 54.9818,
+      "mean_realized_max_drawdown": 22.017
+    }
+  ],
+  "summary_per_as_of_date": {
+    "124": [
+      {
+        "band": "1-20",
+        "count": 48,
+        "mean_realized_vol": 11.5178,
+        "median_realized_vol": 11.3908,
+        "mean_realized_max_drawdown": 2.58
+      },
+      {
+        "band": "21-40",
+        "count": 1,
+        "mean_realized_vol": 9.0119,
+        "median_realized_vol": 9.0119,
+        "mean_realized_max_drawdown": 1.7471
+      },
+      {
+        "band": "41-60",
+        "count": 7,
+        "mean_realized_vol": 20.4485,
+        "median_realized_vol": 14.7368,
+        "mean_realized_max_drawdown": 6.4874
+      },
+      {
+        "band": "61-80",
+        "count": 21,
+        "mean_realized_vol": 37.5543,
+        "median_realized_vol": 37.0615,
+        "mean_realized_max_drawdown": 15.8794
+      },
+      {
+        "band": "81-99",
+        "count": 173,
+        "mean_realized_vol": 57.6022,
+        "median_realized_vol": 55.6165,
+        "mean_realized_max_drawdown": 24.9327
+      }
+    ],
+    "164": [
+      {
+        "band": "1-20",
+        "count": 26,
+        "mean_realized_vol": 12.7216,
+        "median_realized_vol": 12.5088,
+        "mean_realized_max_drawdown": 6.2588
+      },
+      {
+        "band": "21-40",
+        "count": 21,
+        "mean_realized_vol": 13.0041,
+        "median_realized_vol": 12.8657,
+        "mean_realized_max_drawdown": 6.6736
+      },
+      {
+        "band": "41-60",
+        "count": 7,
+        "mean_realized_vol": 15.0215,
+        "median_realized_vol": 15.0597,
+        "mean_realized_max_drawdown": 6.6635
+      },
+      {
+        "band": "61-80",
+        "count": 18,
+        "mean_realized_vol": 33.6057,
+        "median_realized_vol": 35.7484,
+        "mean_realized_max_drawdown": 14.8133
+      },
+      {
+        "band": "81-99",
+        "count": 178,
+        "mean_realized_vol": 49.3606,
+        "median_realized_vol": 48.1528,
+        "mean_realized_max_drawdown": 19.3583
+      }
+    ],
+    "204": [
+      {
+        "band": "1-20",
+        "count": 24,
+        "mean_realized_vol": 10.5819,
+        "median_realized_vol": 10.2053,
+        "mean_realized_max_drawdown": 3.0028
+      },
+      {
+        "band": "21-40",
+        "count": 23,
+        "mean_realized_vol": 10.3887,
+        "median_realized_vol": 9.9944,
+        "mean_realized_max_drawdown": 3.4363
+      },
+      {
+        "band": "41-60",
+        "count": 9,
+        "mean_realized_vol": 17.2894,
+        "median_realized_vol": 16.0588,
+        "mean_realized_max_drawdown": 7.851
+      },
+      {
+        "band": "61-80",
+        "count": 23,
+        "mean_realized_vol": 47.4506,
+        "median_realized_vol": 46.4761,
+        "mean_realized_max_drawdown": 16.7169
+      },
+      {
+        "band": "81-99",
+        "count": 171,
+        "mean_realized_vol": 67.0341,
+        "median_realized_vol": 63.908,
+        "mean_realized_max_drawdown": 21.8349
+      }
+    ]
+  }
+}
