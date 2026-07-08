@@ -89,6 +89,42 @@ export interface TickerInfo {
   current_price: number | null
 }
 
+/** A single symbol/company-name match from GET /search. */
+export interface SearchResult {
+  symbol: string
+  name: string
+  type: string
+  exchange: string
+}
+
+/** Full instrument snapshot from GET /ticker/{symbol}/quote, backing the
+ *  Markets (instrument-detail) page. Every numeric field is nullable because
+ *  yfinance omits fields for some instruments (ETFs have no P/E, etc.). */
+export interface TickerQuote {
+  symbol: string
+  name: string
+  type: string
+  exchange: string
+  currency: string
+  price: number | null
+  prev_close: number | null
+  open: number | null
+  day_high: number | null
+  day_low: number | null
+  year_high: number | null
+  year_low: number | null
+  volume: number | null
+  avg_volume: number | null
+  market_cap: number | null
+  pe_ratio: number | null
+  eps: number | null
+  dividend_yield: number | null
+  beta: number | null
+  sector: string | null
+  industry: string | null
+  description: string | null
+}
+
 function apiHeaders(): HeadersInit {
   return {
     'Content-Type': 'application/json',
@@ -144,6 +180,25 @@ export const lensApi = {
       `${LENS_API_URL}/tickers/history?symbols=${qs}&period=${period}`,
       { headers: apiHeaders() },
     ).then((r) => handleResponse<Record<string, TickerClosePoint[]>>(r))
+  },
+
+  /** GET /search - symbol / company-name search backed by Yahoo Finance.
+   *  Returns best matches first; an unknown query yields an empty list. Used by
+   *  the TopBar search bar (alongside the local TOP_TICKERS fast-path index). */
+  search(q: string, limit = 8): Promise<SearchResult[]> {
+    return fetch(
+      `${LENS_API_URL}/search?q=${encodeURIComponent(q)}&limit=${limit}`,
+      { headers: apiHeaders() },
+    ).then((r) => handleResponse<SearchResult[]>(r))
+  },
+
+  /** GET /ticker/{symbol}/quote - full instrument snapshot for the Markets page
+   *  (identity, live price, intraday + 52-week range, volume, valuation,
+   *  description). Throws on unknown ticker (404). */
+  getTickerQuote(symbol: string): Promise<TickerQuote> {
+    return fetch(`${LENS_API_URL}/ticker/${encodeURIComponent(symbol)}/quote`, {
+      headers: apiHeaders(),
+    }).then((r) => handleResponse<TickerQuote>(r))
   },
 
   /** GET /health - check service availability (no auth required). */

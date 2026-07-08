@@ -1,116 +1,151 @@
 import { useMemo, useState } from 'react'
 import { useParams } from 'react-router-dom'
-import { TrendingUp, TrendingDown, Info, ShieldCheck } from 'lucide-react'
+import { useQuery } from '@tanstack/react-query'
+import { TrendingUp, TrendingDown, Info, ShieldCheck, AlertTriangle } from 'lucide-react'
 import { AppShell } from '@/components/layout/AppShell'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Panel, CardLabel } from '@/components/common/Panel'
+import { PageLoader } from '@/components/common/PageLoader'
 import { LensLineChart } from '@/components/charts/LensLineChart'
 import { AddPositionModal } from '@/components/common/AddPositionModal'
 import { Button } from '@/components/ui/button'
 import { usePositionsManager } from '@/hooks/usePositionsManager'
-import { type Position } from '@/api/lens'
+import { lensApi, type Position, type TickerHistoryPoint } from '@/api/lens'
 import { cn } from '@/lib/utils'
 
 /*
-  Commodity (instrument) detail screen. Layout and styling are the focus here;
-  the numbers are placeholder/example data until this is wired to real quotes.
-  Reachable today only via searching "example" in the top bar -> /commodity/example.
+  Markets / instrument-detail screen. Fetches a live quote (GET /ticker/{symbol}/quote)
+  and real daily price history (GET /ticker/{symbol}/history) from lens-api (yfinance),
+  then renders identity + live price, a range-switchable chart, key statistics, and a
+  plain-language "About" block. Reachable from the TopBar search.
 */
 
-// ── Placeholder instrument ───────────────────────────────────────────────────
-const EXAMPLE = {
-  symbol: 'EXMPL',
-  name: 'Example Corporation',
-  type: 'Stock',
-  exchange: 'NASDAQ',
-  currency: 'USD',
-  price: 184.62,
-  prevClose: 181.3,
-  open: 182.04,
-  dayHigh: 186.11,
-  dayLow: 181.42,
-  yearHigh: 211.74,
-  yearLow: 142.18,
-  volume: '38.4M',
-  avgVolume: '41.2M',
-  marketCap: '1.46T',
-  peRatio: 28.7,
-  eps: 6.43,
-  dividendYield: 0.62,
-  beta: 1.08,
-  sector: 'Technology',
-  industry: 'Consumer Electronics',
-  description:
-    'Example Corporation is a large, established company used here as placeholder data. In the real product this space explains, in plain language, what the company does, how it makes money, and why it might matter to your portfolio so you can decide with context rather than guesswork.',
-}
-
-const RANGES = ['1D', '1W', '1M', '3M', '1Y', '5Y'] as const
+const RANGES = ['1W', '1M', '3M', '1Y', '5Y'] as const
 type Range = (typeof RANGES)[number]
 
-// Deterministic pseudo-random series so the chart is stable across renders but
-// changes shape per range. Shifted so the final point equals the live price.
-function seriesForRange(range: Range, endPrice: number) {
-  const cfg: Record<Range, { points: number; seed: number; vol: number; drift: number }> = {
-    '1D': { points: 80, seed: 11, vol: 0.004, drift: 0.0002 },
-    '1W': { points: 56, seed: 23, vol: 0.008, drift: 0.0006 },
-    '1M': { points: 44, seed: 37, vol: 0.012, drift: 0.0009 },
-    '3M': { points: 66, seed: 51, vol: 0.016, drift: 0.0011 },
-    '1Y': { points: 120, seed: 71, vol: 0.02, drift: 0.0014 },
-    '5Y': { points: 130, seed: 93, vol: 0.03, drift: 0.0019 },
-  }
-  const { points, seed, vol, drift } = cfg[range]
-  let s = seed
-  const rand = () => {
-    s = (s * 9301 + 49297) % 233280
-    return s / 233280
-  }
-  let p = endPrice * 0.78
-  const raw: number[] = []
-  for (let i = 0; i < points; i++) {
-    p = Math.max(1, p * (1 + drift + (rand() - 0.5) * vol))
-    raw.push(p)
-  }
-  // Additive shift so the series ends exactly on the displayed price.
-  const shift = endPrice - raw[raw.length - 1]
-  return raw.map((v, i) => ({ t: i, price: Number((v + shift).toFixed(2)) }))
+// Trailing daily-close count per range. lens-api serves daily closes only, so the
+// short ranges are coarse; we fetch 5y once and slice client-side.
+const RANGE_POINTS: Record<Range, number> = {
+  '1W': 5,
+  '1M': 22,
+  '3M': 66,
+  '1Y': 252,
+  '5Y': Number.MAX_SAFE_INTEGER,
 }
 
-function money(n: number) {
-  return `$${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+function money(n: number | null | undefined, currency = 'USD'): string {
+  if (n === null || n === undefined) return '--'
+  const sym = currency === 'USD' ? '$' : ''
+  return `${sym}${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+}
+
+// Compact large-number formatter for market cap / volume (1.46T, 38.4M).
+function compact(n: number | null | undefined): string {
+  if (n === null || n === undefined) return '--'
+  const abs = Math.abs(n)
+  if (abs >= 1e12) return `${(n / 1e12).toFixed(2)}T`
+  if (abs >= 1e9) return `${(n / 1e9).toFixed(2)}B`
+  if (abs >= 1e6) return `${(n / 1e6).toFixed(2)}M`
+  if (abs >= 1e3) return `${(n / 1e3).toFixed(2)}K`
+  return `${n.toLocaleString('en-US')}`
+}
+
+function num(n: number | null | undefined, digits = 2): string {
+  if (n === null || n === undefined) return '--'
+  return n.toFixed(digits)
+}
+
+// Pretty-print the raw yfinance quoteType/exchange for the badge and facts rows.
+function prettyType(type: string): string {
+  const map: Record<string, string> = {
+    EQUITY: 'Stock',
+    ETF: 'ETF',
+    MUTUALFUND: 'Mutual Fund',
+    INDEX: 'Index',
+    CRYPTOCURRENCY: 'Crypto',
+    CURRENCY: 'Currency',
+  }
+  return map[type?.toUpperCase()] ?? (type || 'Stock')
 }
 
 export function Commodity() {
   const { symbol } = useParams()
-  const [range, setRange] = useState<Range>('3M')
+  const sym = (symbol ?? '').toUpperCase()
+  const [range, setRange] = useState<Range>('1Y')
   const [addOpen, setAddOpen] = useState(false)
   const manager = usePositionsManager()
 
-  // Only "example" exists for now; any symbol resolves to the placeholder.
-  const c = EXAMPLE
-  const data = useMemo(() => seriesForRange(range, c.price), [range, c.price])
+  const quoteQuery = useQuery({
+    queryKey: ['ticker-quote', sym],
+    queryFn: () => lensApi.getTickerQuote(sym),
+    enabled: sym.length > 0,
+    staleTime: 60 * 1000,
+    retry: 1,
+  })
 
-  // The ticker the user is currently viewing, prefilled into the add dialog.
-  const currentTicker = symbol?.toUpperCase() ?? c.symbol
+  const historyQuery = useQuery({
+    queryKey: ['ticker-history', sym, '5y'],
+    queryFn: () => lensApi.getTickerHistory(sym, '5y'),
+    enabled: sym.length > 0,
+    staleTime: 5 * 60 * 1000,
+    retry: 1,
+  })
+
+  const c = quoteQuery.data
+  const history = historyQuery.data
+
+  const data = useMemo(() => {
+    const h = history ?? []
+    const count = RANGE_POINTS[range]
+    const sliced = count >= h.length ? h : h.slice(h.length - count)
+    return sliced.map((p: TickerHistoryPoint, i) => ({ t: i, price: p.close }))
+  }, [history, range])
 
   function addPosition(p: Position) {
-    // Persisted to the server + query-invalidated by the manager.
     manager.addPosition(p)
     setAddOpen(false)
   }
 
-  const change = c.price - c.prevClose
-  const changePct = (change / c.prevClose) * 100
-  const up = change >= 0
-  const dayRangePct = ((c.price - c.dayLow) / (c.dayHigh - c.dayLow)) * 100
+  if (quoteQuery.isLoading) {
+    return (
+      <AppShell>
+        <PageLoader label={`Loading ${sym}`} />
+      </AppShell>
+    )
+  }
+
+  if (quoteQuery.isError || !c) {
+    return (
+      <AppShell>
+        <PageHeader title="Markets" breadcrumb={`Search / ${sym}`} />
+        <Panel className="flex flex-col items-center gap-3 py-16 text-center">
+          <span className="flex h-12 w-12 items-center justify-center rounded-full bg-accent-red/10 text-accent-red">
+            <AlertTriangle size={22} />
+          </span>
+          <h2 className="text-xl font-semibold text-primary">Couldn't find "{sym}"</h2>
+          <p className="max-w-md text-sm text-secondary">
+            We couldn't load data for that symbol. Check the ticker and try searching again from the
+            bar above.
+          </p>
+        </Panel>
+      </AppShell>
+    )
+  }
+
+  const type = prettyType(c.type)
+  const change = c.price !== null && c.prev_close !== null ? c.price - c.prev_close : null
+  const changePct = change !== null && c.prev_close ? (change / c.prev_close) * 100 : null
+  const up = (change ?? 0) >= 0
+  const dayRangePct =
+    c.price !== null && c.day_low !== null && c.day_high !== null && c.day_high > c.day_low
+      ? ((c.price - c.day_low) / (c.day_high - c.day_low)) * 100
+      : null
 
   return (
     <AppShell>
-      <PageHeader
-        title="Markets"
-        breadcrumb={`Search / ${symbol?.toUpperCase() ?? c.symbol}`}
-      />
+      <PageHeader title="Markets" breadcrumb={`Search / ${c.symbol}`} />
 
-      {/* ── Identity + live price ─────────────────────────────────────────── */}
+      {/* Identity + live price */}
       <Panel className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
         <div className="flex items-center gap-4">
           <div className="flex h-14 w-14 items-center justify-center rounded-lg border border-subtle bg-elevated text-lg font-semibold text-primary">
@@ -119,41 +154,51 @@ export function Commodity() {
           <div>
             <div className="flex items-center gap-2">
               <h2 className="text-xl font-semibold tracking-[-0.02em] text-primary">{c.symbol}</h2>
-              <TypeBadge type={c.type} />
+              <TypeBadge type={type} />
             </div>
             <p className="mt-0.5 text-sm text-secondary">
-              {c.name} <span className="text-muted">·</span> {c.exchange} <span className="text-muted">·</span>{' '}
-              {c.currency}
+              {c.name}
+              {c.exchange && (
+                <>
+                  {' '}
+                  <span className="text-muted">·</span> {c.exchange}
+                </>
+              )}{' '}
+              <span className="text-muted">·</span> {c.currency}
             </p>
           </div>
         </div>
 
         <div className="md:text-right">
           <div className="flex items-baseline gap-3 md:justify-end">
-            <span className="text-[28px] font-semibold tracking-[-0.02em] text-primary">{money(c.price)}</span>
-            <span
-              className={cn(
-                'flex items-center gap-1 text-sm font-medium',
-                up ? 'text-accent-green' : 'text-accent-red',
-              )}
-            >
-              {up ? <TrendingUp size={16} /> : <TrendingDown size={16} />}
-              {up ? '+' : ''}
-              {change.toFixed(2)} ({up ? '+' : ''}
-              {changePct.toFixed(2)}%)
+            <span className="text-[28px] font-semibold tracking-[-0.02em] text-primary">
+              {money(c.price, c.currency)}
             </span>
+            {change !== null && changePct !== null && (
+              <span
+                className={cn(
+                  'flex items-center gap-1 text-sm font-medium',
+                  up ? 'text-accent-green' : 'text-accent-red',
+                )}
+              >
+                {up ? <TrendingUp size={16} /> : <TrendingDown size={16} />}
+                {up ? '+' : ''}
+                {change.toFixed(2)} ({up ? '+' : ''}
+                {changePct.toFixed(2)}%)
+              </span>
+            )}
           </div>
           <p className="mt-1 flex items-center gap-1.5 text-xs text-secondary md:justify-end">
             <span className="relative flex h-1.5 w-1.5">
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-accent-green opacity-60" />
               <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-accent-green" />
             </span>
-            Example data · not a live quote
+            Live quote via Yahoo Finance
           </p>
         </div>
       </Panel>
 
-      {/* ── Chart + key statistics ────────────────────────────────────────── */}
+      {/* Chart + key statistics */}
       <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-3">
         <Panel className="lg:col-span-2">
           <div className="mb-4 flex items-center justify-between">
@@ -177,66 +222,93 @@ export function Commodity() {
             </div>
           </div>
 
-          <LensLineChart
-            data={data}
-            xKey="t"
-            lines={[{ key: 'price', color: '#38bdf8', width: 2 }]}
-            gradientStroke
-            height={320}
-            showGrid
-            showAxes
-            showTooltip
-          />
+          {historyQuery.isLoading ? (
+            <div className="flex h-[320px] items-center justify-center text-sm text-muted">
+              Loading price history...
+            </div>
+          ) : data.length < 2 ? (
+            <div className="flex h-[320px] items-center justify-center text-sm text-muted">
+              No price history available.
+            </div>
+          ) : (
+            <LensLineChart
+              data={data}
+              xKey="t"
+              lines={[{ key: 'price', color: up ? '#3ecf8e' : '#f16b6b', width: 2 }]}
+              gradientStroke
+              height={320}
+              showGrid
+              showAxes
+              showTooltip
+            />
+          )}
 
           {/* Day range track: where the current price sits between low and high. */}
-          <div className="mt-6">
-            <div className="mb-2 flex items-center justify-between text-xs text-secondary">
-              <span>Day low {money(c.dayLow)}</span>
-              <span>Day high {money(c.dayHigh)}</span>
+          {dayRangePct !== null && (
+            <div className="mt-6">
+              <div className="mb-2 flex items-center justify-between text-xs text-secondary">
+                <span>Day low {money(c.day_low, c.currency)}</span>
+                <span>Day high {money(c.day_high, c.currency)}</span>
+              </div>
+              <div className="relative h-1.5 w-full rounded-full bg-elevated">
+                <div
+                  className="absolute inset-y-0 left-0 rounded-full bg-accent-teal"
+                  style={{ width: `${dayRangePct}%` }}
+                />
+                <div
+                  className="absolute top-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-base bg-primary"
+                  style={{ left: `${dayRangePct}%` }}
+                />
+              </div>
             </div>
-            <div className="relative h-1.5 w-full rounded-full bg-elevated">
-              <div className="absolute inset-y-0 left-0 rounded-full bg-accent-teal" style={{ width: `${dayRangePct}%` }} />
-              <div
-                className="absolute top-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-base bg-primary"
-                style={{ left: `${dayRangePct}%` }}
-              />
-            </div>
-          </div>
+          )}
         </Panel>
 
         <Panel>
           <CardLabel className="mb-4">Key statistics</CardLabel>
           <dl className="divide-y divide-subtle">
-            <Stat label="Open" value={money(c.open)} />
-            <Stat label="Previous close" value={money(c.prevClose)} />
-            <Stat label="Day range" value={`${money(c.dayLow)} - ${money(c.dayHigh)}`} />
-            <Stat label="52-week range" value={`${money(c.yearLow)} - ${money(c.yearHigh)}`} />
-            <Stat label="Volume" value={c.volume} />
-            <Stat label="Avg. volume" value={c.avgVolume} />
-            <Stat label="Market cap" value={`$${c.marketCap}`} />
-            <Stat label="P/E ratio" value={c.peRatio.toFixed(1)} />
-            <Stat label="EPS" value={money(c.eps)} />
-            <Stat label="Dividend yield" value={`${c.dividendYield.toFixed(2)}%`} />
-            <Stat label="Beta" value={c.beta.toFixed(2)} />
+            <Stat label="Open" value={money(c.open, c.currency)} />
+            <Stat label="Previous close" value={money(c.prev_close, c.currency)} />
+            <Stat
+              label="Day range"
+              value={`${money(c.day_low, c.currency)} - ${money(c.day_high, c.currency)}`}
+            />
+            <Stat
+              label="52-week range"
+              value={`${money(c.year_low, c.currency)} - ${money(c.year_high, c.currency)}`}
+            />
+            <Stat label="Volume" value={compact(c.volume)} />
+            <Stat label="Avg. volume" value={compact(c.avg_volume)} />
+            <Stat label="Market cap" value={c.market_cap !== null ? `$${compact(c.market_cap)}` : '--'} />
+            <Stat label="P/E ratio" value={num(c.pe_ratio, 1)} />
+            <Stat label="EPS" value={money(c.eps, c.currency)} />
+            <Stat
+              label="Dividend yield"
+              value={c.dividend_yield !== null ? `${c.dividend_yield.toFixed(2)}%` : '--'}
+            />
+            <Stat label="Beta" value={num(c.beta, 2)} />
           </dl>
         </Panel>
       </div>
 
-      {/* ── About + at-a-glance ───────────────────────────────────────────── */}
+      {/* About + at-a-glance */}
       <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-3">
         <Panel className="lg:col-span-2">
           <CardLabel className="mb-3 flex items-center gap-2">
             <Info size={14} /> About {c.name}
           </CardLabel>
-          <p className="text-sm leading-relaxed text-secondary">{c.description}</p>
+          <p className="text-sm leading-relaxed text-secondary">
+            {c.description ??
+              `${c.name} is listed on ${c.exchange || 'a major exchange'}. A detailed business description is not available for this instrument.`}
+          </p>
 
           <div className="gradient-hairline my-6" />
 
           <div className="grid grid-cols-[repeat(2,minmax(0,max-content))] gap-x-16 gap-y-6 sm:grid-cols-[repeat(3,minmax(0,max-content))]">
-            <Fact label="Sector" value={c.sector} />
-            <Fact label="Industry" value={c.industry} />
-            <Fact label="Asset type" value={c.type} />
-            <Fact label="Exchange" value={c.exchange} />
+            <Fact label="Sector" value={c.sector ?? '--'} />
+            <Fact label="Industry" value={c.industry ?? '--'} />
+            <Fact label="Asset type" value={type} />
+            <Fact label="Exchange" value={c.exchange || '--'} />
             <Fact label="Currency" value={c.currency} />
             <Fact label="Symbol" value={c.symbol} />
           </div>
@@ -264,7 +336,7 @@ export function Commodity() {
         <AddPositionModal
           onClose={() => setAddOpen(false)}
           onAdd={addPosition}
-          initialTicker={currentTicker}
+          initialTicker={c.symbol}
         />
       )}
     </AppShell>
