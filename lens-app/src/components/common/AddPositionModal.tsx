@@ -10,11 +10,15 @@ import { Input } from '@/components/ui/input'
 export function AddPositionModal({
   onClose,
   onAdd,
+  initialTicker,
 }: {
   onClose: () => void
   onAdd: (position: Position) => void
+  // Prefills the ticker box (e.g. opened from an instrument page). When set, the
+  // shares field gets focus instead so the user just types a share count.
+  initialTicker?: string
 }) {
-  const [ticker, setTicker] = useState('')
+  const [ticker, setTicker] = useState(initialTicker?.trim().toUpperCase() ?? '')
   const [shares, setShares] = useState('')
   const [validating, setValidating] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -96,7 +100,7 @@ export function AddPositionModal({
               onChange={(e) => setTicker(e.target.value.toUpperCase())}
               onKeyDown={onFieldKeyDown}
               placeholder="AAPL"
-              autoFocus
+              autoFocus={!initialTicker}
               disabled={validating}
             />
           </div>
@@ -112,6 +116,7 @@ export function AddPositionModal({
               placeholder="10"
               min="0"
               step="any"
+              autoFocus={!!initialTicker}
               disabled={validating}
             />
           </div>

@@ -5,7 +5,10 @@ import { AppShell } from '@/components/layout/AppShell'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Panel, CardLabel } from '@/components/common/Panel'
 import { LensLineChart } from '@/components/charts/LensLineChart'
+import { AddPositionModal } from '@/components/common/AddPositionModal'
 import { Button } from '@/components/ui/button'
+import { usePositionsManager } from '@/hooks/usePositionsManager'
+import { type Position } from '@/api/lens'
 import { cn } from '@/lib/utils'
 
 /*
@@ -79,10 +82,21 @@ function money(n: number) {
 export function Commodity() {
   const { symbol } = useParams()
   const [range, setRange] = useState<Range>('3M')
+  const [addOpen, setAddOpen] = useState(false)
+  const manager = usePositionsManager()
 
   // Only "example" exists for now; any symbol resolves to the placeholder.
   const c = EXAMPLE
   const data = useMemo(() => seriesForRange(range, c.price), [range, c.price])
+
+  // The ticker the user is currently viewing, prefilled into the add dialog.
+  const currentTicker = symbol?.toUpperCase() ?? c.symbol
+
+  function addPosition(p: Position) {
+    // Persisted to the server + query-invalidated by the manager.
+    manager.addPosition(p)
+    setAddOpen(false)
+  }
 
   const change = c.price - c.prevClose
   const changePct = (change / c.prevClose) * 100
@@ -239,12 +253,20 @@ export function Commodity() {
             recommendation.
           </p>
           <div className="mt-auto pt-6">
-            <Button variant="gradient" className="w-full">
+            <Button variant="gradient" className="w-full" onClick={() => setAddOpen(true)}>
               Add to portfolio
             </Button>
           </div>
         </Panel>
       </div>
+
+      {addOpen && (
+        <AddPositionModal
+          onClose={() => setAddOpen(false)}
+          onAdd={addPosition}
+          initialTicker={currentTicker}
+        />
+      )}
     </AppShell>
   )
 }
