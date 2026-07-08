@@ -29,8 +29,6 @@ export interface EquityChartProps {
   timeframe: Timeframe
   /** Stroke + fill color (hex). */
   color?: string
-  /** Formats an equity value for the tooltip. */
-  valueFormatter: (v: number) => string
   height?: number
   /**
    * Reports the span the user is currently inspecting so the parent can show its
@@ -85,25 +83,20 @@ function tickIndices(n: number, count = 5): number[] {
 }
 
 // ---------------------------------------------------------------------------
-// Tooltip: date header + colored equity value (hover shows the time)
+// Tooltip: date only. The equity at the hovered point is surfaced by the parent
+// widget's big readout instead, so the tooltip just marks the time on the axis.
 // ---------------------------------------------------------------------------
 
 interface DateTooltipProps {
   active?: boolean
   payload?: Array<{ payload?: EquityChartPoint }>
-  color: string
-  valueFormatter: (v: number) => string
 }
-function DateTooltip({ active, payload, color, valueFormatter }: DateTooltipProps) {
+function DateTooltip({ active, payload }: DateTooltipProps) {
   const row = active ? payload?.[0]?.payload : undefined
   if (!row) return null
   return (
-    <div className="rounded-md border border-subtle bg-card px-3 py-2 text-sm shadow-lg">
-      <p className="mb-0.5 text-xs text-secondary">{fmtFull(row.date)}</p>
-      <p className="flex items-center gap-2 font-medium text-primary">
-        <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: color }} />
-        {valueFormatter(row.equity)}
-      </p>
+    <div className="rounded-md border border-subtle bg-card px-3 py-2 shadow-lg">
+      <p className="text-xs font-medium text-primary">{fmtFull(row.date)}</p>
     </div>
   )
 }
@@ -130,7 +123,6 @@ export function EquityChart({
   points,
   timeframe,
   color = CHART_COLORS.green,
-  valueFormatter,
   height = 128,
   onActiveRangeChange,
 }: EquityChartProps) {
@@ -246,7 +238,7 @@ export function EquityChart({
             <XAxis dataKey="i" type="number" domain={[0, n - 1]} hide />
             <YAxis hide domain={['dataMin', 'dataMax']} />
             <Tooltip
-              content={<DateTooltip color={color} valueFormatter={valueFormatter} />}
+              content={<DateTooltip />}
               cursor={{ stroke: CHART_COLORS.subtle, strokeDasharray: '3 3' }}
             />
             {/* Shaded band marking the click-drag selection (feature 2). */}

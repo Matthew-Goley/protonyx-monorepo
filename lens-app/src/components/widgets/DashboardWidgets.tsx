@@ -16,6 +16,7 @@ import {
   type EquityRange,
 } from '@/components/charts'
 import { VerticalCycleControl } from '@/components/common/CycleControl'
+import { RollingNumber } from '@/components/common/RollingNumber'
 import {
   portfolioSlopePct,
   portfolioBeta,
@@ -234,6 +235,10 @@ export function TotalEquityWidget({ result }: { result: LensResult }) {
   const readoutPct = fromEq ? (readoutDollars / fromEq) * 100 : 0
   const readoutColor = readoutDollars >= 0 ? 'text-accent-green' : 'text-accent-red'
 
+  // The big readout shows the equity at the point being inspected on the chart
+  // (hovered point or selection end), falling back to the live total when idle.
+  const displayEquity = activeRange ? toEq : equity
+
   const stepTf = (delta: number) =>
     setTfIndex((i) => (i + delta + TIMEFRAMES.length) % TIMEFRAMES.length)
 
@@ -299,13 +304,17 @@ export function TotalEquityWidget({ result }: { result: LensResult }) {
       <div className="flex items-start justify-between">
         <div>
           <h3 className="text-xl font-semibold text-primary">Total Equity</h3>
-          <p className={`mt-2 text-[28px] font-semibold tracking-[-0.02em] ${numberColor}`}>
-            {formatCurrency(equity)}
-          </p>
+          {/* Equity at the inspected point (hover / selection), else live total. */}
+          <RollingNumber
+            value={formatCurrency(displayEquity)}
+            className={`mt-2 block text-[28px] font-semibold tracking-[-0.02em] ${numberColor}`}
+          />
           {/* Change over the span the user is inspecting on the chart (hovered
               point or click-drag selection), else the full timeframe window. */}
-          <p className={`mt-1 text-sm ${readoutColor}`}>
-            {formatSignedCurrency(readoutDollars)} &nbsp; {formatPercent(readoutPct)}
+          <p className={`mt-1 flex items-center text-sm ${readoutColor}`}>
+            <RollingNumber value={formatSignedCurrency(readoutDollars)} />
+            &nbsp;&nbsp;
+            <RollingNumber value={formatPercent(readoutPct)} />
           </p>
         </div>
         {/* Vertical up/down cycler steps the timeframe (default 1Y). */}
@@ -324,7 +333,6 @@ export function TotalEquityWidget({ result }: { result: LensResult }) {
             points={points}
             timeframe={timeframe}
             color={chartColor}
-            valueFormatter={formatCurrency}
             height={190}
             onActiveRangeChange={handleActiveRange}
           />
@@ -340,7 +348,6 @@ export function TotalEquityWidget({ result }: { result: LensResult }) {
               points={outgoing.points}
               timeframe={outgoing.timeframe}
               color={outgoing.color}
-              valueFormatter={formatCurrency}
               height={190}
             />
           </div>
