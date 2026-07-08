@@ -104,6 +104,58 @@ async def health() -> dict[str, str]:
     return {"status": "ok"}
 
 
+@app.get("/search")
+async def search(
+    q: str = Query(default=""),
+    limit: int = Query(default=8),
+    _: None = Security(_require_api_key),
+) -> JSONResponse:
+    """Symbol / company-name search backed by Yahoo Finance.
+
+    q     — free text, e.g. "apple" or "AAPL"
+    limit — max results to return (clamped 1..20, default 8)
+
+    Returns a list of { symbol, name, type, exchange }, best matches first.
+    Unknown queries return an empty list rather than an error.
+    """
+    query = q.strip()
+    if not query:
+        return JSONResponse(content=[])
+
+    capped = max(1, min(int(limit), 20))
+
+    def _run() -> list[dict[str, Any]]:
+        try:
+            raw = yf.Search(query, max_results=capped).quotes or []
+        except Exception:  # noqa: BLE001
+            _log.warning("yfinance search failed for %r", query)
+            return []
+
+        out: list[dict[str, Any]] = []
+        for item in raw:
+            symbol = item.get("symbol")
+            if not symbol or not item.get("isYahooFinance", True):
+                continue
+            name = item.get("longname") or item.get("shortname") or symbol
+            out.append(
+                {
+                    "symbol": symbol,
+                    "name": name,
+                    "type": item.get("typeDisp") or item.get("quoteType") or "",
+                    "exchange": item.get("exchDisp") or item.get("exchange") or "",
+                }
+            )
+        return out[:capped]
+
+    try:
+        results = await run_in_threadpool(_run)
+    except Exception as exc:  # noqa: BLE001
+        _log.exception("search failed for %r", query)
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+    return JSONResponse(content=_finitize(results))
+
+
 @app.post("/analyze")
 async def analyze(
     request: AnalyzeRequest,
@@ -332,6 +384,66 @@ async def ticker_info(
             "52_week_low": _num(info.get("fiftyTwoWeekLow")),
             "current_price": _num(info.get("currentPrice")) or _num(info.get("regularMarketPrice")),
         }
+    )
+
+
+@app.get("/ticker/{symbol}/quote")
+async def ticker_quote(
+    symbol: str,
+    _: None = Security(_require_api_key),
+) -> JSONResponse:
+    """Full instrument snapshot for the Markets / instrument-detail page.
+
+    Superset of /info: identity, live price + intraday range, 52-week range,
+    volume, valuation, and a plain-language business description. All numeric
+    fields are NaN/inf-safe (coerced to None).
+    """
+    sym = symbol.upper()
+
+    try:
+        info: dict = await run_in_threadpool(lambda: yf.Ticker(sym).info)
+    except Exception as exc:
+        _log.exception("yfinance info failed for %s", sym)
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+    price = info.get("currentPrice") or info.get("regularMarketPrice")
+    if not info or price is None:
+        raise HTTPException(status_code=404, detail=f"No data found for ticker '{sym}'")
+
+    def _num(v: Any) -> float | None:
+        try:
+            f = float(v)
+        except (TypeError, ValueError):
+            return None
+        return f if math.isfinite(f) else None
+
+    return JSONResponse(
+        content=_finitize(
+            {
+                "symbol": sym,
+                "name": info.get("longName") or info.get("shortName") or sym,
+                "type": info.get("quoteType") or "EQUITY",
+                "exchange": info.get("fullExchangeName") or info.get("exchange") or "",
+                "currency": info.get("currency") or "USD",
+                "price": _num(price),
+                "prev_close": _num(info.get("regularMarketPreviousClose") or info.get("previousClose")),
+                "open": _num(info.get("regularMarketOpen") or info.get("open")),
+                "day_high": _num(info.get("dayHigh") or info.get("regularMarketDayHigh")),
+                "day_low": _num(info.get("dayLow") or info.get("regularMarketDayLow")),
+                "year_high": _num(info.get("fiftyTwoWeekHigh")),
+                "year_low": _num(info.get("fiftyTwoWeekLow")),
+                "volume": _num(info.get("volume") or info.get("regularMarketVolume")),
+                "avg_volume": _num(info.get("averageVolume")),
+                "market_cap": _num(info.get("marketCap")),
+                "pe_ratio": _num(info.get("trailingPE")),
+                "eps": _num(info.get("trailingEps")),
+                "dividend_yield": _num(info.get("dividendYield")),
+                "beta": _num(info.get("beta")),
+                "sector": info.get("sector"),
+                "industry": info.get("industry"),
+                "description": info.get("longBusinessSummary"),
+            }
+        )
     )
 
 

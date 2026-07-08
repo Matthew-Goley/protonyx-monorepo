@@ -193,6 +193,9 @@ The Fastify backend (or any other caller) must have `LENS_API_KEY` in its env an
 #### `GET /health`
 No auth required. Returns `{"status": "ok"}`. Use this for Railway health checks and uptime monitoring.
 
+#### `GET /search`
+Requires `X-API-Key`. `?q=<text>&limit=<n>` (limit clamped 1..20, default 8). Symbol / company-name search backed by `yf.Search(q).quotes`. Returns a JSON array of `{ symbol, name, type, exchange }` (best matches first); `name` prefers `longname` then `shortname`, `type` is `typeDisp`/`quoteType` (e.g. `Equity`, `ETF`), `exchange` is `exchDisp`. Non-Yahoo-Finance quotes are filtered out. An **empty `q`, an unknown query, or a yfinance failure all return `[]`** (never an error) so the caller's autocomplete degrades gracefully. Backs the lens-app TopBar search bar (which merges these live results with its bundled `TOP_TICKERS` fast-path list).
+
 #### `POST /analyze`
 Requires `X-API-Key` header.
 
@@ -256,6 +259,9 @@ Each CTA in `ctas`:
 
 #### `GET /ticker/{symbol}/info`
 Requires `X-API-Key`. Company snapshot from yfinance `.info`: `{ name, sector, market_cap, pe_ratio, dividend_yield, "52_week_high", "52_week_low", current_price }`. Unknown tickers (no `currentPrice`/`regularMarketPrice`) → 404. Numeric fields are NaN-sanitized to `null` (see NaN note below). Used by the lens-app `AddPositionModal` to validate a ticker and pull live price/sector/name.
+
+#### `GET /ticker/{symbol}/quote`
+Requires `X-API-Key`. Full instrument snapshot from yfinance `.info` for the lens-app **Markets / instrument-detail** page (`Commodity.tsx`), a superset of `/info`: `{ symbol, name, type, exchange, currency, price, prev_close, open, day_high, day_low, year_high, year_low, volume, avg_volume, market_cap, pe_ratio, eps, dividend_yield, beta, sector, industry, description }`. `type` is the raw yfinance `quoteType` (`EQUITY`/`ETF`/...; the client prettifies it). `dividend_yield` is returned **verbatim from yfinance, which already reports it as a percentage** (e.g. Apple `0.35` = 0.35%, Coca-Cola `2.52` = 2.52%) — do **not** multiply it. Unknown tickers (no `currentPrice`/`regularMarketPrice`) → 404. All numeric fields are `_finitize()`d to `null`. Separate from `/info` (which stays the lean ticker-validation path used by `AddPositionModal`).
 
 #### `GET /ticker/{symbol}/history`
 Requires `X-API-Key`. `?period=` one of `1mo|3mo|6mo|1y|2y|5y` (default `1y`); anything else → 400. Returns a JSON array of `{ date, open, high, low, close, volume }` daily bars (`yf.history(interval="1d", auto_adjust=False)`). Empty/no usable rows → 404. **No longer called by the lens-app** (the equity curve now uses the batched `/tickers/history` below); the single-ticker `getTickerHistory` client wrapper still exists but is unused. Rows are built defensively: any bar with no `close` is skipped and NaN `volume` is coerced to `0`. The assembled rows are then passed through `_finitize()` (same as `/analyze`) right before the `JSONResponse` is constructed (see NaN note) — the per-row `pd.isna()` guards catch `NaN` but **not** `±inf`, and an inf OHLC value slipping through to the eager render was the cause of every history call 500ing in production while `/compare` (default `auto_adjust`) kept working.
