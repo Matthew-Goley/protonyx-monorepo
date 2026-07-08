@@ -95,7 +95,7 @@ function DateTooltip({ active, payload }: DateTooltipProps) {
   const row = active ? payload?.[0]?.payload : undefined
   if (!row) return null
   return (
-    <div className="rounded-md border border-subtle bg-card px-3 py-2 shadow-lg">
+    <div className="rounded-md border border-subtle bg-surface/80 px-3 py-2 shadow-lg shadow-black/40 backdrop-blur-md">
       <p className="text-xs font-medium text-primary">{fmtFull(row.date)}</p>
     </div>
   )
