@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { Navigate } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
 import { isSubscribed } from '@/lib/subscription'
@@ -16,7 +17,9 @@ import { Button } from '@/components/ui/button'
 import { CautionGauge } from '@/components/analysis/CautionGauge'
 import { CtaList } from '@/components/analysis/CtaList'
 import { MonteCarloChart } from '@/components/analysis/MonteCarloChart'
+import { HistoryModal } from '@/components/analysis/HistoryModal'
 import { buildMonteCarlo, sectorWeightsFromPositions, formatCurrency } from '@/lib/lensData'
+import { clearHistory, loadHistory, recordHistory } from '@/lib/lensHistory'
 
 const DISCLAIMER =
   'Lens is an analytics tool, not a financial advisor. Everything here, readings, ' +
@@ -34,15 +37,40 @@ export function Analysis() {
   const query = useLensAnalysis()
   const history = usePortfolioHistory('6mo')
 
+  const [historyOpen, setHistoryOpen] = useState(false)
+  const [historyEntries, setHistoryEntries] = useState(() => loadHistory(user?.id))
+
+  // Reload the persisted list when the account changes (per-user key).
+  useEffect(() => {
+    setHistoryEntries(loadHistory(user?.id))
+  }, [user?.id])
+
+  // Record each new reading (caution score + brief) as it comes in, de-duped
+  // against the most recent snapshot inside recordHistory.
+  const brief = query.data?.brief
+  const cautionScore = query.data?.caution_score
+  useEffect(() => {
+    if (brief == null || cautionScore == null) return
+    setHistoryEntries(recordHistory(user?.id, { caution_score: cautionScore, brief }))
+  }, [user?.id, brief, cautionScore])
+
   const header = (
     <PageHeader
       title="Analysis"
       breadcrumb="Lens / Analysis"
       right={
-        <Button variant="outline" size="sm">
+        <Button variant="outline" size="sm" onClick={() => setHistoryOpen(true)}>
           History
         </Button>
       }
+    />
+  )
+
+  const historyModal = historyOpen && (
+    <HistoryModal
+      entries={historyEntries}
+      onClose={() => setHistoryOpen(false)}
+      onClear={() => setHistoryEntries(clearHistory(user?.id))}
     />
   )
 
@@ -52,6 +80,7 @@ export function Analysis() {
       <AppShell>
         {header}
         <PageLoader />
+        {historyModal}
       </AppShell>
     )
   }
@@ -65,6 +94,7 @@ export function Analysis() {
       <AppShell>
         {header}
         <UpgradePrompt />
+        {historyModal}
       </AppShell>
     )
   }
@@ -173,6 +203,7 @@ export function Analysis() {
             </div>
           )
         })()}
+      {historyModal}
     </AppShell>
   )
 }

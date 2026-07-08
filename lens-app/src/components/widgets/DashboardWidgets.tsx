@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ChevronRight } from 'lucide-react'
 import { type LensResult } from '@/api/lens'
@@ -237,6 +237,63 @@ export function TotalEquityWidget({ result }: { result: LensResult }) {
   const stepTf = (delta: number) =>
     setTfIndex((i) => (i + delta + TIMEFRAMES.length) % TIMEFRAMES.length)
 
+  // ---- Zoom/slide transition on timeframe change --------------------------
+  // On a timeframe step the chart crossfades: the incoming window animates in
+  // (zoom-in grows the recent slice from the right; zoom-out settles from a
+  // right-anchored enlargement) while a snapshot of the old window animates
+  // out over it, so you briefly see where you were. Direction is decided by
+  // comparing window widths (TF_DAYS), which also handles the cycler wraparound.
+  // Uses the Web Animations API on wrapper refs so EquityChart is never
+  // remounted (its hover/range state is preserved). Easy to rip out: delete
+  // this block, the two refs, the `outgoing` state, and revert the JSX below.
+  const liveRef = useRef<HTMLDivElement>(null)
+  const outRef = useRef<HTMLDivElement>(null)
+  const prevRef = useRef<{ points: EquityChartPoint[]; timeframe: Timeframe; color: string } | null>(
+    null,
+  )
+  const animKeyRef = useRef(0)
+  const [outgoing, setOutgoing] = useState<{
+    points: EquityChartPoint[]
+    timeframe: Timeframe
+    color: string
+    dir: 'in' | 'out'
+    key: number
+  } | null>(null)
+
+  useEffect(() => {
+    const before = prevRef.current
+    prevRef.current = { points, timeframe, color: chartColor }
+    // First render, or a non-timeframe re-render (history load / color flip).
+    if (!before || before.timeframe === timeframe) return
+
+    const dir: 'in' | 'out' = ZOOM_DAYS(timeframe) > ZOOM_DAYS(before.timeframe) ? 'out' : 'in'
+    const key = ++animKeyRef.current
+
+    // Animate the (already re-rendered, new-data) live chart in.
+    const enter =
+      dir === 'in'
+        ? [{ transform: 'scaleX(0.6)', opacity: 0.25 }, { transform: 'scaleX(1)', opacity: 1 }]
+        : [{ transform: 'scaleX(1.7)', opacity: 0.25 }, { transform: 'scaleX(1)', opacity: 1 }]
+    liveRef.current?.animate(enter, { duration: ZOOM_MS, easing: ZOOM_EASING })
+
+    setOutgoing({ points: before.points, timeframe: before.timeframe, color: before.color, dir, key })
+    const t = setTimeout(
+      () => setOutgoing((cur) => (cur && cur.key === key ? null : cur)),
+      ZOOM_MS,
+    )
+    return () => clearTimeout(t)
+  }, [timeframe, points, chartColor])
+
+  // Animate the outgoing snapshot out once it has mounted on top.
+  useEffect(() => {
+    if (!outgoing || !outRef.current) return
+    const leave =
+      outgoing.dir === 'in'
+        ? [{ transform: 'scaleX(1)', opacity: 1 }, { transform: 'scaleX(1.7)', opacity: 0 }]
+        : [{ transform: 'scaleX(1)', opacity: 1 }, { transform: 'scaleX(0.6)', opacity: 0 }]
+    outRef.current.animate(leave, { duration: ZOOM_MS, easing: ZOOM_EASING, fill: 'forwards' })
+  }, [outgoing])
+
   return (
     <Panel>
       <div className="flex items-start justify-between">
@@ -259,19 +316,45 @@ export function TotalEquityWidget({ result }: { result: LensResult }) {
         />
       </div>
 
-      <div className="mt-3">
-        <EquityChart
-          points={points}
-          timeframe={timeframe}
-          color={chartColor}
-          valueFormatter={formatCurrency}
-          height={190}
-          onActiveRangeChange={handleActiveRange}
-        />
+      {/* Relative stage; clip only while a zoom is in flight so the tooltip is
+          never clipped at rest. */}
+      <div className={`relative mt-3 ${outgoing ? 'overflow-hidden' : ''}`}>
+        <div ref={liveRef} style={{ transformOrigin: '100% 50%' }}>
+          <EquityChart
+            points={points}
+            timeframe={timeframe}
+            color={chartColor}
+            valueFormatter={formatCurrency}
+            height={190}
+            onActiveRangeChange={handleActiveRange}
+          />
+        </div>
+        {outgoing && (
+          <div
+            ref={outRef}
+            aria-hidden
+            className="pointer-events-none absolute inset-0"
+            style={{ transformOrigin: '100% 50%' }}
+          >
+            <EquityChart
+              points={outgoing.points}
+              timeframe={outgoing.timeframe}
+              color={outgoing.color}
+              valueFormatter={formatCurrency}
+              height={190}
+            />
+          </div>
+        )}
       </div>
     </Panel>
   )
 }
+
+// Zoom-transition tuning (see TotalEquityWidget). Window width in days ranks the
+// timeframes so a step's direction is width-based (handles the cycler wraparound).
+const ZOOM_MS = 460
+const ZOOM_EASING = 'cubic-bezier(0.16, 1, 0.3, 1)'
+const ZOOM_DAYS = (tf: Timeframe): number => TF_DAYS[tf]
 
 // ---------------------------------------------------------------------------
 // Sharpe Ratio
