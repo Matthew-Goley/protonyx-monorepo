@@ -1,22 +1,18 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ChevronRight } from 'lucide-react'
 import { type LensResult } from '@/api/lens'
 import { Panel } from '@/components/common/Panel'
 import { GeneratingBrief } from '@/components/widgets/GeneratingBrief'
+import { TimeframeAreaChart } from '@/components/common/TimeframeAreaChart'
 import { Button } from '@/components/ui/button'
 import {
-  EquityChart,
   CyclablePieChart,
-  CHART_COLORS,
   PIE_COLORS,
   type PieView,
   type Timeframe,
   type EquityChartPoint,
-  type EquityRange,
 } from '@/components/charts'
-import { VerticalCycleControl } from '@/components/common/CycleControl'
-import { RollingNumber } from '@/components/common/RollingNumber'
 import {
   portfolioSlopePct,
   portfolioBeta,
@@ -33,7 +29,6 @@ import {
   tickerCurrentPrice,
   totalEquity,
   formatCurrency,
-  formatSignedCurrency,
   formatPercent,
   type SectorSlice,
 } from '@/lib/lensData'
@@ -147,9 +142,11 @@ export function PositionsWidget({ result }: { result: LensResult }) {
 // Portfolio Value
 // ---------------------------------------------------------------------------
 
-const TIMEFRAMES: Timeframe[] = ['1D', '1W', '1M', '3M', '1Y', 'ALL']
-// Lookback window per timeframe, in calendar days (ALL = the whole curve).
-const TF_DAYS: Record<Timeframe, number> = {
+// Stable empty array so useMemo below doesn't re-run every render while loading.
+const NO_POINTS: EquityChartPoint[] = []
+
+// Lookback window per timeframe (calendar days) for the synth fallback below.
+const SYNTH_TF_DAYS: Record<Timeframe, number> = {
   '1D': 1,
   '1W': 7,
   '1M': 31,
@@ -157,36 +154,12 @@ const TF_DAYS: Record<Timeframe, number> = {
   '1Y': 366,
   ALL: Infinity,
 }
-// Stable empty array so useMemo below doesn't re-run every render while loading.
-const NO_POINTS: EquityChartPoint[] = []
 
-function dateMs(s: string): number {
-  const [y, m, d] = s.split('-').map(Number)
-  return new Date(y, (m ?? 1) - 1, d ?? 1).getTime()
-}
-
-// Slice the full (5y) equity curve down to the selected timeframe window. Data is
-// daily-close only, so 1D / 1W are coarse (a handful of closes). Falls back to a
-// straight slope-synthesized line with generated dates when real history is
-// unavailable (still loading or the ticker history calls failed).
-function windowPoints(
-  all: EquityChartPoint[],
-  tf: Timeframe,
-  equity: number,
-  slope: number,
-): EquityChartPoint[] {
-  if (all.length >= 2) {
-    if (tf === 'ALL') return all
-    const end = dateMs(all[all.length - 1].date)
-    const cutoff = end - TF_DAYS[tf] * 86400000
-    const win = all.filter((p) => dateMs(p.date) >= cutoff)
-    return win.length >= 2 ? win : all.slice(-2)
-  }
-  return synthPoints(tf, equity, slope)
-}
-
+// Straight slope-synthesized line (with generated dates), used by the Portfolio
+// Value widget only while real history is unavailable (still loading or the
+// ticker history calls failed). Passed to TimeframeAreaChart as its `synth`.
 function synthPoints(tf: Timeframe, equity: number, slope: number): EquityChartPoint[] {
-  const days = TF_DAYS[tf] === Infinity ? 730 : TF_DAYS[tf]
+  const days = SYNTH_TF_DAYS[tf] === Infinity ? 730 : SYNTH_TF_DAYS[tf]
   const n = Math.max(8, Math.min(60, Math.round(days / 5)))
   const periodReturn = (slope / 100) * (days / 365)
   const now = Date.now()
@@ -206,162 +179,21 @@ export function PortfolioValueWidget({ result }: { result: LensResult }) {
   // One fetch of the max range; timeframe switching then just re-slices locally.
   const history = usePortfolioHistory('5y')
   const all = (history.data ?? NO_POINTS) as EquityChartPoint[]
-
-  const [tfIndex, setTfIndex] = useState(4) // default 1Y
-  const timeframe = TIMEFRAMES[tfIndex]
-
-  const points = useMemo(
-    () => windowPoints(all, timeframe, equity, slope),
-    [all, timeframe, equity, slope],
-  )
-
-  const firstEq = points[0]?.equity ?? equity
-  const lastEq = points[points.length - 1]?.equity ?? equity
-  // The big number + chart color track the full-window change and stay stable.
-  const windowUp = lastEq - firstEq >= 0
-  const numberColor = windowUp ? 'text-accent-green' : 'text-accent-red'
-  const chartColor = windowUp ? CHART_COLORS.green : CHART_COLORS.red
-
-  // Span the user is inspecting on the chart (hover -> start..point, or a
-  // click-drag selection -> start..end); null falls back to the full window.
-  const [activeRange, setActiveRange] = useState<EquityRange | null>(null)
-  const handleActiveRange = useCallback((r: EquityRange | null) => setActiveRange(r), [])
-  // Drop a stale inspection span when the timeframe (and thus points) changes.
-  useEffect(() => setActiveRange(null), [timeframe])
-
-  const fromEq = activeRange ? points[activeRange.fromIndex]?.equity ?? firstEq : firstEq
-  const toEq = activeRange ? points[activeRange.toIndex]?.equity ?? lastEq : lastEq
-  const readoutDollars = toEq - fromEq
-  const readoutPct = fromEq ? (readoutDollars / fromEq) * 100 : 0
-  const readoutColor = readoutDollars >= 0 ? 'text-accent-green' : 'text-accent-red'
-
-  // The big readout shows the equity at the point being inspected on the chart
-  // (hovered point or selection end), falling back to the live total when idle.
-  const displayEquity = activeRange ? toEq : equity
-
-  const stepTf = (delta: number) =>
-    setTfIndex((i) => (i + delta + TIMEFRAMES.length) % TIMEFRAMES.length)
-
-  // ---- Zoom/slide transition on timeframe change --------------------------
-  // On a timeframe step the chart crossfades: the incoming window animates in
-  // (zoom-in grows the recent slice from the right; zoom-out settles from a
-  // right-anchored enlargement) while a snapshot of the old window animates
-  // out over it, so you briefly see where you were. Direction is decided by
-  // comparing window widths (TF_DAYS), which also handles the cycler wraparound.
-  // Uses the Web Animations API on wrapper refs so EquityChart is never
-  // remounted (its hover/range state is preserved). Easy to rip out: delete
-  // this block, the two refs, the `outgoing` state, and revert the JSX below.
-  const liveRef = useRef<HTMLDivElement>(null)
-  const outRef = useRef<HTMLDivElement>(null)
-  const prevRef = useRef<{ points: EquityChartPoint[]; timeframe: Timeframe; color: string } | null>(
-    null,
-  )
-  const animKeyRef = useRef(0)
-  const [outgoing, setOutgoing] = useState<{
-    points: EquityChartPoint[]
-    timeframe: Timeframe
-    color: string
-    dir: 'in' | 'out'
-    key: number
-  } | null>(null)
-
-  useEffect(() => {
-    const before = prevRef.current
-    prevRef.current = { points, timeframe, color: chartColor }
-    // First render, or a non-timeframe re-render (history load / color flip).
-    if (!before || before.timeframe === timeframe) return
-
-    const dir: 'in' | 'out' = ZOOM_DAYS(timeframe) > ZOOM_DAYS(before.timeframe) ? 'out' : 'in'
-    const key = ++animKeyRef.current
-
-    // Animate the (already re-rendered, new-data) live chart in.
-    const enter =
-      dir === 'in'
-        ? [{ transform: 'scaleX(0.6)', opacity: 0.25 }, { transform: 'scaleX(1)', opacity: 1 }]
-        : [{ transform: 'scaleX(1.7)', opacity: 0.25 }, { transform: 'scaleX(1)', opacity: 1 }]
-    liveRef.current?.animate(enter, { duration: ZOOM_MS, easing: ZOOM_EASING })
-
-    setOutgoing({ points: before.points, timeframe: before.timeframe, color: before.color, dir, key })
-    const t = setTimeout(
-      () => setOutgoing((cur) => (cur && cur.key === key ? null : cur)),
-      ZOOM_MS,
-    )
-    return () => clearTimeout(t)
-  }, [timeframe, points, chartColor])
-
-  // Animate the outgoing snapshot out once it has mounted on top.
-  useEffect(() => {
-    if (!outgoing || !outRef.current) return
-    const leave =
-      outgoing.dir === 'in'
-        ? [{ transform: 'scaleX(1)', opacity: 1 }, { transform: 'scaleX(1.7)', opacity: 0 }]
-        : [{ transform: 'scaleX(1)', opacity: 1 }, { transform: 'scaleX(0.6)', opacity: 0 }]
-    outRef.current.animate(leave, { duration: ZOOM_MS, easing: ZOOM_EASING, fill: 'forwards' })
-  }, [outgoing])
+  const synth = useCallback((tf: Timeframe) => synthPoints(tf, equity, slope), [equity, slope])
 
   return (
     <Panel>
-      <div className="flex items-start justify-between">
-        <div>
-          <h3 className="text-xl font-semibold text-primary">Portfolio Value</h3>
-          {/* Equity at the inspected point (hover / selection), else live total. */}
-          <RollingNumber
-            value={formatCurrency(displayEquity)}
-            className={`mt-2 block text-[28px] font-semibold tracking-[-0.02em] ${numberColor}`}
-          />
-          {/* Change over the span the user is inspecting on the chart (hovered
-              point or click-drag selection), else the full timeframe window. */}
-          <p className={`mt-1 flex items-center text-sm ${readoutColor}`}>
-            <RollingNumber value={formatSignedCurrency(readoutDollars)} />
-            &nbsp;&nbsp;
-            <RollingNumber value={formatPercent(readoutPct)} />
-          </p>
-        </div>
-        {/* Vertical up/down cycler steps the timeframe (default 1Y). */}
-        <VerticalCycleControl
-          label={timeframe}
-          onPrev={() => stepTf(-1)}
-          onNext={() => stepTf(1)}
-        />
-      </div>
-
-      {/* Relative stage; clip only while a zoom is in flight so the tooltip is
-          never clipped at rest. */}
-      <div className={`relative mt-3 ${outgoing ? 'overflow-hidden' : ''}`}>
-        <div ref={liveRef} style={{ transformOrigin: '100% 50%' }}>
-          <EquityChart
-            points={points}
-            timeframe={timeframe}
-            color={chartColor}
-            height={190}
-            onActiveRangeChange={handleActiveRange}
-          />
-        </div>
-        {outgoing && (
-          <div
-            ref={outRef}
-            aria-hidden
-            className="pointer-events-none absolute inset-0"
-            style={{ transformOrigin: '100% 50%' }}
-          >
-            <EquityChart
-              points={outgoing.points}
-              timeframe={outgoing.timeframe}
-              color={outgoing.color}
-              height={190}
-            />
-          </div>
-        )}
-      </div>
+      <TimeframeAreaChart
+        all={all}
+        synth={synth}
+        liveValue={equity}
+        title="Portfolio Value"
+        showValue
+        height={190}
+      />
     </Panel>
   )
 }
-
-// Zoom-transition tuning (see PortfolioValueWidget). Window width in days ranks the
-// timeframes so a step's direction is width-based (handles the cycler wraparound).
-const ZOOM_MS = 460
-const ZOOM_EASING = 'cubic-bezier(0.16, 1, 0.3, 1)'
-const ZOOM_DAYS = (tf: Timeframe): number => TF_DAYS[tf]
 
 // ---------------------------------------------------------------------------
 // Sharpe Ratio

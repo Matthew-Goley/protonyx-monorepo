@@ -6,32 +6,21 @@ import { AppShell } from '@/components/layout/AppShell'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Panel, CardLabel } from '@/components/common/Panel'
 import { PageLoader } from '@/components/common/PageLoader'
-import { LensLineChart } from '@/components/charts/LensLineChart'
+import { TimeframeAreaChart } from '@/components/common/TimeframeAreaChart'
+import { type EquityChartPoint } from '@/components/charts'
 import { AddPositionModal } from '@/components/common/AddPositionModal'
 import { Button } from '@/components/ui/button'
 import { usePositionsManager } from '@/hooks/usePositionsManager'
-import { lensApi, type Position, type TickerHistoryPoint } from '@/api/lens'
+import { lensApi, type Position } from '@/api/lens'
 import { cn } from '@/lib/utils'
 
 /*
   Markets / instrument-detail screen. Fetches a live quote (GET /ticker/{symbol}/quote)
   and real daily price history (GET /ticker/{symbol}/history) from lens-api (yfinance),
-  then renders identity + live price, a range-switchable chart, key statistics, and a
+  then renders identity + live price, a timeframe-stepped price chart (the same chart
+  surface as the dashboard Portfolio Value widget), key statistics, and a
   plain-language "About" block. Reachable from the TopBar search.
 */
-
-const RANGES = ['1W', '1M', '3M', '1Y', '5Y'] as const
-type Range = (typeof RANGES)[number]
-
-// Trailing daily-close count per range. lens-api serves daily closes only, so the
-// short ranges are coarse; we fetch 5y once and slice client-side.
-const RANGE_POINTS: Record<Range, number> = {
-  '1W': 5,
-  '1M': 22,
-  '3M': 66,
-  '1Y': 252,
-  '5Y': Number.MAX_SAFE_INTEGER,
-}
 
 function money(n: number | null | undefined, currency = 'USD'): string {
   if (n === null || n === undefined) return '--'
@@ -71,7 +60,6 @@ function prettyType(type: string): string {
 export function Commodity() {
   const { symbol } = useParams()
   const sym = (symbol ?? '').toUpperCase()
-  const [range, setRange] = useState<Range>('1Y')
   const [addOpen, setAddOpen] = useState(false)
   const manager = usePositionsManager()
 
@@ -94,12 +82,13 @@ export function Commodity() {
   const c = quoteQuery.data
   const history = historyQuery.data
 
-  const data = useMemo(() => {
-    const h = history ?? []
-    const count = RANGE_POINTS[range]
-    const sliced = count >= h.length ? h : h.slice(h.length - count)
-    return sliced.map((p: TickerHistoryPoint, i) => ({ t: i, price: p.close }))
-  }, [history, range])
+  // Full 5y daily-close series mapped to the shared chart's point shape (its
+  // `equity` field carries the close price here). TimeframeAreaChart windows it
+  // per selected timeframe internally.
+  const priceAll = useMemo<EquityChartPoint[]>(
+    () => (history ?? []).map((p) => ({ date: p.date, equity: p.close })),
+    [history],
+  )
 
   function addPosition(p: Position) {
     manager.addPosition(p)
@@ -201,45 +190,25 @@ export function Commodity() {
       {/* Chart + key statistics */}
       <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-3">
         <Panel className="lg:col-span-2">
-          <div className="mb-4 flex items-center justify-between">
-            <CardLabel>Price</CardLabel>
-            <div className="flex items-center gap-1 rounded-md border border-subtle bg-elevated p-0.5">
-              {RANGES.map((r) => (
-                <button
-                  key={r}
-                  type="button"
-                  onClick={() => setRange(r)}
-                  className={cn(
-                    'rounded px-2.5 py-1 text-xs font-medium transition-colors duration-200 ease-out',
-                    r === range
-                      ? 'bg-accent-teal/15 text-accent-teal'
-                      : 'text-secondary hover:text-primary',
-                  )}
-                >
-                  {r}
-                </button>
-              ))}
-            </div>
-          </div>
-
           {historyQuery.isLoading ? (
             <div className="flex h-[320px] items-center justify-center text-sm text-muted">
               Loading price history...
             </div>
-          ) : data.length < 2 ? (
+          ) : priceAll.length < 2 ? (
             <div className="flex h-[320px] items-center justify-center text-sm text-muted">
               No price history available.
             </div>
           ) : (
-            <LensLineChart
-              data={data}
-              xKey="t"
-              lines={[{ key: 'price', color: up ? '#3ecf8e' : '#f16b6b', width: 2 }]}
-              gradientStroke
+            // Same chart surface as the Portfolio Value widget (timeframe stepper,
+            // hover + drag range inspection, signed $/% period-return readout),
+            // minus the big value readout: the live price stays in the header above.
+            // The period-return readout is promoted to the panel headline (`lg`),
+            // standing in for a "Price" label.
+            <TimeframeAreaChart
+              all={priceAll}
+              liveValue={c.price ?? priceAll[priceAll.length - 1].equity}
               height={320}
-              showGrid
-              showAxes
-              showTooltip
+              readoutSize="lg"
             />
           )}
 
