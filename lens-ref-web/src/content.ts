@@ -3,10 +3,13 @@ export const LAUNCH_DATE = "2026-08-05"; // placeholder, easy to change in one p
 export const OTP_LENGTH = 4; // change to 3 to test a shorter, more frictionless code
 
 export const HERO = {
-  headline: "Know what's actually in your portfolio",
+  headline: "Actionable Insight for Everyone.",
   subhead:
     "A diagnostic that catches fee drag, concentration risk, and hidden exposure before it costs you.",
 };
+
+// Headline words that get the brand gradient, mirroring the frontend/ hero.
+export const HERO_ACCENTS = ["Actionable", "Insight", "Everyone."];
 
 export const HOW_IT_WORKS = [
   { title: "Add your positions", detail: "No brokerage login needed" },

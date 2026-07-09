@@ -5,9 +5,9 @@ import {
   BRAND,
   COPY,
   HERO,
+  HERO_ACCENTS,
   HOW_IT_WORKS,
   LAUNCH_DATE,
-  LAUNCH_DATE_DISPLAY,
   PREVIEW,
   REFERRAL_MILESTONES,
   type FlagSeverity,
@@ -20,29 +20,9 @@ import {
   type AccountFlow,
 } from "../hooks/useAccountFlow";
 import { useOtpInput } from "../hooks/useOtpInput";
+import lensArcDark from "../../assets/lens-arc/lens-arc-dark.png";
 
 const gradient = `linear-gradient(135deg, ${BRAND.gradientFrom}, ${BRAND.gradientTo})`;
-
-function ApertureMark({ size = 26 }: { size?: number }) {
-  const id = useId();
-  return (
-    <svg width={size} height={size} viewBox="0 0 32 32" fill="none" aria-hidden="true">
-      <defs>
-        <linearGradient id={id} x1="0" y1="0" x2="32" y2="32" gradientUnits="userSpaceOnUse">
-          <stop stopColor={BRAND.gradientFrom} />
-          <stop offset="1" stopColor={BRAND.gradientTo} />
-        </linearGradient>
-      </defs>
-      <circle cx="16" cy="16" r="11" stroke={`url(#${id})`} strokeWidth="2" />
-      <circle cx="16" cy="16" r="5.5" stroke={`url(#${id})`} strokeWidth="1.5" />
-      <circle cx="16" cy="16" r="1.8" fill={`url(#${id})`} />
-      <line x1="16" y1="1" x2="16" y2="4.5" stroke={`url(#${id})`} strokeWidth="1.5" />
-      <line x1="16" y1="27.5" x2="16" y2="31" stroke={`url(#${id})`} strokeWidth="1.5" />
-      <line x1="1" y1="16" x2="4.5" y2="16" stroke={`url(#${id})`} strokeWidth="1.5" />
-      <line x1="27.5" y1="16" x2="31" y2="16" stroke={`url(#${id})`} strokeWidth="1.5" />
-    </svg>
-  );
-}
 
 function useCountdown() {
   const target = useMemo(() => new Date(LAUNCH_DATE + "T00:00:00").getTime(), []);
@@ -61,6 +41,29 @@ function useCountdown() {
 }
 
 const pad = (n: number) => String(n).padStart(2, "0");
+
+function Headline() {
+  const words = HERO.headline.split(" ");
+  return (
+    <>
+      {words.map((word, i) => (
+        <span key={i}>
+          {HERO_ACCENTS.includes(word) ? (
+            <span
+              className="bg-clip-text text-transparent"
+              style={{ backgroundImage: gradient }}
+            >
+              {word}
+            </span>
+          ) : (
+            word
+          )}
+          {i < words.length - 1 ? " " : ""}
+        </span>
+      ))}
+    </>
+  );
+}
 
 const SEVERITY: Record<
   FlagSeverity,
@@ -338,28 +341,21 @@ export default function Layout4() {
   return (
     <div className="bg-[#f6f7f9] font-sans text-slate-900">
       <header className="mx-auto flex max-w-7xl items-center justify-between px-6 py-5">
-        <div className="flex items-center gap-2.5">
-          <ApertureMark />
-          <span className="font-display text-lg font-semibold tracking-tight">
-            {BRAND.wordmark}
-          </span>
-        </div>
-        <div className="flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3.5 py-1.5 text-xs text-slate-600 shadow-sm">
-          <span className="hidden sm:inline">{COPY.eyebrow}</span>
-          <span className="font-semibold tabular-nums text-slate-900">
-            {pad(parts[0])}:{pad(parts[1])}:{pad(parts[2])}:{pad(parts[3])}
-          </span>
-        </div>
+        <img
+          src={lensArcDark}
+          alt="Lens Arc"
+          className="h-8 w-auto select-none"
+          draggable={false}
+        />
+        <span className="text-sm font-semibold tabular-nums text-slate-900">
+          {pad(parts[0])}:{pad(parts[1])}:{pad(parts[2])}:{pad(parts[3])}
+        </span>
       </header>
 
       <section className="mx-auto grid max-w-7xl items-center gap-12 px-6 pb-20 pt-10 lg:grid-cols-[1fr_1.15fr] lg:pb-28 lg:pt-16">
         <div>
-          <p className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3.5 py-1.5 text-xs font-medium text-slate-600 shadow-sm">
-            <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundImage: gradient }} />
-            {COPY.eyebrow} {LAUNCH_DATE_DISPLAY}
-          </p>
-          <h1 className="mt-6 max-w-xl font-display text-4xl font-bold leading-tight tracking-tight sm:text-5xl xl:text-6xl">
-            {HERO.headline}
+          <h1 className="max-w-xl font-display text-4xl font-bold leading-tight tracking-tight sm:text-5xl xl:text-6xl">
+            <Headline />
           </h1>
           <p className="mt-5 max-w-lg text-base leading-relaxed text-slate-600 sm:text-lg">
             {HERO.subhead}
@@ -542,10 +538,12 @@ export default function Layout4() {
 
       <footer className="border-t border-slate-200 bg-white">
         <div className="mx-auto flex max-w-7xl flex-col gap-4 px-6 pb-20 pt-10 text-sm text-slate-500 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-2">
-            <ApertureMark size={20} />
-            <span className="font-display font-semibold text-slate-700">{BRAND.wordmark}</span>
-          </div>
+          <img
+            src={lensArcDark}
+            alt="Lens Arc"
+            className="h-6 w-auto shrink-0 select-none self-start sm:self-center"
+            draggable={false}
+          />
           <p className="max-w-md leading-relaxed">{COPY.disclaimer}</p>
           <p className="shrink-0">{COPY.legal}</p>
         </div>

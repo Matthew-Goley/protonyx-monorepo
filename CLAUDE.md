@@ -145,8 +145,10 @@ _monorepo/
 │                                  # All copy/dates/milestones live in src/content.ts. No backend calls; the signup flow (email,
 │                                  # mock OTP dialog, account view with referral dial + copyable link) is fully client-mocked via
 │                                  # src/hooks/useAccountFlow.ts + useOtpInput.ts. A dev-only referral-count stepper sits bottom
-│                                  # right in App.tsx (import.meta.env.DEV guarded, stripped from production builds).
+│                                  # right in App.tsx (import.meta.env.DEV guarded, stripped from production builds). Brand images
+│                                  # in assets/lens-arc (mirror of lens-app's) are used for the header/footer wordmark + favicon.
 │                                  # Standalone project: npm install && npm run dev (Vite, port 5173). Not deployed yet.
+│                                  # Has its own CLAUDE.md; read it before working in lens-ref-web/.
 ├── scripts/                       # Admin / DB utility scripts — currently empty
 ├── database/                      # Legacy SQLite dir — gitignored, empty, no longer used
 ├── dev.bat                        # Windows helper: starts backend (npm run dev) + frontend (browser-sync on 5500)
