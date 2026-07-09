@@ -35,6 +35,12 @@ export interface ProjectionCompareChartProps {
   todayIndex: number
   height?: number
   showBands?: boolean
+  /**
+   * Fixed y domain. Pass one whenever the same chart renders several projection
+   * methods: recharts' default `'auto'` rescales per method, so the lines jump
+   * vertically on every switch. Build it with `projectionYDomain()`.
+   */
+  yDomain?: [number, number]
   valueFormatter?: (v: number) => string
   /** Axis tick formatter; defaults to a compact currency. */
   tickFormatter?: (v: number) => string
@@ -121,6 +127,7 @@ export function ProjectionCompareChart({
   todayIndex,
   height = 420,
   showBands = true,
+  yDomain,
   valueFormatter,
   tickFormatter,
   className,
@@ -144,7 +151,8 @@ export function ProjectionCompareChart({
             interval={0}
           />
           <YAxis
-            domain={['auto', 'auto']}
+            domain={yDomain ?? ['auto', 'auto']}
+            allowDataOverflow={yDomain !== undefined}
             tick={AXIS_TICK_PROPS}
             tickLine={false}
             axisLine={false}

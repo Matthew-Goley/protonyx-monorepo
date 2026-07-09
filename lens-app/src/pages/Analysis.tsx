@@ -19,8 +19,10 @@ import { ProjectionCompareChart } from '@/components/charts'
 import {
   buildProjection,
   ctaWeight,
+  projectionYDomain,
   PROJECTION_METHODS,
   type ProjectionMethod,
+  type ProjectionSeries,
 } from '@/lib/projections'
 import { ctaAccent, ctaActionLabel, formatCurrency, totalEquity } from '@/lib/lensData'
 import { cn } from '@/lib/utils'
@@ -173,15 +175,29 @@ function ProjectionLab({
     [ctas, equity],
   )
 
+  // Every method, built once for the fully-applied selection. This is what fixes
+  // the axes: the y domain is derived from ALL of them, so switching methods
+  // rescales nothing and the portfolio-value line holds its vertical position.
+  // Doubles as the cache for the `all` selection, so method switches are free.
+  const allMethodSeries = useMemo(() => {
+    const out = {} as Record<ProjectionMethod, ProjectionSeries>
+    for (const m of PROJECTION_METHODS) {
+      out[m.id] = buildProjection({ result, historyEquity, method: m.id, selection: allIndices })
+    }
+    return out
+  }, [result, historyEquity, allIndices])
+
+  const yDomain = useMemo(
+    () => projectionYDomain(Object.values(allMethodSeries)),
+    [allMethodSeries],
+  )
+
   const projection = useMemo(
     () =>
-      buildProjection({
-        result,
-        historyEquity,
-        method,
-        selection: selection === 'all' ? allIndices : [selection],
-      }),
-    [result, historyEquity, method, selection, allIndices],
+      selection === 'all'
+        ? allMethodSeries[method]
+        : buildProjection({ result, historyEquity, method, selection: [selection] }),
+    [allMethodSeries, result, historyEquity, method, selection],
   )
 
   const selectedLabel =
@@ -270,6 +286,7 @@ function ProjectionLab({
             todayIndex={projection.todayIndex}
             height={440}
             showBands={projection.hasBands}
+            yDomain={yDomain}
           />
 
           {/* How the future is modelled. */}

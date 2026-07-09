@@ -255,10 +255,19 @@ function bootstrapFan(
   })
 }
 
+interface LogTrend {
+  slopePerDay: number
+  residStd: number
+  /** Sample size, mean x and Sxx, needed for the OLS prediction interval. */
+  n: number
+  xBar: number
+  sxx: number
+}
+
 /** Least-squares fit of ln(equity) against time: the exponential trendline. */
-function fitLogTrend(curve: number[]): { slopePerDay: number; residStd: number } {
+function fitLogTrend(curve: number[]): LogTrend {
   const pts = curve.filter((v) => v > 0)
-  if (pts.length < 3) return { slopePerDay: 0, residStd: 0 }
+  if (pts.length < 3) return { slopePerDay: 0, residStd: 0, n: 0, xBar: 0, sxx: 0 }
   const n = pts.length
   const ys = pts.map((v) => Math.log(v))
   const xBar = (n - 1) / 2
@@ -271,13 +280,21 @@ function fitLogTrend(curve: number[]): { slopePerDay: number; residStd: number }
   }
   const slopePerDay = den === 0 ? 0 : num / den
   const resid = ys.map((y, i) => y - (yBar + slopePerDay * (i - xBar)))
-  return { slopePerDay, residStd: stdev(resid) }
+  return { slopePerDay, residStd: stdev(resid), n, xBar, sxx: den }
 }
 
 /**
  * Trend extrapolation: extend the fitted exponential trend forward, anchored at
- * today's equity. The band widens with sqrt(time) from the fit residuals. Not
- * predictive in any real sense, but very legible: "if the trend continues...".
+ * today's equity. Not predictive in any real sense, but very legible: "if the
+ * trend continues...".
+ *
+ * The band is the standard OLS **prediction interval**,
+ *   se(x) = residStd * sqrt(1 + 1/n + (x - xBar)^2 / Sxx),
+ * which widens only gently as the fit is extrapolated. Do NOT scale the
+ * residual std by sqrt(k) as if it were a random-walk innovation: a trend
+ * residual is not an innovation, and over a 126-day horizon that mistake blows
+ * the band out to roughly a 3x fan, far wider than GBM's own 2-sigma cone. It
+ * then dominates the chart's shared y domain and flattens every other method.
  */
 function regressionFan(
   e0: number,
@@ -285,15 +302,18 @@ function regressionFan(
   effect: LensEffect,
   horizon: number,
 ): Fan {
-  const { slopePerDay, residStd } = fitLogTrend(curve)
+  const { slopePerDay, residStd, n, xBar, sxx } = fitLogTrend(curve)
   const slope = slopePerDay + effect.driftAdd / 100 / TRADING_DAYS
   const sigma = residStd * effect.volScale
   const median: number[] = []
   const outer: Array<[number, number]> = []
   const inner: Array<[number, number]> = []
   for (let k = 0; k <= horizon; k++) {
+    // Extrapolating past the last observed x (n - 1).
+    const x = n - 1 + k
+    const leverage = n > 0 && sxx > 0 ? 1 / n + ((x - xBar) * (x - xBar)) / sxx : 0
+    const spread = sigma * Math.sqrt(1 + leverage)
     const center = slope * k
-    const spread = sigma * Math.sqrt(k)
     const at = (z: number) => e0 * Math.exp(center + spread * z)
     median.push(at(0))
     outer.push([at(-2), at(2)])
@@ -480,4 +500,37 @@ export function buildProjection({
     improvementDollars: lensFinal - currentFinal,
     hasBands: lensFan.outer !== null,
   }
+}
+
+/**
+ * A y domain spanning every drawn value across one or more series.
+ *
+ * The chart MUST be given a fixed domain rather than recharts' `'auto'`: each
+ * method produces a different spread (a 2-sigma Monte Carlo fan is far wider
+ * than a moving-average line), so an auto domain rescales on every method
+ * switch and the portfolio-value line jumps vertically even though its value
+ * has not changed. Feeding one domain built from all methods keeps the lines
+ * pinned, which is the only way the methods can be compared against each other.
+ *
+ * Pass the series for every method (built from the widest selection). Any
+ * narrower CTA selection is bounded by them: a subset's weight is <= the full
+ * weight, so its Lens line sits between the current and fully-applied lines and
+ * its bands are no wider than the current one's.
+ */
+export function projectionYDomain(series: ProjectionSeries[]): [number, number] {
+  const ys: number[] = []
+  for (const s of series) {
+    for (const r of s.rows) {
+      if (r.hist != null) ys.push(r.hist)
+      if (r.current != null) ys.push(r.current)
+      if (r.lens != null) ys.push(r.lens)
+      if (r.currentBand) ys.push(r.currentBand[0], r.currentBand[1])
+      if (r.lensBand) ys.push(r.lensBand[0], r.lensBand[1])
+    }
+  }
+  if (ys.length === 0) return [0, 1]
+  const lo = Math.min(...ys)
+  const hi = Math.max(...ys)
+  const pad = Math.max(1, (hi - lo) * 0.05)
+  return [Math.floor(lo - pad), Math.ceil(hi + pad)]
 }
