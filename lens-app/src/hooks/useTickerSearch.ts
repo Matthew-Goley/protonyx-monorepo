@@ -12,6 +12,17 @@ export interface TickerHit extends SearchResult {
 const DEBOUNCE_MS = 220
 const MAX_RESULTS = 8
 
+/** Symbols served by the local fast-path index. Remote (yfinance) results for
+ *  these are dropped entirely so a top-list name only ever appears once, as its
+ *  local "Stock" listing, never as a duplicate yfinance "equity" listing. */
+const TOP_SYMBOLS = new Set(TOP_TICKERS.map((t) => t.symbol.toUpperCase()))
+
+/** Map yfinance instrument types to plainer labels for a general audience.
+ *  yfinance calls common shares "EQUITY"; most users know that as a "Stock". */
+function normalizeType(type: string): string {
+  return type.toUpperCase() === 'EQUITY' ? 'Stock' : type
+}
+
 /** Instant matches against the bundled top-tickers list. Symbol prefix matches
  *  rank above name substring matches; symbol-prefix above name-prefix. */
 function localHits(q: string): TickerHit[] {
@@ -66,9 +77,11 @@ export function useTickerSearch(query: string): { results: TickerHit[]; loading:
     const merged = [...locals]
     for (const r of remote.data ?? []) {
       const key = r.symbol.toUpperCase()
-      if (seen.has(key)) continue
+      // Skip anything already shown and anything in the local top list: those
+      // names are served only from TOP_TICKERS, never as a yfinance duplicate.
+      if (seen.has(key) || TOP_SYMBOLS.has(key)) continue
       seen.add(key)
-      merged.push({ ...r, local: false })
+      merged.push({ ...r, type: normalizeType(r.type), local: false })
     }
     return merged.slice(0, MAX_RESULTS)
   }, [q, remote.data])
