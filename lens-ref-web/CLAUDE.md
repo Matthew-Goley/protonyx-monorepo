@@ -39,7 +39,10 @@ lens-ref-web/
 ├── index.html                     # Font links, favicon (/lens-arc-icon.png), #root
 ├── public/
 │   └── lens-arc-icon.png          # Favicon, a copy of assets/lens-arc/icon-rounded.png
-├── assets/lens-arc/               # Brand artwork, mirror of lens-app/assets/lens-arc (see section 7)
+├── assets/
+│   ├── lens-arc/                  # Brand artwork, mirror of lens-app/assets/lens-arc (see section 7)
+│   ├── video/                     # Demo videos, copies of frontend/assets/video (hero demo + 3 discovery clips)
+│   └── protonyx-company/          # Protonyx company wordmarks (white/black), present but not used yet
 ├── src/
 │   ├── main.tsx                   # ReactDOM bootstrap
 │   ├── App.tsx                    # Renders Layout4 + the dev-only DemoReferralControl (bottom right)
@@ -66,13 +69,11 @@ Every user-facing string, date, and number renders from `src/content.ts`. Compon
 - `HERO` (headline "Actionable Insight for Everyone." plus subhead) and `HERO_ACCENTS` (the words rendered in the brand gradient; matches the `frontend/` hero treatment). The headline casing deliberately matches `frontend/`, an exception to the sentence-case rule below.
 - `HOW_IT_WORKS`, `REFERRAL_MILESTONES` (0/1/3/5/10 referrals), `BRAND` (gradient hexes + wordmark text).
 - `COPY`: all microcopy, including template functions (`otpInstruction`, `nextStep`, `rewardShort`, `referralUnit`, `dialCaption`). Some entries are leftovers from the deleted layouts and currently unused (`eyebrow`, `countdownUnits`, `countdownCaption`, `previewHeading`, `previewSub`, `dialCaption`); harmless, reuse or delete as needed.
-- `PREVIEW`: the mocked diagnostic-report content (caution score 62 / "elevated", three severity-tagged flags, top ranked action) rendered in the hero mock.
-
 ### The page (src/layouts/Layout4.tsx)
 
-Light theme. Top to bottom: header (wordmark image left, bare `dd:hh:mm:ss` countdown text right, driven by `LAUNCH_DATE`), hero (gradient-accented headline, subhead, email capture or account view, disclaimer) beside a dark mocked report window (traffic-dot title bar, caution-score gauge, flag list, gradient-edged action panel), a three-card "how it works" band, a five-node referral milestone stepper (horizontal on `md+`, stacked cards on mobile), and the footer. The OTP dialog renders at the page root whenever the flow step is `"verifying"`.
+Light theme. Top to bottom: header (wordmark image left, bare `dd:hh:mm:ss` countdown text right, driven by `LAUNCH_DATE`), hero (gradient-accented headline, subhead, email capture or account view, disclaimer) beside the Vector demo video in a `DemoWindow` (16/10 body, gradient glow behind), a "how it works" walkthrough of three stacked rows (each a 16/9 `DemoWindow` discovery video on the left, gradient step number + title + detail on the right, copy from `HOW_IT_WORKS`), a five-node referral milestone stepper (horizontal on `md+`, stacked cards on mobile), and the footer. The OTP dialog renders at the page root whenever the flow step is `"verifying"`.
 
-The caution gauge follows the dataviz conventions: the score number wears text ink, amber is a status hue carried by a chip with icon + label (never color alone), and the track is recessive.
+`DemoWindow` is adapted from the `frontend/` `.demo-window` but deliberately drops its macOS-style chrome bar: just a rounded dark frame with a border and shadow around the clip. All videos are `autoPlay muted loop playsInline preload="metadata"`. The walkthrough is deliberately compact (capped at `max-w-5xl`, moderate step-number sizes) so it does not upstage the referral section. The earlier mocked diagnostic-report window (caution gauge + severity flags + action panel) was replaced by the hero video; recover it from git history if it is ever wanted back.
 
 ### The signup flow (hooks/useAccountFlow.ts)
 
@@ -104,11 +105,11 @@ SVG circle with `pathLength={100}` and a `strokeDasharray` arc, rotated -90deg. 
 
 - **No em dashes anywhere** (copy, comments, commit messages). Use a comma, colon, period, or hyphen.
 - **Sentence case only**, never Title Case or ALL CAPS. One sanctioned exception: the hero headline "Actionable Insight for Everyone." matches the `frontend/` hero verbatim.
-- **Tool-framed language** (diagnostic, analysis, flags, caution score). Never advice-framed language (recommend, guarantee, will outperform). This includes the mocked report content in `PREVIEW`.
+- **Tool-framed language** (diagnostic, analysis, flags, caution score). Never advice-framed language (recommend, guarantee, will outperform).
 
-## 7. Brand assets (assets/lens-arc/)
+## 7. Brand and media assets (assets/)
 
-Mirror of `lens-app/assets/lens-arc/` (which is the source of truth; recopy from there if artwork changes). Semantics:
+`assets/lens-arc/` is a mirror of `lens-app/assets/lens-arc/` (which is the source of truth; recopy from there if artwork changes). Semantics:
 
 | File | What it is | Used here |
 |---|---|---|
@@ -119,7 +120,16 @@ Mirror of `lens-app/assets/lens-arc/` (which is the source of truth; recopy from
 | `icon-rounded.png` | Rounded app-tile icon | Copied to `public/lens-arc-icon.png` as the favicon |
 | `icon-square.png` | Square app-tile icon | Not currently used |
 
-The mocked report title bar still renders `BRAND.wordmark` as text; that is intentional (it imitates a window title, not a logo placement).
+`assets/video/` holds copies of `frontend/assets/video/`:
+
+| File | Used here |
+|---|---|
+| `1vector_demo.mp4` | Hero demo window (16/10) |
+| `discovery_enter.mp4` | How-it-works step 1 (Add your positions) |
+| `discovery_read.mp4` | How-it-works step 2 (Get your caution score) |
+| `discovery_act.mp4` | How-it-works step 3 (See what to fix) |
+
+The mapping lives in `STEP_VIDEOS` in `Layout4.tsx` and must stay aligned with the order of `HOW_IT_WORKS` in `content.ts`. `assets/protonyx-company/` holds the Protonyx company wordmarks (white and black); they are present but not used anywhere on the page yet.
 
 ## 8. Gotchas
 

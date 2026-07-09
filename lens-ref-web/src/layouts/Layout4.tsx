@@ -1,6 +1,6 @@
 import { useEffect, useId, useMemo, useState } from "react";
 import type { FormEvent } from "react";
-import { ArrowRight, Check, Copy, Layers, Percent, Share2, ShieldAlert, Sparkles } from "lucide-react";
+import { ArrowRight, Check, Copy, Share2, Sparkles } from "lucide-react";
 import {
   BRAND,
   COPY,
@@ -8,9 +8,7 @@ import {
   HERO_ACCENTS,
   HOW_IT_WORKS,
   LAUNCH_DATE,
-  PREVIEW,
   REFERRAL_MILESTONES,
-  type FlagSeverity,
 } from "../content";
 import {
   nextStepLine,
@@ -21,6 +19,13 @@ import {
 } from "../hooks/useAccountFlow";
 import { useOtpInput } from "../hooks/useOtpInput";
 import lensArcDark from "../../assets/lens-arc/lens-arc-dark.png";
+import vectorDemo from "../../assets/video/1vector_demo.mp4";
+import discoveryEnter from "../../assets/video/discovery_enter.mp4";
+import discoveryRead from "../../assets/video/discovery_read.mp4";
+import discoveryAct from "../../assets/video/discovery_act.mp4";
+
+// Step videos, in HOW_IT_WORKS order (enter, read, act), same clips frontend/ uses.
+const STEP_VIDEOS = [discoveryEnter, discoveryRead, discoveryAct];
 
 const gradient = `linear-gradient(135deg, ${BRAND.gradientFrom}, ${BRAND.gradientTo})`;
 
@@ -65,51 +70,21 @@ function Headline() {
   );
 }
 
-const SEVERITY: Record<
-  FlagSeverity,
-  { label: string; chip: string; Icon: typeof ShieldAlert }
-> = {
-  high: {
-    label: "high",
-    chip: "border-rose-400/25 bg-rose-400/10 text-rose-300",
-    Icon: ShieldAlert,
-  },
-  medium: {
-    label: "medium",
-    chip: "border-amber-400/25 bg-amber-400/10 text-amber-300",
-    Icon: Percent,
-  },
-  low: {
-    label: "low",
-    chip: "border-sky-400/25 bg-sky-400/10 text-sky-300",
-    Icon: Layers,
-  },
-};
-
-function CautionGauge() {
+// Framed demo video, adapted from the frontend/ .demo-window but without the
+// macOS-style chrome bar: just the rounded dark frame around the clip.
+function DemoWindow({ src, aspect = "aspect-video" }: { src: string; aspect?: string }) {
   return (
-    <div className="relative flex flex-col items-center">
-      <svg width="150" height="86" viewBox="0 0 120 68" fill="none" aria-hidden="true">
-        <path
-          d="M 10 60 A 50 50 0 0 1 110 60"
-          stroke="rgba(255,255,255,0.09)"
-          strokeWidth="9"
-          strokeLinecap="round"
-          pathLength={100}
+    <div className="overflow-hidden rounded-xl border border-white/10 bg-[#141922] shadow-2xl">
+      <div className={`${aspect} bg-black`}>
+        <video
+          src={src}
+          autoPlay
+          muted
+          loop
+          playsInline
+          preload="metadata"
+          className="h-full w-full object-cover"
         />
-        <path
-          d="M 10 60 A 50 50 0 0 1 110 60"
-          stroke="#fbbf24"
-          strokeWidth="9"
-          strokeLinecap="round"
-          pathLength={100}
-          strokeDasharray={`${PREVIEW.score} ${100 - PREVIEW.score}`}
-        />
-      </svg>
-      <div className="absolute bottom-1 flex flex-col items-center">
-        <span className="font-display text-3xl font-bold tabular-nums text-white">
-          {PREVIEW.score}
-        </span>
       </div>
     </div>
   );
@@ -372,66 +347,8 @@ export default function Layout4() {
             className="absolute -inset-6 rounded-[2rem] opacity-15 blur-2xl"
             style={{ backgroundImage: gradient }}
           />
-          <div className="relative overflow-hidden rounded-2xl border border-slate-800 bg-[#0b1020] shadow-2xl">
-            <div className="flex items-center gap-1.5 border-b border-white/5 px-4 py-3">
-              <span className="h-2.5 w-2.5 rounded-full bg-white/15" />
-              <span className="h-2.5 w-2.5 rounded-full bg-white/15" />
-              <span className="h-2.5 w-2.5 rounded-full bg-white/15" />
-              <span className="ml-3 text-xs text-slate-500">
-                {BRAND.wordmark} &middot; {PREVIEW.reportTitle}
-              </span>
-            </div>
-
-            <div className="grid gap-3 p-4 sm:grid-cols-[auto_1fr] sm:p-5">
-              <div className="flex flex-col items-center rounded-xl border border-white/5 bg-white/[0.03] px-6 py-4">
-                <p className="text-xs font-medium text-slate-400">{PREVIEW.scoreLabel}</p>
-                <CautionGauge />
-                <span className="mt-1 inline-flex items-center gap-1.5 rounded-full border border-amber-400/25 bg-amber-400/10 px-2.5 py-0.5 text-xs font-semibold text-amber-300">
-                  <ShieldAlert size={12} />
-                  {PREVIEW.scoreBand}
-                </span>
-                <p className="mt-2 text-center text-[11px] text-slate-500">
-                  {PREVIEW.scoreCaption}
-                </p>
-              </div>
-
-              <div className="flex flex-col gap-2.5">
-                {PREVIEW.flags.map((flag) => {
-                  const sev = SEVERITY[flag.severity];
-                  return (
-                    <div
-                      key={flag.title}
-                      className="flex-1 rounded-xl border border-white/5 bg-white/[0.03] p-3"
-                    >
-                      <div className="flex items-center justify-between gap-2">
-                        <p className="text-sm font-semibold text-slate-100">{flag.title}</p>
-                        <span
-                          className={`inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium ${sev.chip}`}
-                        >
-                          <sev.Icon size={11} />
-                          {sev.label}
-                        </span>
-                      </div>
-                      <p className="mt-1 text-xs text-slate-400">{flag.detail}</p>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            <div className="relative mx-4 mb-4 overflow-hidden rounded-xl bg-white/[0.04] p-3.5 sm:mx-5 sm:mb-5">
-              <div
-                className="absolute inset-y-0 left-0 w-1"
-                style={{ backgroundImage: gradient }}
-              />
-              <p
-                className="bg-clip-text text-xs font-semibold text-transparent"
-                style={{ backgroundImage: gradient }}
-              >
-                {PREVIEW.action.label}
-              </p>
-              <p className="mt-1 text-sm text-slate-300">{PREVIEW.action.detail}</p>
-            </div>
+          <div className="relative">
+            <DemoWindow src={vectorDemo} aspect="aspect-[16/10]" />
           </div>
         </div>
       </section>
@@ -442,20 +359,27 @@ export default function Layout4() {
             {COPY.howHeading}
           </h2>
           <p className="mt-2 text-slate-600">{COPY.howSub}</p>
-          <div className="mt-10 grid gap-4 sm:grid-cols-3">
+          <div className="mx-auto mt-12 max-w-5xl space-y-14 sm:space-y-16">
             {HOW_IT_WORKS.map((step, i) => (
               <div
                 key={step.title}
-                className="rounded-2xl border border-slate-200 bg-[#f6f7f9] p-6"
+                className="grid items-center gap-6 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)] lg:gap-12"
               >
-                <span
-                  className="flex h-9 w-9 items-center justify-center rounded-full font-display text-sm font-bold text-slate-950"
-                  style={{ backgroundImage: gradient }}
-                >
-                  {i + 1}
-                </span>
-                <h3 className="mt-4 font-display text-lg font-semibold">{step.title}</h3>
-                <p className="mt-1.5 text-sm text-slate-600">{step.detail}</p>
+                <DemoWindow src={STEP_VIDEOS[i]} />
+                <div className="text-center lg:text-left">
+                  <div className="flex items-center justify-center gap-4 lg:justify-start">
+                    <span
+                      className="bg-clip-text font-display text-5xl font-semibold leading-none text-transparent sm:text-6xl"
+                      style={{ backgroundImage: gradient }}
+                    >
+                      {i + 1}
+                    </span>
+                    <h3 className="font-display text-2xl font-semibold tracking-tight sm:text-3xl">
+                      {step.title}
+                    </h3>
+                  </div>
+                  <p className="mx-auto mt-3 max-w-md text-slate-600 lg:mx-0">{step.detail}</p>
+                </div>
               </div>
             ))}
           </div>

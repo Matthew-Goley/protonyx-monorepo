@@ -102,7 +102,7 @@ _monorepo/
 │   ├── assets/
 │   │   ├── company/               # protonyx_full_white.png, _black.png
 │   │   ├── product/vector/        # Vector product artwork (logo, dashboard, lens preview)
-│   │   ├── video/                 # 1vector_demo.mp4, 2city.mp4, 3codingdemo.mp4, 4stockmarket.mp4, 5codingdemo.mp4
+│   │   ├── video/                 # 1vector_demo.mp4 + discovery_enter.mp4, discovery_read.mp4, discovery_act.mp4
 │   │   └── downloads/             # Vector-Setup.exe (placeholder installer served by the site Download buttons)
 │   └── .vscode/settings.json      # Live Server pinned to port 5501
 │
@@ -146,7 +146,9 @@ _monorepo/
 │                                  # mock OTP dialog, account view with referral dial + copyable link) is fully client-mocked via
 │                                  # src/hooks/useAccountFlow.ts + useOtpInput.ts. A dev-only referral-count stepper sits bottom
 │                                  # right in App.tsx (import.meta.env.DEV guarded, stripped from production builds). Brand images
-│                                  # in assets/lens-arc (mirror of lens-app's) are used for the header/footer wordmark + favicon.
+│                                  # in assets/lens-arc (mirror of lens-app's) are used for the header/footer wordmark + favicon;
+│                                  # demo videos in assets/video (copies of frontend/assets/video) fill the hero demo window and
+│                                  # the three-step how-it-works walkthrough.
 │                                  # Standalone project: npm install && npm run dev (Vite, port 5173). Not deployed yet.
 │                                  # Has its own CLAUDE.md; read it before working in lens-ref-web/.
 ├── scripts/                       # Admin / DB utility scripts — currently empty
@@ -625,7 +627,7 @@ The landing page has four content sections in order: navbar, hero, discovery (da
 
 Hero typography is scaled aggressively for 4K: h1 uses `clamp(2.6rem, 4.8vw, 5.75rem)`, subtitle `clamp(1.05rem, 1.2vw, 1.4rem)`, container max-width 1840 px, and 3.5% horizontal padding instead of the older 6%.
 
-**Discovery (`.lp-section.dark`)** sits directly under the hero and keeps the dark background so the navbar logo stays white through it. Eyebrow `The Workflow` + h2 `Three steps. One loop.` (`.lp-h2`), then a vertically-stacked `.discovery-grid` of three `.discovery-card`s. Each card is a two-column grid (video left, text right) with a large `.demo-window` (same macOS-frame markup as the hero, body forced to 16:9 via `aspect-ratio`, browser-chrome bar holds just the three traffic-light dots, no fake tab inside) wrapping a looping autoplaying muted `playsinline` video. The text column holds a `.discovery-step` row pairing a large gradient `.discovery-num` (`1` / `2` / `3`) with a bold `.discovery-title` (`Enter.` / `Read.` / `Act.`), and a muted `.discovery-caption` beneath. Video sources: `assets/video/discovery_enter.mp4`, `discovery_read.mp4`, `discovery_act.mp4` (files to be recorded and dropped in later; the markup references them already). Each card carries `.fade-in` so the existing `IntersectionObserver` fades it in on scroll. At 960 px the per-card two-column grid collapses to one column (video on top, centered text below).
+**Discovery (`.lp-section.dark`)** sits directly under the hero and keeps the dark background so the navbar logo stays white through it. Eyebrow `The Workflow` + h2 `Three steps. One loop.` (`.lp-h2`), then a vertically-stacked `.discovery-grid` of three `.discovery-card`s. Each card is a two-column grid (video left, text right) with a large `.demo-window` (same macOS-frame markup as the hero, body forced to 16:9 via `aspect-ratio`, browser-chrome bar holds just the three traffic-light dots, no fake tab inside) wrapping a looping autoplaying muted `playsinline` video. The text column holds a `.discovery-step` row pairing a large gradient `.discovery-num` (`1` / `2` / `3`) with a bold `.discovery-title` (`Enter.` / `Read.` / `Act.`), and a muted `.discovery-caption` beneath. Video sources: `assets/video/discovery_enter.mp4`, `discovery_read.mp4`, `discovery_act.mp4` (recorded and in place; also copied into `lens-ref-web/assets/video/`). Each card carries `.fade-in` so the existing `IntersectionObserver` fades it in on scroll. At 960 px the per-card two-column grid collapses to one column (video on top, centered text below).
 
 **Trust strip (`.lp-section.base.trust-strip`)** is a narrow light divider between the discovery section and pricing. Vertical padding is overridden to `3rem 3.5%` (and `2.5rem 6%` at 640 px) so it reads as a divider, not a full section. No eyebrow, no heading. `.trust-row` is a flex row of three `.trust-item`s: each is a teal-colored inline SVG icon (`.trust-icon`, single-color `currentColor` set to `#2dd4bf`, ~30 px) next to a `.trust-text` block of `.trust-label` (bold dark) + `.trust-sub` (muted dark). Copy: `Desktop app.` / `Your data never leaves your machine.`, `No brokerage link.` / `Just tickers and share counts.`, `No account to start.` / `Download and go.`. Stacks vertically at 640 px. The whole `.trust-row` is `.fade-in`.
 

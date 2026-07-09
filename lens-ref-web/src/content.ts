@@ -83,34 +83,3 @@ export const COPY = {
   legal: "© 2026 Protonyx",
 };
 
-// Mocked report content used by the product-preview and split-screen layouts.
-export type FlagSeverity = "high" | "medium" | "low";
-
-export const PREVIEW = {
-  reportTitle: "diagnostic report",
-  scoreLabel: "Caution score",
-  score: 62,
-  scoreBand: "elevated",
-  scoreCaption: "3 flags across 12 positions",
-  flags: [
-    {
-      severity: "high" as FlagSeverity,
-      title: "Concentration risk",
-      detail: "41% of equity sits in a single position",
-    },
-    {
-      severity: "medium" as FlagSeverity,
-      title: "Fee drag",
-      detail: "0.86% average expense ratio across four funds",
-    },
-    {
-      severity: "low" as FlagSeverity,
-      title: "Hidden overlap",
-      detail: "Two funds share 6 of their top 10 holdings",
-    },
-  ],
-  action: {
-    label: "Top ranked action",
-    detail: "Review the position holding 41% of equity and set a target weight",
-  },
-};
