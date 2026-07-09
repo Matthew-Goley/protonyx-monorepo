@@ -7,6 +7,12 @@ import { type ProjectionPoint } from '@/lib/lensData'
  * background, 11px tertiary axis labels, a "Today" marker between the historical
  * lead-in and the projection. Thin wrapper over the chart layer's
  * LensAreaFanChart; flattens the tuple bands into discrete keys it expects.
+ *
+ * NOTE: currently unused. The Analysis page moved to ProjectionCompareChart
+ * (two lines on one pair of axes) when the Projection Lab layout shipped. Kept
+ * because the fan is still the right surface for a single-scenario projection.
+ * If two fans are ever shown together, give them a SHARED y domain: otherwise
+ * each auto-scales to itself and the difference between them cannot be read.
  */
 export function MonteCarloChart({ points }: { points: ProjectionPoint[] }) {
   const data = points.map((p) => ({
@@ -33,7 +39,7 @@ export function MonteCarloChart({ points }: { points: ProjectionPoint[] }) {
   const lo = Math.min(0, ...ys)
   const hi = Math.max(0, ...ys)
   const pad = Math.max(1, (hi - lo) * 0.1)
-  const yDomain: [number, number] = [Math.floor(lo - pad), Math.ceil(hi + pad)]
+  const domain: [number, number] = [Math.floor(lo - pad), Math.ceil(hi + pad)]
 
   return (
     <LensAreaFanChart
@@ -48,7 +54,7 @@ export function MonteCarloChart({ points }: { points: ProjectionPoint[] }) {
       todayIndex={todayIndex >= 0 ? todayIndex : undefined}
       color="url(#lens-brand-line)"
       height={220}
-      yDomain={yDomain}
+      yDomain={domain}
       yTickFormatter={(v) => `${v > 0 ? '+' : ''}${Math.round(v)}%`}
       valueFormatter={(v) => `${v >= 0 ? '+' : ''}${v.toFixed(1)}%`}
     />

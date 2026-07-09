@@ -14,6 +14,12 @@ export type { LensAreaChartProps, LensArea } from './LensAreaChart'
 export { LensAreaFanChart } from './LensAreaFanChart'
 export type { LensAreaFanChartProps, FanBand } from './LensAreaFanChart'
 
+export { ProjectionCompareChart } from './ProjectionCompareChart'
+export type {
+  ProjectionCompareChartProps,
+  ProjectionComparePoint,
+} from './ProjectionCompareChart'
+
 export { LensPieChart } from './LensPieChart'
 export type { LensPieChartProps, PieSlice } from './LensPieChart'
 
