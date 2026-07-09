@@ -104,7 +104,7 @@ function SearchBar() {
       </div>
 
       {open && (
-        <div className="absolute left-0 right-0 top-full rounded-b-2xl border border-t-0 border-accent-teal bg-surface/80 p-2 shadow-lg shadow-black/40 backdrop-blur-md">
+        <div className="absolute left-0 right-0 top-full overflow-hidden rounded-b-2xl border border-t-0 border-accent-teal bg-surface/80 py-2 shadow-lg shadow-black/40 backdrop-blur-md">
           {!q ? (
             <p className="px-3 py-6 text-center text-xs text-muted">
               Start typing a company name or ticker
@@ -122,8 +122,10 @@ function SearchBar() {
                     onClick={() => go(item.symbol)}
                     onMouseEnter={() => setActive(i)}
                     className={cn(
-                      'flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left transition-colors duration-200 ease-out',
-                      i === active ? 'bg-card' : 'hover:bg-card',
+                      'flex w-full items-center gap-3 border-y border-transparent px-4 py-2 text-left transition-colors duration-200 ease-out',
+                      i === active
+                        ? 'border-accent-teal bg-card'
+                        : 'hover:border-accent-teal hover:bg-card',
                     )}
                   >
                     <span className="flex h-8 w-8 items-center justify-center rounded-md border border-subtle bg-elevated text-accent-teal">

@@ -10,7 +10,7 @@ export interface TickerHit extends SearchResult {
 }
 
 const DEBOUNCE_MS = 220
-const MAX_RESULTS = 8
+const MAX_RESULTS = 5
 
 /** Symbols served by the local fast-path index. Remote (yfinance) results for
  *  these are dropped entirely so a top-list name only ever appears once, as its
