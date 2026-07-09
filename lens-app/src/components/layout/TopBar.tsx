@@ -1,9 +1,21 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Search, Lock, Bell, TrendingUp, Sun, Moon, Loader2 } from 'lucide-react'
+import { Search, Lock, Bell, TrendingUp, Clock, Sun, Moon, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useTheme } from '@/contexts/ThemeContext'
+import { useAuth } from '@/contexts/AuthContext'
 import { useTickerSearch } from '@/hooks/useTickerSearch'
+import { loadSearchHistory, recordSearch, clearSearchHistory } from '@/lib/searchHistory'
+
+/** A row rendered in the search dropdown - either a live search hit or a saved
+ *  recent-search entry. `recent` swaps the leading icon and adds the section. */
+interface SearchRow {
+  symbol: string
+  name: string
+  type: string
+  exchange?: string
+  recent?: boolean
+}
 
 /** Fixed top bar spanning the full viewport width. Holds a screen-centered
  *  search bar and a security lock indicator on the right. The Sidebar is layered
@@ -30,9 +42,22 @@ function SearchBar() {
   const [active, setActive] = useState(0)
   const containerRef = useRef<HTMLDivElement>(null)
   const navigate = useNavigate()
+  const { user } = useAuth()
 
   const q = query.trim()
   const { results, loading } = useTickerSearch(query)
+
+  // Recent searches (localStorage, per user). Reloaded whenever the box opens
+  // or the account changes so it always reflects the latest saved list.
+  const [history, setHistory] = useState<SearchRow[]>([])
+  useEffect(() => {
+    if (!open) return
+    setHistory(loadSearchHistory(user?.id).map((e) => ({ ...e, recent: true })))
+  }, [open, user?.id])
+
+  // When there's no query, the dropdown shows recent searches; otherwise results.
+  const showHistory = !q && history.length > 0
+  const rows = useMemo<SearchRow[]>(() => (q ? results : history), [q, results, history])
 
   useEffect(() => {
     if (!open) return
@@ -45,16 +70,22 @@ function SearchBar() {
     return () => document.removeEventListener('mousedown', onClick)
   }, [open])
 
-  // Keep the highlighted row in range as results change.
+  // Keep the highlighted row in range as the visible list changes.
   useEffect(() => {
-    setActive((a) => (results.length === 0 ? 0 : Math.min(a, results.length - 1)))
-  }, [results.length])
+    setActive((a) => (rows.length === 0 ? 0 : Math.min(a, rows.length - 1)))
+  }, [rows.length])
 
-  function go(symbol: string) {
+  function go(row: SearchRow) {
+    setHistory(recordSearch(user?.id, { symbol: row.symbol, name: row.name, type: row.type }).map((e) => ({ ...e, recent: true })))
     setOpen(false)
     setQuery('')
     setActive(0)
-    navigate(`/commodity/${encodeURIComponent(symbol)}`)
+    navigate(`/commodity/${encodeURIComponent(row.symbol)}`)
+  }
+
+  function clearHistory() {
+    setHistory(clearSearchHistory(user?.id))
+    setActive(0)
   }
 
   function onKeyDown(e: React.KeyboardEvent) {
@@ -62,17 +93,17 @@ function SearchBar() {
       setOpen(false)
       return
     }
-    if (!open || results.length === 0) return
+    if (!open || rows.length === 0) return
     if (e.key === 'ArrowDown') {
       e.preventDefault()
-      setActive((a) => (a + 1) % results.length)
+      setActive((a) => (a + 1) % rows.length)
     } else if (e.key === 'ArrowUp') {
       e.preventDefault()
-      setActive((a) => (a - 1 + results.length) % results.length)
+      setActive((a) => (a - 1 + rows.length) % rows.length)
     } else if (e.key === 'Enter') {
       e.preventDefault()
-      const hit = results[active]
-      if (hit) go(hit.symbol)
+      const hit = rows[active]
+      if (hit) go(hit)
     }
   }
 
@@ -105,45 +136,59 @@ function SearchBar() {
 
       {open && (
         <div className="absolute left-0 right-0 top-full overflow-hidden rounded-b-2xl border border-t-0 border-accent-teal bg-surface/80 py-2 shadow-lg shadow-black/40 backdrop-blur-md">
-          {!q ? (
+          {!q && history.length === 0 ? (
             <p className="px-3 py-6 text-center text-xs text-muted">
               Start typing a company name or ticker
             </p>
-          ) : results.length === 0 ? (
+          ) : q && results.length === 0 ? (
             <p className="px-3 py-6 text-center text-xs text-muted">
               {loading ? 'Searching...' : `No results for "${query}"`}
             </p>
           ) : (
-            <ul className="flex flex-col gap-0.5">
-              {results.map((item, i) => (
-                <li key={item.symbol}>
+            <>
+              {showHistory && (
+                <div className="flex items-center justify-between px-4 pb-1 pt-1">
+                  <span className="text-[11px] uppercase tracking-wider text-secondary">Recent</span>
                   <button
                     type="button"
-                    onClick={() => go(item.symbol)}
-                    onMouseEnter={() => setActive(i)}
-                    className={cn(
-                      'flex w-full items-center gap-3 border-y border-transparent px-4 py-2 text-left transition-colors duration-200 ease-out',
-                      i === active
-                        ? 'border-accent-teal bg-card'
-                        : 'hover:border-accent-teal hover:bg-card',
-                    )}
+                    onClick={clearHistory}
+                    className="text-[11px] text-secondary transition-colors duration-200 ease-out hover:text-primary"
                   >
-                    <span className="flex h-8 w-8 items-center justify-center rounded-md border border-subtle bg-elevated text-accent-teal">
-                      <TrendingUp size={15} />
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-sm font-medium text-primary">{item.symbol}</span>
-                      <span className="block truncate text-xs text-secondary">{item.name}</span>
-                    </span>
-                    {(item.type || item.exchange) && (
-                      <span className="shrink-0 rounded border border-subtle px-1.5 py-0.5 text-[11px] uppercase tracking-wider text-secondary">
-                        {item.type || item.exchange}
-                      </span>
-                    )}
+                    Clear
                   </button>
-                </li>
-              ))}
-            </ul>
+                </div>
+              )}
+              <ul className="flex flex-col gap-0.5">
+                {rows.map((item, i) => (
+                  <li key={item.symbol}>
+                    <button
+                      type="button"
+                      onClick={() => go(item)}
+                      onMouseEnter={() => setActive(i)}
+                      className={cn(
+                        'flex w-full items-center gap-3 border-y border-transparent px-4 py-2 text-left transition-colors duration-200 ease-out',
+                        i === active
+                          ? 'border-accent-teal bg-card'
+                          : 'hover:border-accent-teal hover:bg-card',
+                      )}
+                    >
+                      <span className="flex h-8 w-8 items-center justify-center rounded-md border border-subtle bg-elevated text-accent-teal">
+                        {item.recent ? <Clock size={15} /> : <TrendingUp size={15} />}
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-sm font-medium text-primary">{item.symbol}</span>
+                        <span className="block truncate text-xs text-secondary">{item.name}</span>
+                      </span>
+                      {(item.type || item.exchange) && (
+                        <span className="shrink-0 rounded border border-subtle px-1.5 py-0.5 text-[11px] uppercase tracking-wider text-secondary">
+                          {item.type || item.exchange}
+                        </span>
+                      )}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </>
           )}
         </div>
       )}
