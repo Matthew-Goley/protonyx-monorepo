@@ -13,7 +13,7 @@ export const HERO_ACCENTS = ["Actionable", "Insight", "Everyone."];
 
 export const HOW_IT_WORKS = [
   { title: "Add your positions", detail: "No brokerage login needed" },
-  { title: "Get your caution score", detail: "Plain language breakdown" },
+  { title: "Get your brief", detail: "Plain language breakdown" },
   { title: "See what to fix", detail: "Ranked, specific actions" },
 ];
 
@@ -79,7 +79,7 @@ export const COPY = {
     "Everyone starts with a month of Pro free at launch. Each friend who joins from your link extends it.",
   referralUnit: (n: number) => (n === 1 ? "referral" : "referrals"),
   disclaimer:
-    "Lens arc is a diagnostic tool for understanding your own portfolio. It is not investment advice.",
+    "Educational tool only. Not investment advice. See full disclaimer in our Terms of Service.",
   legal: "© 2026 Protonyx",
 };
 
