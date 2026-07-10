@@ -61,6 +61,12 @@ export function useAccountFlow() {
 
   const dismissVerify = () => setStep("signup");
   const completeVerify = () => setStep("account");
+  // Just resets to a fresh signup state, there's no real session to end.
+  const logout = () => {
+    setStep("signup");
+    setEmailState("");
+    setEmailError(null);
+  };
 
   let currentReward = REFERRAL_MILESTONES[0].reward;
   for (const m of REFERRAL_MILESTONES) {
@@ -84,6 +90,7 @@ export function useAccountFlow() {
     submitEmail,
     dismissVerify,
     completeVerify,
+    logout,
     referralCount,
     progress: Math.min(referralCount / MAX_REFERRALS, 1),
     maxed: nextMilestone === null,

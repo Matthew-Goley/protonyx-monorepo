@@ -40,23 +40,30 @@ function useCountdown() {
 
 const pad = (n: number) => String(n).padStart(2, "0");
 
+// Locked 3-line layout: "Actionable" / "Insight" / "for Everyone.", regardless
+// of viewport width, rather than letting the browser wrap it naturally.
 function Headline() {
   const words = HERO.headline.split(" ");
+  const lines = [[words[0]], [words[1]], words.slice(2)];
   return (
     <>
-      {words.map((word, i) => (
-        <span key={i}>
-          {HERO_ACCENTS.includes(word) ? (
-            <span
-              className="bg-clip-text text-transparent"
-              style={{ backgroundImage: gradient }}
-            >
-              {word}
+      {lines.map((line, li) => (
+        <span key={li} className="block">
+          {line.map((word, wi) => (
+            <span key={wi}>
+              {HERO_ACCENTS.includes(word) ? (
+                <span
+                  className="bg-clip-text text-transparent"
+                  style={{ backgroundImage: gradient }}
+                >
+                  {word}
+                </span>
+              ) : (
+                word
+              )}
+              {wi < line.length - 1 ? " " : ""}
             </span>
-          ) : (
-            word
-          )}
-          {i < words.length - 1 ? " " : ""}
+          ))}
         </span>
       ))}
     </>
@@ -166,11 +173,20 @@ function VerifyDialog({ flow }: { flow: AccountFlow }) {
 
 // Sits in the exact slot the email input occupied, same border/padding/height,
 // so verifying doesn't jump the layout from a slim input row to a tall card.
-function VerifiedBox({ email }: { email: string }) {
+function VerifiedBox({ email, onLogout }: { email: string; onLogout: () => void }) {
   return (
-    <div className="flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-700 shadow-sm">
-      <Check size={16} className="shrink-0 text-teal-600" />
-      <span className="truncate">{COPY.verifiedAs(email)}</span>
+    <div className="flex items-center justify-between gap-2 rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-700 shadow-sm">
+      <span className="flex min-w-0 items-center gap-2">
+        <Check size={16} className="shrink-0 text-teal-600" />
+        <span className="truncate">{COPY.verifiedAs(email)}</span>
+      </span>
+      <button
+        type="button"
+        onClick={onLogout}
+        className="shrink-0 text-xs font-medium text-slate-400 transition hover:text-slate-700"
+      >
+        {COPY.logout}
+      </button>
     </div>
   );
 }
@@ -203,7 +219,7 @@ export default function Layout4() {
           </p>
           <div className="mt-8 max-w-lg">
             {flow.step === "account" ? (
-              <VerifiedBox email={flow.email} />
+              <VerifiedBox email={flow.email} onLogout={flow.logout} />
             ) : (
               <EmailCapture flow={flow} />
             )}

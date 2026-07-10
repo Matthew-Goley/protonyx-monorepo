@@ -50,6 +50,7 @@ export const COPY = {
   magicResend: "Resend link",
   magicResent: "Link sent",
   verifiedAs: (email: string) => `Verified as ${email}`,
+  logout: "Log out",
   unlockedWord: "unlocked",
   rewardShort: (reward: string) => reward.replace(/ free$/i, ""),
   dialCaption: (n: number) => `${n} ${n === 1 ? "referral" : "referrals"} so far`,
