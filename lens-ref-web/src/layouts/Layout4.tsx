@@ -236,12 +236,12 @@ export default function Layout4() {
           />
           <div className="relative">
             {flow.step === "account" ? (
-              // No border/shadow "box" chrome here on purpose: this just needs to
-              // sit roughly where the hero video was, not reproduce its exact
-              // frame. The aspect-ratio div still reserves the same layout
-              // footprint (so nothing else on the page shifts); the visible
-              // panel is scaled up past it.
-              <div className="aspect-[16/10] scale-110 rounded-[2.5rem] bg-[#141922]">
+              // No box at all here on purpose: no background, no border, no
+              // shadow. This just needs to sit roughly where the hero video
+              // was, not reproduce its frame. The aspect-ratio div still
+              // reserves the same layout footprint (so nothing else on the
+              // page shifts); the content is scaled up past it.
+              <div className="aspect-[16/10] scale-125">
                 <SignalReadout flow={flow} />
               </div>
             ) : (

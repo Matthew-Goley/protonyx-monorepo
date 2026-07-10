@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Check, Copy, Sparkles } from "lucide-react";
+import { Check, Copy } from "lucide-react";
 import { BRAND, COPY } from "../content";
 import {
   nextStepLine,
@@ -20,17 +20,11 @@ export function useEntrance() {
   return shown;
 }
 
-// The reward number every layout leads with, e.g. "1 month" or "Lifetime",
-// with the sparkle only appearing once every tier is unlocked.
-export function RewardText({ flow, className = "" }: { flow: AccountFlow; className?: string }) {
-  return (
-    <span className={`inline-flex items-center gap-1.5 ${className}`}>
-      {flow.maxed && <Sparkles size={16} className="shrink-0 text-sky-300" />}
-      <span className="bg-clip-text text-transparent" style={{ backgroundImage: gradient }}>
-        {COPY.rewardShort(flow.currentReward)}
-      </span>
-    </span>
-  );
+// Pulls the leading number out of a reward string ("2 months free" -> 2),
+// NaN for the non-numeric top tier ("Lifetime free").
+export function monthsFromReward(reward: string): number {
+  const match = reward.match(/\d+/);
+  return match ? parseInt(match[0], 10) : NaN;
 }
 
 // Icon-only copy affordance shared by every readout: tap to copy the referral
