@@ -1,7 +1,5 @@
 export const LAUNCH_DATE = "2026-08-05"; // placeholder, easy to change in one place
 
-export const OTP_LENGTH = 4; // change to 3 to test a shorter, more frictionless code
-
 export const HERO = {
   headline: "Actionable Insight for Everyone.",
   subhead:
@@ -42,11 +40,15 @@ export const COPY = {
   emailPlaceholder: "you@example.com",
   emailCta: "Get early access",
   emailInvalid: "Enter a valid email address",
-  otpHeading: "Confirm your email",
-  otpInstruction: (email: string) =>
-    `Enter the ${OTP_LENGTH} digit code we sent to ${email}`,
-  otpResend: "Resend code",
-  otpChangeEmail: "Use a different email",
+  changeEmail: "Use a different email",
+  magicHeading: "Check your email",
+  magicInstruction: (email: string) =>
+    `We sent a link to ${email}. Click it and you've got a free month of Pro.`,
+  magicSimulate: "I clicked the link",
+  magicNote:
+    "In production this happens automatically once you click the emailed link.",
+  magicResend: "Resend link",
+  magicResent: "Link sent",
   verifiedWord: "verified",
   unlockedWord: "unlocked",
   rewardShort: (reward: string) => reward.replace(/ free$/i, ""),

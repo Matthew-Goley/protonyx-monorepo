@@ -17,7 +17,6 @@ import {
   useShare,
   type AccountFlow,
 } from "../hooks/useAccountFlow";
-import { useOtpInput } from "../hooks/useOtpInput";
 import lensArcDark from "../../assets/lens-arc/lens-arc-dark.png";
 import vectorDemo from "../../assets/video/1vector_demo.mp4";
 import discoveryEnter from "../../assets/video/discovery_enter.mp4";
@@ -121,14 +120,12 @@ function EmailCapture({ flow }: { flow: AccountFlow }) {
   );
 }
 
-function OtpDialog({ flow }: { flow: AccountFlow }) {
-  const otp = useOtpInput();
-
-  // Auto-verifies the instant the last digit is typed; there is no
-  // wrong-code case in this mock (no backend to check against).
-  useEffect(() => {
-    if (otp.complete) flow.completeVerify();
-  }, [otp.complete]);
+function VerifyDialog({ flow }: { flow: AccountFlow }) {
+  const [linkResent, setLinkResent] = useState(false);
+  const resendLink = () => {
+    setLinkResent(true);
+    window.setTimeout(() => setLinkResent(false), 1800);
+  };
 
   return (
     <div
@@ -137,42 +134,35 @@ function OtpDialog({ flow }: { flow: AccountFlow }) {
       className="fixed inset-0 z-40 flex items-center justify-center bg-slate-900/45 p-5 backdrop-blur-sm"
     >
       <div className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-7 text-center shadow-2xl">
-        <h2 className="mt-4 font-display text-xl font-bold tracking-tight text-slate-900">
-          {COPY.otpHeading}
+        <h2 className="font-display text-xl font-bold tracking-tight text-slate-900">
+          {COPY.magicHeading}
         </h2>
         <p className="mt-2 break-words text-sm text-slate-600">
-          {COPY.otpInstruction(flow.email)}
+          {COPY.magicInstruction(flow.email)}
         </p>
-        <div className="mt-6 flex justify-center gap-2.5">
-          {otp.digits.map((d, i) => (
-            <input
-              key={i}
-              ref={otp.setRef(i)}
-              value={d}
-              onChange={(e) => otp.handleChange(i, e.target.value)}
-              onKeyDown={(e) => otp.handleKeyDown(i, e)}
-              onPaste={(e) => otp.handlePaste(i, e)}
-              inputMode="numeric"
-              autoComplete="one-time-code"
-              aria-label={`digit ${i + 1}`}
-              className="h-14 w-12 rounded-xl border border-slate-300 bg-white text-center font-display text-2xl font-bold text-slate-900 shadow-sm transition focus:border-teal-500 focus:outline-none"
-            />
-          ))}
-        </div>
-        <div className="mt-6 flex justify-center gap-6 text-xs">
+        <button
+          type="button"
+          onClick={flow.completeVerify}
+          className="mt-6 w-full rounded-xl py-3 text-sm font-semibold text-slate-950 transition hover:opacity-90"
+          style={{ backgroundImage: gradient }}
+        >
+          {COPY.magicSimulate}
+        </button>
+        <p className="mt-3 text-xs text-slate-400">{COPY.magicNote}</p>
+        <div className="mt-4 flex justify-center gap-6 text-xs">
           <button
             type="button"
-            onClick={otp.reset}
+            onClick={resendLink}
             className="text-slate-500 transition hover:text-slate-900"
           >
-            {COPY.otpResend}
+            {linkResent ? COPY.magicResent : COPY.magicResend}
           </button>
           <button
             type="button"
             onClick={flow.dismissVerify}
             className="text-slate-400 transition hover:text-slate-700"
           >
-            {COPY.otpChangeEmail}
+            {COPY.changeEmail}
           </button>
         </div>
       </div>
@@ -456,7 +446,7 @@ export default function Layout4() {
         </div>
       </footer>
 
-      {flow.step === "verifying" && <OtpDialog flow={flow} />}
+      {flow.step === "verifying" && <VerifyDialog flow={flow} />}
     </div>
   );
 }

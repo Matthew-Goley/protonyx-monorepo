@@ -6,7 +6,7 @@ Reference for working in `lens-ref-web/`. Read this before changing anything her
 
 The pre-launch marketing landing page for **Lens Arc** (the web product that lives in `lens-app/`). The page has exactly one job: capture an email address before launch. Free access opens on a launch date, and signups earn free Pro time that scales with referrals.
 
-- **Fully client-side. No backend, no API calls, no auth.** The whole signup flow (email, verification code, account view) is mocked in the browser. The only "real" functionality is copy-to-clipboard and, where available, `navigator.share`.
+- **Fully client-side. No backend, no API calls, no auth.** The whole signup flow (email, magic-link verification, account view) is mocked in the browser. The only "real" functionality is copy-to-clipboard and, where available, `navigator.share`.
 - **Not deployed yet.** The referral link domain (`lensarc.com/r/...`) is a placeholder string in `content.ts`.
 - Standalone project: it shares no code, tooling, or build with `backend/`, `lens-api/`, or `lens-app/`.
 
@@ -50,8 +50,7 @@ lens-ref-web/
 │   ├── index.css                  # Tailwind v4 @theme tokens + dial-max animation
 │   ├── vite-env.d.ts              # vite/client types (import.meta.env, .png imports)
 │   ├── hooks/
-│   │   ├── useAccountFlow.ts      # Signup state machine + referral derivations + clipboard/share helpers
-│   │   └── useOtpInput.ts         # Segmented code-input mechanics (focus, advance, backspace, paste)
+│   │   └── useAccountFlow.ts      # Signup state machine + referral derivations + clipboard/share helpers
 │   └── layouts/
 │       └── Layout4.tsx            # The entire page (historical name, winner of the 5-layout exploration)
 ├── package.json / tsconfig.json / vite.config.ts
@@ -65,13 +64,12 @@ lens-ref-web/
 Every user-facing string, date, and number renders from `src/content.ts`. Components never hardcode text. Exports:
 
 - `LAUNCH_DATE` ("2026-08-05", placeholder) and `LAUNCH_DATE_DISPLAY` (derived human-readable form; currently unused since the hero launch-date chip was removed, kept for reuse).
-- `OTP_LENGTH` (4). Changing it resizes the code dialog, the validation, and the instruction copy everywhere at once.
 - `HERO` (headline "Actionable Insight for Everyone." plus subhead) and `HERO_ACCENTS` (the words rendered in the brand gradient; matches the `frontend/` hero treatment). The headline casing deliberately matches `frontend/`, an exception to the sentence-case rule below.
 - `HOW_IT_WORKS`, `REFERRAL_MILESTONES` (0/1/3/5/10 referrals), `BRAND` (gradient hexes + wordmark text).
-- `COPY`: all microcopy, including template functions (`otpInstruction`, `nextStep`, `rewardShort`, `referralUnit`, `dialCaption`). Some entries are leftovers from the deleted layouts and currently unused (`eyebrow`, `countdownUnits`, `countdownCaption`, `previewHeading`, `previewSub`, `dialCaption`); harmless, reuse or delete as needed.
+- `COPY`: all microcopy, including template functions (`magicInstruction`, `nextStep`, `rewardShort`, `referralUnit`, `dialCaption`). Some entries are leftovers from the deleted layouts and currently unused (`eyebrow`, `countdownUnits`, `countdownCaption`, `previewHeading`, `previewSub`, `dialCaption`); harmless, reuse or delete as needed.
 ### The page (src/layouts/Layout4.tsx)
 
-Light theme. Top to bottom: header (wordmark image left, bare `dd:hh:mm:ss` countdown text right, driven by `LAUNCH_DATE`), hero (gradient-accented headline, subhead, email capture or account view, disclaimer) beside the Vector demo video in a `DemoWindow` (16/10 body, gradient glow behind), a "how it works" walkthrough of three stacked rows (each a 16/9 `DemoWindow` discovery video on the left, gradient step number + title + detail on the right, copy from `HOW_IT_WORKS`), a five-node referral milestone stepper (horizontal on `md+`, stacked cards on mobile), and the footer. The OTP dialog renders at the page root whenever the flow step is `"verifying"`.
+Light theme. Top to bottom: header (wordmark image left, bare `dd:hh:mm:ss` countdown text right, driven by `LAUNCH_DATE`), hero (gradient-accented headline, subhead, email capture or account view, disclaimer) beside the Vector demo video in a `DemoWindow` (16/10 body, gradient glow behind), a "how it works" walkthrough of three stacked rows (each a 16/9 `DemoWindow` discovery video on the left, gradient step number + title + detail on the right, copy from `HOW_IT_WORKS`), a five-node referral milestone stepper (horizontal on `md+`, stacked cards on mobile), and the footer. The `VerifyDialog` (magic-link verification) renders at the page root whenever the flow step is `"verifying"`.
 
 `DemoWindow` is adapted from the `frontend/` `.demo-window` but deliberately drops its macOS-style chrome bar: just a rounded dark frame with a border and shadow around the clip. All videos are `autoPlay muted loop playsInline preload="metadata"`. The walkthrough is deliberately compact (capped at `max-w-5xl`, moderate step-number sizes) so it does not upstage the referral section. The earlier mocked diagnostic-report window (caution gauge + severity flags + action panel) was replaced by the hero video; recover it from git history if it is ever wanted back.
 
@@ -79,16 +77,12 @@ Light theme. Top to bottom: header (wordmark image left, bare `dd:hh:mm:ss` coun
 
 State machine `signup -> verifying -> account`, exposed as `useAccountFlow()` and typed as `AccountFlow`:
 
-- `submitEmail()` regex-validates and opens the OTP step. `dismissVerify()` goes back; `completeVerify()` lands on the account view.
-- **The OTP dialog auto-verifies the instant all `OTP_LENGTH` digits are entered** (no verify button, no manual submit). Any complete numeric code succeeds. There is no backend; do not add fake server latency or a "wrong code" path without a real API to back it.
+- `submitEmail()` regex-validates and opens the verifying step. `dismissVerify()` goes back; `completeVerify()` lands on the account view.
+- **Verification is magic-link only** (`Layout4.tsx`'s `VerifyDialog`): the dialog shows "check your email" copy and an "I clicked the link" button that stands in for the real click (there's no backend to email a real link to, and no route to catch it). Clicking it calls `flow.completeVerify()` directly. There is no backend; do not add fake server latency or a "wrong link" path without a real API to back it. An OTP-code alternative was prototyped and compared side by side via a mode switcher, then removed once magic link was picked, do not reintroduce a switcher.
 - Referral code: FNV-1a hash of the lowercased email, base36, 6 chars. Referral link is `COPY.referralLinkBase + code`.
 - Derivations from `REFERRAL_MILESTONES`: `currentReward`, `nextMilestone` (`{ remaining, reward }` or `null` at the top tier), `progress` (`min(count / 10, 1)`), `maxed`. `nextStepLine(flow)` produces the single next-step sentence so wording stays identical anywhere it appears.
 - `useCopyToClipboard()` uses the real clipboard API (with a textarea fallback) and flips a `copied` flag for ~1.8 s. `useShare()` wraps `navigator.share` when present.
 - The referral count comes from a module-level external store (`setDemoReferralCount` / `useDemoReferralCount` via `useSyncExternalStore`). In production this is where a real per-user count would plug in.
-
-### The OTP input (hooks/useOtpInput.ts)
-
-Mechanics only, zero styling: auto-focus first box, auto-advance per digit, backspace steps back, arrow keys move focus, pasting a full code fills every box from the first. Exposes `complete` (all boxes filled); `Layout4.tsx`'s `OtpDialog` watches it in a `useEffect` and calls `flow.completeVerify()` the instant it flips true, there is no separate validate/submit step. The dialog styles its own boxes in `Layout4.tsx`.
 
 ### The dial
 
