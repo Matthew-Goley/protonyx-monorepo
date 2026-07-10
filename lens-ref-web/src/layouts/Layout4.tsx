@@ -140,12 +140,6 @@ function OtpDialog({ flow }: { flow: AccountFlow }) {
         noValidate
         className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-7 text-center shadow-2xl"
       >
-        <span
-          className="mx-auto flex h-10 w-10 items-center justify-center rounded-full"
-          style={{ backgroundImage: gradient }}
-        >
-          <Check size={18} className="text-slate-950" />
-        </span>
         <h2 className="mt-4 font-display text-xl font-bold tracking-tight text-slate-900">
           {COPY.otpHeading}
         </h2>
