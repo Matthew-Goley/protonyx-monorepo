@@ -6,7 +6,7 @@ Reference for working in `lens-ref-web/`. Read this before changing anything her
 
 The pre-launch marketing landing page for **Lens Arc** (the web product that lives in `lens-app/`). The page has exactly one job: capture an email address before launch. Free access opens on a launch date, and signups earn free Pro time that scales with referrals.
 
-- **Fully client-side. No backend, no API calls, no auth.** The whole signup flow (email, magic-link verification, account view) is mocked in the browser. The only "real" functionality is copy-to-clipboard and, where available, `navigator.share`.
+- **Fully client-side. No backend, no API calls, no auth.** The whole signup flow (email, magic-link verification) is mocked in the browser.
 - **Not deployed yet.** The referral link domain (`lensarc.com/r/...`) is a placeholder string in `content.ts`.
 - Standalone project: it shares no code, tooling, or build with `backend/`, `lens-api/`, or `lens-app/`.
 
@@ -28,7 +28,7 @@ Run from `lens-ref-web/`:
 ## 3. Stack
 
 - **Vite 6 + React 19 + TypeScript (strict)**. React plugin plus `@tailwindcss/vite`.
-- **Tailwind CSS v4**: no `tailwind.config.js`; theme tokens live in `src/index.css` under `@theme` (`--font-sans` Inter, `--font-display` Sora). Custom CSS in that file is limited to the `.dial-max` celebration animation and its reduced-motion guard.
+- **Tailwind CSS v4**: no `tailwind.config.js`; theme tokens live in `src/index.css` under `@theme` (`--font-sans` Inter, `--font-display` Sora). Custom CSS in that file is limited to the `.dial-max` celebration animation and its reduced-motion guard, currently unused since the reward dial that applied this class was removed from the page (see §5).
 - **lucide-react** for icons.
 - **Fonts** (Sora for display/wordmark, Inter for body) load from Google Fonts via `<link>` in `index.html`.
 
@@ -66,10 +66,12 @@ Every user-facing string, date, and number renders from `src/content.ts`. Compon
 - `LAUNCH_DATE` ("2026-08-05", placeholder) and `LAUNCH_DATE_DISPLAY` (derived human-readable form; currently unused since the hero launch-date chip was removed, kept for reuse).
 - `HERO` (headline "Actionable Insight for Everyone." plus subhead) and `HERO_ACCENTS` (the words rendered in the brand gradient; matches the `frontend/` hero treatment). The headline casing deliberately matches `frontend/`, an exception to the sentence-case rule below.
 - `HOW_IT_WORKS`, `REFERRAL_MILESTONES` (0/1/3/5/10 referrals), `BRAND` (gradient hexes + wordmark text).
-- `COPY`: all microcopy, including template functions (`magicInstruction`, `nextStep`, `rewardShort`, `referralUnit`, `dialCaption`). Some entries are leftovers from the deleted layouts and currently unused (`eyebrow`, `countdownUnits`, `countdownCaption`, `previewHeading`, `previewSub`, `dialCaption`); harmless, reuse or delete as needed.
+- `COPY`: all microcopy, including template functions (`magicInstruction`, `nextStep`, `rewardShort`, `referralUnit`, `dialCaption`). Some entries are leftovers from the deleted layouts and currently unused (`eyebrow`, `countdownUnits`, `countdownCaption`, `previewHeading`, `previewSub`, `dialCaption`); harmless, reuse or delete as needed. The post-verify reward card (dial + referral link) was removed from the page for now, so `unlockedWord`, `referralRowLabel`, `copyLabel`, `copiedLabel`, and `shareLabel` are currently unused too, kept in case it comes back.
 ### The page (src/layouts/Layout4.tsx)
 
-Light theme. Top to bottom: header (wordmark image left, bare `dd:hh:mm:ss` countdown text right, driven by `LAUNCH_DATE`), hero (gradient-accented headline, subhead, email capture or account view, disclaimer) beside the Vector demo video in a `DemoWindow` (16/10 body, gradient glow behind), a "how it works" walkthrough of three stacked rows (each a 16/9 `DemoWindow` discovery video on the left, gradient step number + title + detail on the right, copy from `HOW_IT_WORKS`), a five-node referral milestone stepper (horizontal on `md+`, stacked cards on mobile), and the footer. The `VerifyDialog` (magic-link verification) renders at the page root whenever the flow step is `"verifying"`.
+Light theme. Top to bottom: header (wordmark image left, bare `dd:hh:mm:ss` countdown text right, driven by `LAUNCH_DATE`), hero (gradient-accented headline, subhead, then an email capture form that, once verified, is replaced in the exact same slot by a `VerifiedBox`, disclaimer) beside the Vector demo video in a `DemoWindow` (16/10 body, gradient glow behind), a "how it works" walkthrough of three stacked rows (each a 16/9 `DemoWindow` discovery video on the left, gradient step number + title + detail on the right, copy from `HOW_IT_WORKS`), a five-node referral milestone stepper (horizontal on `md+`, stacked cards on mobile, static, not tied to the live referral count), and the footer. The `VerifyDialog` (magic-link verification) renders at the page root whenever the flow step is `"verifying"`.
+
+`VerifiedBox` is the only thing rendered in the hero's signup slot once `flow.step === "account"`: a single bordered box, same `px-4 py-3` height as the email input it replaces, reading "Verified as `{email}`" with a check icon (`COPY.verifiedAs`). The reward dial + "refer a friend" card that used to render below it (`AccountView`, `Dial`, `ReferralRow`) was removed for now, do not reintroduce it without being asked, the reward/referral UI may come back in a different shape.
 
 `DemoWindow` is adapted from the `frontend/` `.demo-window` but deliberately drops its macOS-style chrome bar: just a rounded dark frame with a border and shadow around the clip. All videos are `autoPlay muted loop playsInline preload="metadata"`. The walkthrough is deliberately compact (capped at `max-w-5xl`, moderate step-number sizes) so it does not upstage the referral section. The earlier mocked diagnostic-report window (caution gauge + severity flags + action panel) was replaced by the hero video; recover it from git history if it is ever wanted back.
 
@@ -80,20 +82,13 @@ State machine `signup -> verifying -> account`, exposed as `useAccountFlow()` an
 - `submitEmail()` regex-validates and opens the verifying step. `dismissVerify()` goes back; `completeVerify()` lands on the account view.
 - **Verification is magic-link only** (`Layout4.tsx`'s `VerifyDialog`): the dialog shows "check your email" copy and an "I clicked the link" button that stands in for the real click (there's no backend to email a real link to, and no route to catch it). Clicking it calls `flow.completeVerify()` directly. There is no backend; do not add fake server latency or a "wrong link" path without a real API to back it. An OTP-code alternative was prototyped and compared side by side via a mode switcher, then removed once magic link was picked, do not reintroduce a switcher.
 - Referral code: FNV-1a hash of the lowercased email, base36, 6 chars. Referral link is `COPY.referralLinkBase + code`.
-- Derivations from `REFERRAL_MILESTONES`: `currentReward`, `nextMilestone` (`{ remaining, reward }` or `null` at the top tier), `progress` (`min(count / 10, 1)`), `maxed`. `nextStepLine(flow)` produces the single next-step sentence so wording stays identical anywhere it appears.
-- `useCopyToClipboard()` uses the real clipboard API (with a textarea fallback) and flips a `copied` flag for ~1.8 s. `useShare()` wraps `navigator.share` when present.
+- Derivations from `REFERRAL_MILESTONES`: `currentReward`, `nextMilestone` (`{ remaining, reward }` or `null` at the top tier), `progress` (`min(count / 10, 1)`), `maxed`. `nextStepLine(flow)` produces the single next-step sentence so wording stays identical anywhere it appears. **None of these are currently read by `Layout4.tsx`** since the reward card that displayed them (`Dial`, `ReferralRow`, the `nextStepLine` line) was removed for now; they're still computed and exported, ready to wire back up.
+- `useCopyToClipboard()` uses the real clipboard API (with a textarea fallback) and flips a `copied` flag for ~1.8 s. `useShare()` wraps `navigator.share` when present. Also currently unused in `Layout4.tsx` for the same reason.
 - The referral count comes from a module-level external store (`setDemoReferralCount` / `useDemoReferralCount` via `useSyncExternalStore`). In production this is where a real per-user count would plug in.
-
-### The dial
-
-SVG circle with `pathLength={100}` and a `strokeDasharray` arc, rotated -90deg. Two things to preserve:
-
-- At `progress === 0` the arc circle is **not rendered at all**: a zero-length dash with `strokeLinecap="round"` would still paint a dot.
-- At 10+ referrals the `maxed` state is visually distinct: full gradient ring, `dial-max` pulsing glow (defined in `index.css`, disabled under `prefers-reduced-motion`), sparkles icon, gradient "Lifetime unlocked" label.
 
 ### The demo control (App.tsx)
 
-`DemoReferralControl` is a small pill fixed bottom-right that steps the referral count through the milestone breakpoints so the dial and next-step sentence can be previewed. It is wrapped in `import.meta.env.DEV`, so it exists in `npm run dev` and is stripped from production builds. Keep it; the user explicitly wants it there while evaluating.
+`DemoReferralControl` is a small pill fixed bottom-right that steps the referral count through the milestone breakpoints. It is wrapped in `import.meta.env.DEV`, so it exists in `npm run dev` and is stripped from production builds. **Currently has no visible effect on the page**: it used to drive the dial and next-step sentence in the removed reward card, and the static milestone stepper section further down the page was never tied to the live count. Kept per explicit instruction to leave it in place while the account-view redesign is in progress; flag to the user if it's still inert once that settles.
 
 ## 6. Copy rules
 

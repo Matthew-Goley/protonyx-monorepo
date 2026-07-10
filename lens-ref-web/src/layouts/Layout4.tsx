@@ -1,6 +1,6 @@
-import { useEffect, useId, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { FormEvent } from "react";
-import { ArrowRight, Check, Copy, Share2, Sparkles } from "lucide-react";
+import { ArrowRight, Check } from "lucide-react";
 import {
   BRAND,
   COPY,
@@ -10,13 +10,7 @@ import {
   LAUNCH_DATE,
   REFERRAL_MILESTONES,
 } from "../content";
-import {
-  nextStepLine,
-  useAccountFlow,
-  useCopyToClipboard,
-  useShare,
-  type AccountFlow,
-} from "../hooks/useAccountFlow";
+import { useAccountFlow, type AccountFlow } from "../hooks/useAccountFlow";
 import lensArcDark from "../../assets/lens-arc/lens-arc-dark.png";
 import vectorDemo from "../../assets/video/1vector_demo.mp4";
 import discoveryEnter from "../../assets/video/discovery_enter.mp4";
@@ -170,114 +164,13 @@ function VerifyDialog({ flow }: { flow: AccountFlow }) {
   );
 }
 
-function Dial({ flow, size = 120 }: { flow: AccountFlow; size?: number }) {
-  const id = useId();
-  const pct = flow.progress * 100;
+// Sits in the exact slot the email input occupied, same border/padding/height,
+// so verifying doesn't jump the layout from a slim input row to a tall card.
+function VerifiedBox({ email }: { email: string }) {
   return (
-    <div
-      className="relative flex shrink-0 items-center justify-center"
-      style={{ width: size, height: size }}
-    >
-      <svg
-        className={flow.maxed ? "dial-max" : undefined}
-        width={size}
-        height={size}
-        viewBox="0 0 120 120"
-        fill="none"
-        aria-hidden="true"
-      >
-        <defs>
-          <linearGradient id={id} x1="0" y1="0" x2="120" y2="120" gradientUnits="userSpaceOnUse">
-            <stop stopColor={BRAND.gradientFrom} />
-            <stop offset="1" stopColor={BRAND.gradientTo} />
-          </linearGradient>
-        </defs>
-        <circle cx="60" cy="60" r="52" stroke="#e2e8f0" strokeWidth="8" />
-        {pct > 0 && (
-          <circle
-            cx="60"
-            cy="60"
-            r="52"
-            stroke={`url(#${id})`}
-            strokeWidth="8"
-            strokeLinecap="round"
-            pathLength={100}
-            strokeDasharray={`${pct} ${100 - pct}`}
-            transform="rotate(-90 60 60)"
-            className="transition-all duration-700"
-          />
-        )}
-      </svg>
-      <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-        {flow.maxed && <Sparkles size={15} className="text-sky-500" />}
-        <span
-          className={`px-3 font-display text-sm font-bold leading-tight ${
-            flow.maxed ? "bg-clip-text text-transparent" : "text-slate-900"
-          }`}
-          style={flow.maxed ? { backgroundImage: gradient } : undefined}
-        >
-          {COPY.rewardShort(flow.currentReward)}
-        </span>
-        <span className="text-[10px] text-slate-500">{COPY.unlockedWord}</span>
-      </div>
-    </div>
-  );
-}
-
-function ReferralRow({ flow }: { flow: AccountFlow }) {
-  const { copied, copy } = useCopyToClipboard();
-  const { canShare, share } = useShare();
-
-  return (
-    <div>
-      <p className="text-[11px] text-slate-500">{COPY.referralRowLabel}</p>
-      <div className="mt-1.5 flex items-center gap-2">
-        <span className="min-w-0 flex-1 truncate rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 shadow-sm">
-          {flow.referralLink}
-        </span>
-        <button
-          type="button"
-          onClick={() => copy(flow.referralLink)}
-          className="flex h-9 shrink-0 items-center gap-1.5 rounded-lg px-3 text-xs font-semibold text-slate-950 transition hover:opacity-90"
-          style={{ backgroundImage: gradient }}
-        >
-          {copied ? <Check size={14} /> : <Copy size={14} />}
-          {copied ? COPY.copiedLabel : COPY.copyLabel}
-        </button>
-        {canShare && (
-          <button
-            type="button"
-            onClick={() => share("https://" + flow.referralLink)}
-            aria-label={COPY.shareLabel}
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-slate-300 bg-white text-slate-700 shadow-sm transition hover:border-teal-500"
-          >
-            <Share2 size={14} />
-          </button>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function AccountView({ flow }: { flow: AccountFlow }) {
-  return (
-    <div className="max-w-lg rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-      <p className="flex items-center gap-1.5 text-xs text-slate-500">
-        <Check size={13} className="shrink-0 text-teal-600" />
-        <span className="truncate">{flow.email}</span>
-        <span className="text-slate-300">&middot;</span> {COPY.verifiedWord}
-      </p>
-      <div className="mt-4 flex flex-col items-center gap-5 sm:flex-row">
-        <Dial flow={flow} />
-        <div className="min-w-0 flex-1">
-          <p className="text-center text-sm font-medium text-slate-800 sm:text-left">
-            {nextStepLine(flow)}
-          </p>
-          <div className="mt-3">
-            <ReferralRow flow={flow} />
-          </div>
-        </div>
-      </div>
+    <div className="flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-700 shadow-sm">
+      <Check size={16} className="shrink-0 text-teal-600" />
+      <span className="truncate">{COPY.verifiedAs(email)}</span>
     </div>
   );
 }
@@ -308,8 +201,12 @@ export default function Layout4() {
           <p className="mt-5 max-w-lg text-base leading-relaxed text-slate-600 sm:text-lg">
             {HERO.subhead}
           </p>
-          <div className="mt-8">
-            {flow.step === "account" ? <AccountView flow={flow} /> : <EmailCapture flow={flow} />}
+          <div className="mt-8 max-w-lg">
+            {flow.step === "account" ? (
+              <VerifiedBox email={flow.email} />
+            ) : (
+              <EmailCapture flow={flow} />
+            )}
           </div>
           <p className="mt-4 text-xs text-slate-500">{COPY.disclaimer}</p>
         </div>

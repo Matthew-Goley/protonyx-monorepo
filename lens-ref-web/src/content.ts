@@ -3,7 +3,7 @@ export const LAUNCH_DATE = "2026-08-05"; // placeholder, easy to change in one p
 export const HERO = {
   headline: "Actionable Insight for Everyone.",
   subhead:
-    "A diagnostic that catches fee drag, concentration risk, and hidden exposure before it costs you.",
+    "Lens Arc ranks portfolio priorities and surfaces actionable insights for your consideration.",
 };
 
 // Headline words that get the brand gradient, mirroring the frontend/ hero.
@@ -49,7 +49,7 @@ export const COPY = {
     "In production this happens automatically once you click the emailed link.",
   magicResend: "Resend link",
   magicResent: "Link sent",
-  verifiedWord: "verified",
+  verifiedAs: (email: string) => `Verified as ${email}`,
   unlockedWord: "unlocked",
   rewardShort: (reward: string) => reward.replace(/ free$/i, ""),
   dialCaption: (n: number) => `${n} ${n === 1 ? "referral" : "referrals"} so far`,
