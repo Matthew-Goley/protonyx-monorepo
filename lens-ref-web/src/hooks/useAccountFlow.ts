@@ -50,13 +50,17 @@ export function useAccountFlow() {
     if (emailError) setEmailError(null);
   };
 
+  // Returns whether it actually opened the verifying step, so a second entry
+  // point (the footer's email box) can react only on real success, e.g. to
+  // scroll back up to it, without re-running the validation itself.
   const submitEmail = () => {
     if (!EMAIL_RE.test(email.trim())) {
       setEmailError(COPY.emailInvalid);
-      return;
+      return false;
     }
     setEmailError(null);
     setStep("verifying");
+    return true;
   };
 
   const dismissVerify = () => setStep("signup");

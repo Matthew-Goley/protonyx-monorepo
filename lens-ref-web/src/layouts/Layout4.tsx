@@ -8,6 +8,7 @@ import {
   HERO_ACCENTS,
   HOW_IT_WORKS,
   LAUNCH_DATE,
+  LAUNCH_DATE_DISPLAY,
   REFERRAL_MILESTONES,
 } from "../content";
 import { useAccountFlow, type AccountFlow } from "../hooks/useAccountFlow";
@@ -91,14 +92,22 @@ function DemoWindow({ src, aspect = "aspect-video" }: { src: string; aspect?: st
   );
 }
 
-function EmailCapture({ flow }: { flow: AccountFlow }) {
+function EmailCapture({
+  flow,
+  onSubmitted,
+  className = "max-w-lg",
+}: {
+  flow: AccountFlow;
+  onSubmitted?: () => void;
+  className?: string;
+}) {
   const submit = (e: FormEvent) => {
     e.preventDefault();
-    flow.submitEmail();
+    if (flow.submitEmail()) onSubmitted?.();
   };
 
   return (
-    <form onSubmit={submit} noValidate className="max-w-lg">
+    <form onSubmit={submit} noValidate className={className}>
       <div className="flex flex-col gap-2 sm:flex-row">
         <input
           type="email"
@@ -354,6 +363,45 @@ export default function Layout4() {
                 </div>
               );
             })}
+          </div>
+        </div>
+      </section>
+
+      <section className="border-t border-slate-200 bg-white">
+        <div className="mx-auto max-w-3xl px-6 py-20 text-center">
+          <p className="font-display text-sm font-semibold uppercase tracking-wide text-slate-500">
+            {COPY.eyebrow}
+          </p>
+          <h2 className="mt-2 font-display text-2xl font-bold tracking-tight sm:text-3xl">
+            {LAUNCH_DATE_DISPLAY}
+          </h2>
+
+          <div className="mx-auto mt-8 flex max-w-md justify-center gap-3 sm:gap-4">
+            {parts.map((value, i) => (
+              <div
+                key={COPY.countdownUnits[i]}
+                className="flex flex-1 flex-col items-center rounded-2xl border border-slate-200 bg-[#f6f7f9] py-4"
+              >
+                <span className="font-display text-3xl font-bold tabular-nums text-slate-900 sm:text-4xl">
+                  {pad(value)}
+                </span>
+                <span className="mt-1 text-[11px] uppercase tracking-wide text-slate-500">
+                  {COPY.countdownUnits[i]}
+                </span>
+              </div>
+            ))}
+          </div>
+
+          <div className="mx-auto mt-10 max-w-md">
+            {flow.step === "account" ? (
+              <VerifiedBox email={flow.email} onLogout={flow.logout} />
+            ) : (
+              <EmailCapture
+                flow={flow}
+                className="mx-auto"
+                onSubmitted={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+              />
+            )}
           </div>
         </div>
       </section>
