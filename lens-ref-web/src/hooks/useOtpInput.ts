@@ -1,12 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import type { ClipboardEvent, KeyboardEvent } from "react";
-import { COPY, OTP_LENGTH } from "../content";
+import { OTP_LENGTH } from "../content";
 
 // Mechanics for the segmented code input: auto-focus, auto-advance,
 // backspace-back, and paste-across-boxes. Layouts own all styling.
 export function useOtpInput() {
   const [digits, setDigits] = useState<string[]>(() => Array(OTP_LENGTH).fill(""));
-  const [error, setError] = useState<string | null>(null);
   const refs = useRef<(HTMLInputElement | null)[]>([]);
 
   useEffect(() => {
@@ -28,7 +27,6 @@ export function useOtpInput() {
       return next;
     });
     refs.current[Math.min(start + ds.length, OTP_LENGTH - 1)]?.focus();
-    setError(null);
   };
 
   const handleChange = (i: number, value: string) => {
@@ -75,18 +73,8 @@ export function useOtpInput() {
 
   const complete = digits.every((d) => d !== "");
 
-  const validate = () => {
-    if (!complete) {
-      setError(COPY.otpIncomplete);
-      return false;
-    }
-    setError(null);
-    return true;
-  };
-
   const reset = () => {
     setDigits(Array(OTP_LENGTH).fill(""));
-    setError(null);
     refs.current[0]?.focus();
   };
 
@@ -96,10 +84,8 @@ export function useOtpInput() {
     handleChange,
     handleKeyDown,
     handlePaste,
-    error,
     complete,
     code: digits.join(""),
-    validate,
     reset,
   };
 }

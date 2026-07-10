@@ -45,8 +45,6 @@ export const COPY = {
   otpHeading: "Confirm your email",
   otpInstruction: (email: string) =>
     `Enter the ${OTP_LENGTH} digit code we sent to ${email}`,
-  otpIncomplete: `Enter all ${OTP_LENGTH} digits`,
-  otpVerify: "Verify",
   otpResend: "Resend code",
   otpChangeEmail: "Use a different email",
   verifiedWord: "verified",

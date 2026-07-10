@@ -124,10 +124,11 @@ function EmailCapture({ flow }: { flow: AccountFlow }) {
 function OtpDialog({ flow }: { flow: AccountFlow }) {
   const otp = useOtpInput();
 
-  const submit = (e: FormEvent) => {
-    e.preventDefault();
-    if (otp.validate()) flow.completeVerify();
-  };
+  // Auto-verifies the instant the last digit is typed; there is no
+  // wrong-code case in this mock (no backend to check against).
+  useEffect(() => {
+    if (otp.complete) flow.completeVerify();
+  }, [otp.complete]);
 
   return (
     <div
@@ -135,11 +136,7 @@ function OtpDialog({ flow }: { flow: AccountFlow }) {
       aria-modal="true"
       className="fixed inset-0 z-40 flex items-center justify-center bg-slate-900/45 p-5 backdrop-blur-sm"
     >
-      <form
-        onSubmit={submit}
-        noValidate
-        className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-7 text-center shadow-2xl"
-      >
+      <div className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-7 text-center shadow-2xl">
         <h2 className="mt-4 font-display text-xl font-bold tracking-tight text-slate-900">
           {COPY.otpHeading}
         </h2>
@@ -162,15 +159,7 @@ function OtpDialog({ flow }: { flow: AccountFlow }) {
             />
           ))}
         </div>
-        {otp.error && <p className="mt-3 text-xs text-rose-600">{otp.error}</p>}
-        <button
-          type="submit"
-          className="mt-6 w-full rounded-xl py-3 text-sm font-semibold text-slate-950 transition hover:opacity-90"
-          style={{ backgroundImage: gradient }}
-        >
-          {COPY.otpVerify}
-        </button>
-        <div className="mt-4 flex justify-center gap-6 text-xs">
+        <div className="mt-6 flex justify-center gap-6 text-xs">
           <button
             type="button"
             onClick={otp.reset}
@@ -186,7 +175,7 @@ function OtpDialog({ flow }: { flow: AccountFlow }) {
             {COPY.otpChangeEmail}
           </button>
         </div>
-      </form>
+      </div>
     </div>
   );
 }

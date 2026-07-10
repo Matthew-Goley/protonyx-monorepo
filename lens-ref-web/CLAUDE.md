@@ -80,7 +80,7 @@ Light theme. Top to bottom: header (wordmark image left, bare `dd:hh:mm:ss` coun
 State machine `signup -> verifying -> account`, exposed as `useAccountFlow()` and typed as `AccountFlow`:
 
 - `submitEmail()` regex-validates and opens the OTP step. `dismissVerify()` goes back; `completeVerify()` lands on the account view.
-- **Any complete numeric code of `OTP_LENGTH` digits verifies.** There is no backend; do not add fake server latency or a "wrong code" path without a real API to back it.
+- **The OTP dialog auto-verifies the instant all `OTP_LENGTH` digits are entered** (no verify button, no manual submit). Any complete numeric code succeeds. There is no backend; do not add fake server latency or a "wrong code" path without a real API to back it.
 - Referral code: FNV-1a hash of the lowercased email, base36, 6 chars. Referral link is `COPY.referralLinkBase + code`.
 - Derivations from `REFERRAL_MILESTONES`: `currentReward`, `nextMilestone` (`{ remaining, reward }` or `null` at the top tier), `progress` (`min(count / 10, 1)`), `maxed`. `nextStepLine(flow)` produces the single next-step sentence so wording stays identical anywhere it appears.
 - `useCopyToClipboard()` uses the real clipboard API (with a textarea fallback) and flips a `copied` flag for ~1.8 s. `useShare()` wraps `navigator.share` when present.
@@ -88,7 +88,7 @@ State machine `signup -> verifying -> account`, exposed as `useAccountFlow()` an
 
 ### The OTP input (hooks/useOtpInput.ts)
 
-Mechanics only, zero styling: auto-focus first box, auto-advance per digit, backspace steps back, arrow keys move focus, pasting a full code fills every box from the first. `validate()` sets the incomplete-error message and returns a boolean. The dialog styles its own boxes in `Layout4.tsx`.
+Mechanics only, zero styling: auto-focus first box, auto-advance per digit, backspace steps back, arrow keys move focus, pasting a full code fills every box from the first. Exposes `complete` (all boxes filled); `Layout4.tsx`'s `OtpDialog` watches it in a `useEffect` and calls `flow.completeVerify()` the instant it flips true, there is no separate validate/submit step. The dialog styles its own boxes in `Layout4.tsx`.
 
 ### The dial
 
