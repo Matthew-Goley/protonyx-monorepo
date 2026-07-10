@@ -11,6 +11,7 @@ import {
   REFERRAL_MILESTONES,
 } from "../content";
 import { useAccountFlow, type AccountFlow } from "../hooks/useAccountFlow";
+import SignalReadout from "../readouts/SignalReadout";
 import lensArcDark from "../../assets/lens-arc/lens-arc-dark.png";
 import vectorDemo from "../../assets/video/1vector_demo.mp4";
 import discoveryEnter from "../../assets/video/discovery_enter.mp4";
@@ -234,7 +235,18 @@ export default function Layout4() {
             style={{ backgroundImage: gradient }}
           />
           <div className="relative">
-            <DemoWindow src={vectorDemo} aspect="aspect-[16/10]" />
+            {flow.step === "account" ? (
+              // No border/shadow "box" chrome here on purpose: this just needs to
+              // sit roughly where the hero video was, not reproduce its exact
+              // frame. The aspect-ratio div still reserves the same layout
+              // footprint (so nothing else on the page shifts); the visible
+              // panel is scaled up past it.
+              <div className="aspect-[16/10] scale-110 rounded-[2.5rem] bg-[#141922]">
+                <SignalReadout flow={flow} />
+              </div>
+            ) : (
+              <DemoWindow src={vectorDemo} aspect="aspect-[16/10]" />
+            )}
           </div>
         </div>
       </section>

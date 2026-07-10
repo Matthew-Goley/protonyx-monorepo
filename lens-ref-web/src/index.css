@@ -29,3 +29,24 @@ html {
     animation: none;
   }
 }
+
+/* Glass readout: slow-drifting background glow, purely decorative */
+.readout-drift {
+  animation: readout-drift 10s ease-in-out infinite;
+}
+
+@keyframes readout-drift {
+  0%,
+  100% {
+    transform: translate(-8%, -6%) scale(1);
+  }
+  50% {
+    transform: translate(8%, 6%) scale(1.2);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .readout-drift {
+    animation: none;
+  }
+}

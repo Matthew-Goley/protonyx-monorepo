@@ -10,7 +10,7 @@ The pre-launch marketing landing page for **Lens Arc** (the web product that liv
 - **Not deployed yet.** The referral link domain (`lensarc.com/r/...`) is a placeholder string in `content.ts`.
 - Standalone project: it shares no code, tooling, or build with `backend/`, `lens-api/`, or `lens-app/`.
 
-History, so the file names make sense: this started as five complete alternate layouts switched live with arrow keys. The product-preview layout (number 4) won; the other four and the switcher were deleted. `src/layouts/Layout4.tsx` keeps its historical name and is now the entire page.
+History, so the file names make sense: this started as five complete alternate layouts switched live with arrow keys. The product-preview layout (number 4) won; the other four and the switcher were deleted. `src/layouts/Layout4.tsx` keeps its historical name and is now the entire page. The post-verify readout (§5) went through the same "build several, compare, delete the losers" process separately, on a smaller scale.
 
 ## 2. Commands
 
@@ -28,7 +28,7 @@ Run from `lens-ref-web/`:
 ## 3. Stack
 
 - **Vite 6 + React 19 + TypeScript (strict)**. React plugin plus `@tailwindcss/vite`.
-- **Tailwind CSS v4**: no `tailwind.config.js`; theme tokens live in `src/index.css` under `@theme` (`--font-sans` Inter, `--font-display` Sora). Custom CSS in that file is limited to the `.dial-max` celebration animation and its reduced-motion guard, currently unused since the reward dial that applied this class was removed from the page (see §5).
+- **Tailwind CSS v4**: no `tailwind.config.js`; theme tokens live in `src/index.css` under `@theme` (`--font-sans` Inter, `--font-display` Sora). Custom CSS in that file is `.dial-max` (a celebration glow, `prefers-reduced-motion`-guarded) and `.readout-drift` (a slow-drifting background glow, same guard); both are currently unused, they belonged to two of the four rejected readout layouts (see §5), left in case a future readout wants them.
 - **lucide-react** for icons.
 - **Fonts** (Sora for display/wordmark, Inter for body) load from Google Fonts via `<link>` in `index.html`.
 
@@ -51,6 +51,11 @@ lens-ref-web/
 │   ├── vite-env.d.ts              # vite/client types (import.meta.env, .png imports)
 │   ├── hooks/
 │   │   └── useAccountFlow.ts      # Signup state machine + referral derivations + clipboard/share helpers
+│   ├── readouts/                  # The post-verify hero readout (see §5). Was a 5-way comparison; 4 were rejected
+│   │   │                          # wholesale ("none of them are close") and deleted, not tuned - do not resurrect
+│   │   │                          # them as a starting point, RingReadout/TicketReadout/TrackReadout/GlassReadout are gone.
+│   │   ├── shared.tsx             # useEntrance, RewardText, CopyChip, NextMilestoneLine, gradient - reusable readout bits
+│   │   └── SignalReadout.tsx      # The one kept, still mid-rework (see §5), not a finished design
 │   └── layouts/
 │       └── Layout4.tsx            # The entire page (historical name, winner of the 5-layout exploration)
 ├── package.json / tsconfig.json / vite.config.ts
@@ -69,11 +74,19 @@ Every user-facing string, date, and number renders from `src/content.ts`. Compon
 - `COPY`: all microcopy, including template functions (`magicInstruction`, `nextStep`, `rewardShort`, `referralUnit`, `dialCaption`). Some entries are leftovers from the deleted layouts and currently unused (`eyebrow`, `countdownUnits`, `countdownCaption`, `previewHeading`, `previewSub`, `dialCaption`); harmless, reuse or delete as needed. The post-verify reward card (dial + referral link) was removed from the page for now, so `unlockedWord`, `referralRowLabel`, `copyLabel`, `copiedLabel`, and `shareLabel` are currently unused too, kept in case it comes back.
 ### The page (src/layouts/Layout4.tsx)
 
-Light theme. Top to bottom: header (wordmark image left, bare `dd:hh:mm:ss` countdown text right, driven by `LAUNCH_DATE`), hero (gradient-accented headline, subhead, then an email capture form that, once verified, is replaced in the exact same slot by a `VerifiedBox`, disclaimer) beside the Vector demo video in a `DemoWindow` (16/10 body, gradient glow behind), a "how it works" walkthrough of three stacked rows (each a 16/9 `DemoWindow` discovery video on the left, gradient step number + title + detail on the right, copy from `HOW_IT_WORKS`), a five-node referral milestone stepper (horizontal on `md+`, stacked cards on mobile, static, not tied to the live referral count), and the footer. The `VerifyDialog` (magic-link verification) renders at the page root whenever the flow step is `"verifying"`.
+Light theme. Top to bottom: header (wordmark image left, bare `dd:hh:mm:ss` countdown text right, driven by `LAUNCH_DATE`), hero (gradient-accented headline, subhead, then an email capture form that, once verified, is replaced in the exact same slot by a `VerifiedBox`, disclaimer) beside a hero visual that is **either** the Vector demo video (logged out) **or** the post-verify readout (logged in), see below, a "how it works" walkthrough of three stacked rows (each a 16/9 `DemoWindow` discovery video on the left, gradient step number + title + detail on the right, copy from `HOW_IT_WORKS`), a five-node referral milestone stepper (horizontal on `md+`, stacked cards on mobile, static, not tied to the live referral count), and the footer. The `VerifyDialog` (magic-link verification) renders at the page root whenever the flow step is `"verifying"`.
 
-`VerifiedBox` is the only thing rendered in the hero's signup slot once `flow.step === "account"`: a single bordered box, same `px-4 py-3` height as the email input it replaces, reading "Verified as `{email}`" with a check icon on the left (`COPY.verifiedAs`) and a small "Log out" link on the right (`flow.logout`). The reward dial + "refer a friend" card that used to render below it (`AccountView`, `Dial`, `ReferralRow`) was removed for now, do not reintroduce it without being asked, the reward/referral UI may come back in a different shape.
+`VerifiedBox` is the only thing rendered in the hero's signup slot once `flow.step === "account"`: a single bordered box, same `px-4 py-3` height as the email input it replaces, reading "Verified as `{email}`" with a check icon on the left (`COPY.verifiedAs`) and a small "Log out" link on the right (`flow.logout`).
 
 `DemoWindow` is adapted from the `frontend/` `.demo-window` but deliberately drops its macOS-style chrome bar: just a rounded dark frame with a border and shadow around the clip. All videos are `autoPlay muted loop playsInline preload="metadata"`. The walkthrough is deliberately compact (capped at `max-w-5xl`, moderate step-number sizes) so it does not upstage the referral section. The earlier mocked diagnostic-report window (caution gauge + severity flags + action panel) was replaced by the hero video; recover it from git history if it is ever wanted back.
+
+### The post-verify readout (src/readouts/)
+
+Once `flow.step === "account"`, the hero's demo-video slot is replaced by `SignalReadout` (imported directly in `Layout4.tsx`, no switcher). **Status: not settled.** This started as 5 candidate layouts (`Signal`/`Ring`/`Ticket`/`Track`/`Glass`) compared side by side through a temporary `ReadoutSwitcher` arrow control, same pattern as the earlier OTP-vs-magic-link comparison. The verdict was "none of them are close", but `Signal` was kept as the least-wrong starting point while the other four and the switcher were deleted outright (not tuned, not merged, just gone; don't go looking for `RingReadout` etc., they no longer exist and are not a reference to build from). Expect another pass at `SignalReadout` itself, it is not a finished design.
+
+`Layout4.tsx` wraps `SignalReadout` in a plain `<div className="aspect-[16/10] scale-110 rounded-[2.5rem] bg-[#141922]">`, no border, no shadow. That's deliberate: it doesn't reproduce the video's crisp boxed frame, it just needs to occupy roughly the same area. The `aspect-[16/10]` reserves the same layout footprint as the video (so nothing else on the page reflows when it swaps in) while `scale-110` (the native CSS `scale` property, not `transform: scale()`, so don't go looking for it on `getComputedStyle(...).transform`) renders it about 10% bigger than that reserved box, bleeding into the surrounding whitespace rather than being clipped to it.
+
+`SignalReadout` itself: one big reward number (`RewardText`), a slim animated progress line, a link row with `CopyChip` (icon-only copy button, ping-burst + checkmark swap, no text label) at the end, plus the single-line next-milestone nudge (`NextMilestoneLine`, wraps `nextStepLine(flow)`). Shared bits any future readout should reuse live in `shared.tsx`: `useEntrance()` (flips true one paint after mount, the hook the entrance transitions key off), `RewardText`, `CopyChip`, `NextMilestoneLine`, and the `gradient` string. `shared.tsx` used to also export dial-specific helpers (`monthsFromReward`, `MAX_MONTHS`, `useCountUp`, an animated 0→N count-up) for `RingReadout`'s month-counting dial, those were removed along with `RingReadout` since nothing else used them; if a dial comes back, rebuild that logic then rather than resurrecting it from git history speculatively.
 
 ### The signup flow (hooks/useAccountFlow.ts)
 
@@ -82,13 +95,13 @@ State machine `signup -> verifying -> account`, exposed as `useAccountFlow()` an
 - `submitEmail()` regex-validates and opens the verifying step. `dismissVerify()` goes back; `completeVerify()` lands on the account view. `logout()` (wired to the `VerifiedBox` "Log out" link) resets `step` back to `"signup"` and clears the email field, there's no real session to end, it's just a state reset.
 - **Verification is magic-link only** (`Layout4.tsx`'s `VerifyDialog`): the dialog shows "check your email" copy and an "I clicked the link" button that stands in for the real click (there's no backend to email a real link to, and no route to catch it). Clicking it calls `flow.completeVerify()` directly. There is no backend; do not add fake server latency or a "wrong link" path without a real API to back it. An OTP-code alternative was prototyped and compared side by side via a mode switcher, then removed once magic link was picked, do not reintroduce a switcher.
 - Referral code: FNV-1a hash of the lowercased email, base36, 6 chars. Referral link is `COPY.referralLinkBase + code`.
-- Derivations from `REFERRAL_MILESTONES`: `currentReward`, `nextMilestone` (`{ remaining, reward }` or `null` at the top tier), `progress` (`min(count / 10, 1)`), `maxed`. `nextStepLine(flow)` produces the single next-step sentence so wording stays identical anywhere it appears. **None of these are currently read by `Layout4.tsx`** since the reward card that displayed them (`Dial`, `ReferralRow`, the `nextStepLine` line) was removed for now; they're still computed and exported, ready to wire back up.
-- `useCopyToClipboard()` uses the real clipboard API (with a textarea fallback) and flips a `copied` flag for ~1.8 s. `useShare()` wraps `navigator.share` when present. Also currently unused in `Layout4.tsx` for the same reason.
+- Derivations from `REFERRAL_MILESTONES`: `currentReward`, `nextMilestone` (`{ remaining, reward }` or `null` at the top tier), `progress` (`min(count / 10, 1)`), `maxed`. `nextStepLine(flow)` produces the single next-step sentence so wording stays identical anywhere it appears. Consumed by `SignalReadout` (see §5).
+- `useCopyToClipboard()` uses the real clipboard API (with a textarea fallback) and flips a `copied` flag for ~1.8 s, used by `CopyChip` in `src/readouts/shared.tsx`. `useShare()` wraps `navigator.share` when present but isn't wired into the readout (the ask was copy only; add a share affordance only if requested).
 - The referral count comes from a module-level external store (`setDemoReferralCount` / `useDemoReferralCount` via `useSyncExternalStore`). In production this is where a real per-user count would plug in.
 
 ### The demo control (App.tsx)
 
-`DemoReferralControl` is a small pill fixed bottom-right that steps the referral count through the milestone breakpoints. It is wrapped in `import.meta.env.DEV`, so it exists in `npm run dev` and is stripped from production builds. **Currently has no visible effect on the page**: it used to drive the dial and next-step sentence in the removed reward card, and the static milestone stepper section further down the page was never tied to the live count. Kept per explicit instruction to leave it in place while the account-view redesign is in progress; flag to the user if it's still inert once that settles.
+`DemoReferralControl` is a small pill fixed bottom-right that steps the referral count through the milestone breakpoints. It is wrapped in `import.meta.env.DEV`, so it exists in `npm run dev` and is stripped from production builds. Drives `SignalReadout`'s progress line and reward text, so it's the fastest way to preview every milestone without actually referring anyone.
 
 ## 6. Copy rules
 
@@ -124,6 +137,6 @@ The mapping lives in `STEP_VIDEOS` in `Layout4.tsx` and must stay aligned with t
 
 - **Dev server port**: Vite defaults to 5173 and auto-increments if it is taken. Nothing here depends on the port (no CORS, no backend).
 - **`tsc --noEmit` is part of `npm run build`**; a type error fails the build, and `noUnusedLocals` means dead imports break it too.
-- The react `key` on layout components and the arrow-key switcher are gone; do not reintroduce a switcher, the exploration phase is over.
+- The whole-page arrow-key switcher (the original 5-layout exploration) and the readout's own 5-way `ReadoutSwitcher` are both gone for good, do not reintroduce either. If another readout redesign needs comparing, a fresh temporary switcher is fine, but the four rejected layouts it deleted (`Ring`/`Ticket`/`Track`/`Glass`) are not a starting point, they were rejected wholesale.
 - Verified state resets on refresh by design; nothing persists (no localStorage, no cookies).
-- `REFERRAL_MILESTONES` drives three things at once: the account-flow derivations, the milestone stepper section, and the demo control's buttons. Changing tiers updates all of them.
+- `REFERRAL_MILESTONES` drives four things at once: the account-flow derivations, the milestone stepper section, the demo control's buttons, and `SignalReadout`. Changing tiers updates all of them.
