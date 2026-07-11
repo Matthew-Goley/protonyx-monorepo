@@ -143,9 +143,12 @@ _monorepo/
 │                                  # Started as 5 alternate layouts; the product-preview layout won and is now the sole page
 │                                  # (src/layouts/Layout4.tsx, rendered directly by App.tsx, no layout switcher anymore).
 │                                  # All copy/dates/milestones live in src/content.ts. No backend calls; the signup flow (email,
-│                                  # mock OTP dialog, account view with referral dial + copyable link) is fully client-mocked via
-│                                  # src/hooks/useAccountFlow.ts + useOtpInput.ts. A dev-only referral-count stepper sits bottom
-│                                  # right in App.tsx (import.meta.env.DEV guarded, stripped from production builds). Brand images
+│                                  # magic-link verification, post-verify hero readout) is fully client-mocked via
+│                                  # src/hooks/useAccountFlow.ts (OTP was prototyped then dropped; useOtpInput.ts is gone). Once
+│                                  # verified, the hero's demo-video slot swaps to src/readouts/SignalReadout.tsx (an odometer-style
+│                                  # "months of Pro free" dial + copyable referral link; still mid-rework). A dev-only referral-count
+│                                  # stepper sits bottom right in App.tsx (import.meta.env.DEV guarded, stripped from production builds).
+│                                  # A second countdown + email box sits above the footer. Brand images
 │                                  # in assets/lens-arc (mirror of lens-app's) are used for the header/footer wordmark + favicon;
 │                                  # demo videos in assets/video (copies of frontend/assets/video) fill the hero demo window and
 │                                  # the three-step how-it-works walkthrough.
