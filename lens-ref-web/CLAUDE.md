@@ -6,9 +6,9 @@ Reference for working in `lens-ref-web/`. Read this before changing anything her
 
 The pre-launch marketing landing page for **Lens Arc** (the web product that lives in `lens-app/`). The page has exactly one job: capture an email address before launch. Free access opens on a launch date, and signups earn free Pro time that scales with referrals.
 
-- **Fully client-side. No backend, no API calls, no auth.** The whole signup flow (email, magic-link verification) is mocked in the browser.
-- **Not deployed yet.** The referral link domain (`lensarc.com/r/...`) is a placeholder string in `content.ts`.
-- Standalone project: it shares no code, tooling, or build with `backend/`, `lens-api/`, or `lens-app/`.
+- **Wired to a real backend.** The signup flow (email -> magic-link verification -> post-verify referral readout) calls the **referral-service** (`referral-service/`, FastAPI on Railway) via `src/lib/api.ts`. It is no longer mocked. The base URL comes from `VITE_REFERRAL_API_URL` (defaults to `http://localhost:8000`; see `.env.example`).
+- **Not deployed yet.** The referral share-link domain is `lens-arc.com/r/...` (`content.ts` `referralLinkBase`); magic links point at `{FRONTEND_BASE_URL}/verify?token=...` (configured on the service side).
+- Standalone project on the frontend side: it shares no code, tooling, or build with `backend/`, `lens-api/`, `lens-app/`, or `referral-service/`. Its only runtime dependency is the referral-service HTTP API.
 
 History, so the file names make sense: this started as five complete alternate layouts switched live with arrow keys. The product-preview layout (number 4) won; the other four and the switcher were deleted. `src/layouts/Layout4.tsx` keeps its historical name and is now the entire page. The post-verify readout (§5) went through the same "build several, compare, delete the losers" process separately, on a smaller scale.
 
@@ -45,7 +45,9 @@ lens-ref-web/
 │   └── protonyx-company/          # Protonyx company wordmarks (white/black), present but not used yet
 ├── src/
 │   ├── main.tsx                   # ReactDOM bootstrap
-│   ├── App.tsx                    # Renders Layout4 + the dev-only DemoReferralControl (bottom right)
+│   ├── App.tsx                    # Renders Layout4 (the dev-only DemoReferralControl was removed with the demo store)
+│   ├── lib/
+│   │   └── api.ts                 # Typed referral-service client (join, verify, status); base URL from VITE_REFERRAL_API_URL
 │   ├── content.ts                 # SINGLE SOURCE OF TRUTH for all copy, dates, milestones, brand values
 │   ├── index.css                  # Tailwind v4 @theme tokens + dial-max animation
 │   ├── vite-env.d.ts              # vite/client types (import.meta.env, .png imports)
@@ -102,16 +104,17 @@ Below the number: the "month(s) free" / "lifetime free" caption, then the single
 
 State machine `signup -> verifying -> account`, exposed as `useAccountFlow()` and typed as `AccountFlow`:
 
-- `submitEmail()` regex-validates and opens the verifying step, **returning `true`/`false`** so a caller can react only on real success (see the footer `EmailCapture`'s `onSubmitted` in §5) without duplicating the validation. `dismissVerify()` goes back; `completeVerify()` lands on the account view. `logout()` (wired to the `VerifiedBox` "Log out" link) resets `step` back to `"signup"` and clears the email field, there's no real session to end, it's just a state reset.
-- **Verification is magic-link only** (`Layout4.tsx`'s `VerifyDialog`): the dialog shows "check your email" copy and an "I clicked the link" button that stands in for the real click (there's no backend to email a real link to, and no route to catch it). Clicking it calls `flow.completeVerify()` directly. There is no backend; do not add fake server latency or a "wrong link" path without a real API to back it. An OTP-code alternative was prototyped and compared side by side via a mode switcher, then removed once magic link was picked, do not reintroduce a switcher.
-- Referral code: FNV-1a hash of the lowercased email, base36, 6 chars. Referral link is `COPY.referralLinkBase + code`.
-- Derivations from `REFERRAL_MILESTONES`: `currentReward`, `nextMilestone` (`{ remaining, reward }` or `null` at the top tier), `progress` (`min(count / 10, 1)`), `maxed`. `nextStepLine(flow)` produces the single next-step sentence so wording stays identical anywhere it appears. Consumed by `SignalReadout` (see §5).
+- `submitEmail()` is **async**: it regex-validates, then `POST`s `/join` (via `src/lib/api.ts`) with the email and any captured referral code, and opens the verifying step on success. It still **returns `true`/`false`** so the footer `EmailCapture`'s `onSubmitted` can react only on real success. `resendEmail()` re-`POST`s `/join` (the "Resend link" button). `dismissVerify()` goes back. `logout()` clears the persisted code/email from `localStorage` and resets state.
+- **Verification is magic-link only** (`Layout4.tsx`'s `VerifyDialog`): the emailed link opens the SPA at `/verify?token=...`, which the hook reads **on mount** and passes to `api.verify()`; on success it stores the server-issued code + email and shows the account view. The dialog's "I clicked the link" button is now **DEV-only** (`import.meta.env.DEV`) and calls `devSimulateVerify()` — a local preview that does not hit the server (stripped from production builds). Do not reintroduce an OTP switcher.
+- **Referral capture:** on mount the hook reads a `/r/<code>` share path (or `?ref=<code>`) and stashes the code to send on the next `/join`. Both URL forms are cleaned via `history.replaceState`.
+- **Referral code is server-issued** (returned by `/verify` and `/status`), not a client hash. The old FNV-1a `codeFromEmail` is gone. `referralLink` is `COPY.referralLinkBase + code`.
+- **Persistence:** the verified code + email are stored in `localStorage` (keys `lens_ref_code` / `lens_ref_email`); on load the hook restores the account view and refreshes the live count via `GET /status`. A stale/unknown code (e.g. a DB reset) clears itself and falls back to signup.
+- Derivations from `REFERRAL_MILESTONES`: `currentReward`, `nextMilestone`, `progress` (`min(count / 10, 1)`), `maxed`. `referralCount` now comes from the server (`/verify`, `/status`), not a demo store. `nextStepLine(flow)` produces the single next-step sentence. Consumed by `SignalReadout` (see §5).
 - `useCopyToClipboard()` uses the real clipboard API (with a textarea fallback) and flips a `copied` flag for ~1.8 s, used by `CopyChip` in `src/readouts/shared.tsx`. `useShare()` wraps `navigator.share` when present but isn't wired into the readout (the ask was copy only; add a share affordance only if requested).
-- The referral count comes from a module-level external store (`setDemoReferralCount` / `useDemoReferralCount` via `useSyncExternalStore`). In production this is where a real per-user count would plug in.
 
-### The demo control (App.tsx)
+### App.tsx
 
-`DemoReferralControl` is a small pill fixed bottom-right that steps the referral count through the milestone breakpoints. It is wrapped in `import.meta.env.DEV`, so it exists in `npm run dev` and is stripped from production builds. Drives `SignalReadout`'s progress line and reward text, so it's the fastest way to preview every milestone without actually referring anyone.
+`App.tsx` now just renders `Layout4`. The old dev-only `DemoReferralControl` pill (which stepped a mock referral count) and the module-level demo store (`setDemoReferralCount` / `useDemoReferralCount`) were **removed** when the count went server-backed — preview every milestone by seeding referrals in the referral-service DB instead. For a quick visual check of the readout without a running backend, the `VerifyDialog`'s DEV-only "I clicked the link" button (`devSimulateVerify`) jumps to the account view.
 
 ## 6. Copy rules
 
@@ -145,8 +148,9 @@ The mapping lives in `STEP_VIDEOS` in `Layout4.tsx` and must stay aligned with t
 
 ## 8. Gotchas
 
-- **Dev server port**: Vite defaults to 5173 and auto-increments if it is taken. Nothing here depends on the port (no CORS, no backend).
+- **Dev server port**: Vite defaults to 5173 and auto-increments if it is taken. The referral-service CORS allowlist covers `localhost:5173` and `5174`, so if Vite lands on a different port the API calls will fail CORS — either free up 5173/5174 or add the port to `allow_origins` in `referral-service/main.py`.
 - **`tsc --noEmit` is part of `npm run build`**; a type error fails the build, and `noUnusedLocals` means dead imports break it too.
 - The whole-page arrow-key switcher (the original 5-layout exploration) and the readout's own 5-way `ReadoutSwitcher` are both gone for good, do not reintroduce either. If another readout redesign needs comparing, a fresh temporary switcher is fine, but the four rejected layouts it deleted (`Ring`/`Ticket`/`Track`/`Glass`) are not a starting point, they were rejected wholesale.
-- Verified state resets on refresh by design; nothing persists (no localStorage, no cookies).
-- `REFERRAL_MILESTONES` drives four things at once: the account-flow derivations, the milestone stepper section, the demo control's buttons, and `SignalReadout`. Changing tiers updates all of them.
+- **SPA fallback is required for `/verify` and `/r/<code>`.** These are read by the app on load (not real routes/files). Vite's dev server does history-API fallback automatically, so they work in `npm run dev`. When the static build is deployed, the host must serve `index.html` for unmatched paths (e.g. `/verify`, `/r/*`) or those links 404. Both URLs are cleaned to `/` via `history.replaceState` once read.
+- Verified state now **persists** across refreshes: the server-issued referral code + email are kept in `localStorage` (`lens_ref_code` / `lens_ref_email`) and the count is re-fetched via `GET /status` on load. Clearing those keys (or `flow.logout()`) returns to the signup step.
+- `REFERRAL_MILESTONES` drives three things at once: the account-flow derivations, the milestone stepper section, and `SignalReadout`. Changing tiers updates all of them, and **must be mirrored in `referral-service/entitlement.py`'s `MILESTONES`** — the backend computes entitlement from the same table, so the two will disagree if only one is changed.

@@ -1,75 +1,179 @@
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState } from "react";
 import { BRAND, COPY, REFERRAL_MILESTONES } from "../content";
+import * as api from "../lib/api";
 
 export type Step = "signup" | "verifying" | "account";
 
-// Tiny external store for the demo referral count so the dev control in
-// App.tsx can drive whichever layout is currently mounted.
-let demoReferralCount = 0;
-const listeners = new Set<() => void>();
-
-function subscribe(cb: () => void) {
-  listeners.add(cb);
-  return () => {
-    listeners.delete(cb);
-  };
-}
-
-export function setDemoReferralCount(n: number) {
-  demoReferralCount = n;
-  listeners.forEach((cb) => cb());
-}
-
-export function useDemoReferralCount() {
-  return useSyncExternalStore(subscribe, () => demoReferralCount);
-}
-
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-// FNV-1a hash of the email, base36. Only needs to look plausible.
-function codeFromEmail(email: string): string {
-  let h = 2166136261;
-  for (let i = 0; i < email.length; i++) {
-    h ^= email.charCodeAt(i);
-    h = Math.imul(h, 16777619);
-  }
-  return (h >>> 0).toString(36).padStart(6, "0").slice(0, 6);
-}
+// localStorage keys. Persisting the server-issued referral code (not the raw
+// holdings, there are none here) is what lets a verified visitor stay verified
+// across refreshes: on load we restore the account view and re-fetch the live
+// count via GET /status.
+const LS_CODE = "lens_ref_code";
+const LS_EMAIL = "lens_ref_email";
 
 const MAX_REFERRALS =
   REFERRAL_MILESTONES[REFERRAL_MILESTONES.length - 1].referrals;
+
+// Pull a referral code out of the current URL: either the /r/<code> share-link
+// path or a ?ref=<code> query param. Returns null if neither is present.
+function referralCodeFromUrl(): string | null {
+  const path = window.location.pathname.match(/^\/r\/([a-z0-9]{1,16})/i);
+  if (path) return path[1].toLowerCase();
+  const q = new URLSearchParams(window.location.search).get("ref");
+  return q ? q.trim().toLowerCase() : null;
+}
 
 export function useAccountFlow() {
   const [step, setStep] = useState<Step>("signup");
   const [email, setEmailState] = useState("");
   const [emailError, setEmailError] = useState<string | null>(null);
-  const referralCount = useDemoReferralCount();
+  const [referralCode, setReferralCode] = useState("");
+  const [referralCount, setReferralCount] = useState(0);
+
+  // The code this visitor arrived under (from a /r/<code> link), sent to /join.
+  const pendingReferral = useRef<string | null>(null);
 
   const setEmail = (value: string) => {
     setEmailState(value);
     if (emailError) setEmailError(null);
   };
 
-  // Returns whether it actually opened the verifying step, so a second entry
-  // point (the footer's email box) can react only on real success, e.g. to
-  // scroll back up to it, without re-running the validation itself.
-  const submitEmail = () => {
+  const enterAccount = (code: string, verifiedEmail: string, count: number) => {
+    setReferralCode(code);
+    setReferralCount(count);
+    setEmailState(verifiedEmail);
+    setStep("account");
+    try {
+      localStorage.setItem(LS_CODE, code);
+      localStorage.setItem(LS_EMAIL, verifiedEmail);
+    } catch {
+      // storage unavailable (private mode): session-only, still works this load
+    }
+  };
+
+  // On mount: consume a magic-link token, or capture an inbound referral code,
+  // or restore a previously verified session.
+  useEffect(() => {
+    let cancelled = false;
+    const token = new URLSearchParams(window.location.search).get("token");
+    const onVerifyRoute = window.location.pathname.replace(/\/$/, "") === "/verify";
+
+    if (token && onVerifyRoute) {
+      api
+        .verify(token)
+        .then((res) => {
+          if (cancelled) return;
+          enterAccount(res.referral_code, res.email, res.entitlement.referral_count);
+        })
+        .catch(() => {
+          // Invalid/expired link: drop the user on a clean signup page.
+        })
+        .finally(() => {
+          window.history.replaceState(null, "", "/");
+        });
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    const inbound = referralCodeFromUrl();
+    if (inbound) {
+      pendingReferral.current = inbound;
+      window.history.replaceState(null, "", "/");
+    }
+
+    let storedCode: string | null = null;
+    let storedEmail: string | null = null;
+    try {
+      storedCode = localStorage.getItem(LS_CODE);
+      storedEmail = localStorage.getItem(LS_EMAIL);
+    } catch {
+      storedCode = null;
+    }
+    if (storedCode) {
+      setReferralCode(storedCode);
+      if (storedEmail) setEmailState(storedEmail);
+      setStep("account");
+      api
+        .status(storedCode)
+        .then((res) => {
+          if (!cancelled) setReferralCount(res.referral_count);
+        })
+        .catch(() => {
+          // Stale/unknown code (e.g. DB reset): clear it and fall back to signup.
+          if (cancelled) return;
+          try {
+            localStorage.removeItem(LS_CODE);
+            localStorage.removeItem(LS_EMAIL);
+          } catch {
+            /* ignore */
+          }
+          setStep("signup");
+          setReferralCode("");
+        });
+    }
+
+    return () => {
+      cancelled = true;
+    };
+    // Runs once on mount.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Sends the magic-link email. Returns whether it opened the verifying step, so
+  // the footer email box can react only on real success (e.g. scroll to top).
+  const submitEmail = async (): Promise<boolean> => {
     if (!EMAIL_RE.test(email.trim())) {
       setEmailError(COPY.emailInvalid);
       return false;
     }
     setEmailError(null);
-    setStep("verifying");
-    return true;
+    try {
+      await api.join(email.trim(), pendingReferral.current);
+      setStep("verifying");
+      return true;
+    } catch (err) {
+      setEmailError(err instanceof Error ? err.message : COPY.emailInvalid);
+      return false;
+    }
+  };
+
+  // Re-request the magic link for the same email (the "Resend link" button).
+  const resendEmail = async (): Promise<boolean> => {
+    try {
+      await api.join(email.trim(), pendingReferral.current);
+      return true;
+    } catch {
+      return false;
+    }
   };
 
   const dismissVerify = () => setStep("signup");
-  const completeVerify = () => setStep("account");
-  // Just resets to a fresh signup state, there's no real session to end.
+
+  // DEV-only preview: jump straight to the account view without a real token, so
+  // the readout can be eyeballed without a running backend. The code is a
+  // placeholder and does not resolve server-side. In production the account view
+  // is only ever reached by clicking the emailed link (the /verify route above).
+  const devSimulateVerify = () => {
+    setReferralCode("preview");
+    setReferralCount(0);
+    setStep("account");
+  };
+
   const logout = () => {
+    try {
+      localStorage.removeItem(LS_CODE);
+      localStorage.removeItem(LS_EMAIL);
+    } catch {
+      /* ignore */
+    }
     setStep("signup");
     setEmailState("");
     setEmailError(null);
+    setReferralCode("");
+    setReferralCount(0);
   };
 
   let currentReward = REFERRAL_MILESTONES[0].reward;
@@ -81,19 +185,15 @@ export function useAccountFlow() {
     ? { remaining: next.referrals - referralCount, reward: next.reward }
     : null;
 
-  const referralCode = useMemo(
-    () => codeFromEmail(email.trim().toLowerCase() || BRAND.wordmark),
-    [email]
-  );
-
   return {
     step,
     email,
     setEmail,
     emailError,
     submitEmail,
+    resendEmail,
     dismissVerify,
-    completeVerify,
+    devSimulateVerify,
     logout,
     referralCount,
     progress: Math.min(referralCount / MAX_REFERRALS, 1),

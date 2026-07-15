@@ -67,7 +67,7 @@ export const COPY = {
   copyLabel: "Copy",
   copiedLabel: "Copied",
   shareLabel: "Share",
-  referralLinkBase: "lensarc.com/r/",
+  referralLinkBase: "lens-arc.com/r/",
   countdownCaption: "until free access opens",
   countdownUnits: ["days", "hours", "minutes", "seconds"] as const,
   howHeading: "How it works",

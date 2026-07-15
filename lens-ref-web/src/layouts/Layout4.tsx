@@ -101,9 +101,17 @@ function EmailCapture({
   onSubmitted?: () => void;
   className?: string;
 }) {
-  const submit = (e: FormEvent) => {
+  const [submitting, setSubmitting] = useState(false);
+
+  const submit = async (e: FormEvent) => {
     e.preventDefault();
-    if (flow.submitEmail()) onSubmitted?.();
+    if (submitting) return;
+    setSubmitting(true);
+    try {
+      if (await flow.submitEmail()) onSubmitted?.();
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -119,7 +127,8 @@ function EmailCapture({
         />
         <button
           type="submit"
-          className="flex shrink-0 items-center justify-center gap-1.5 rounded-xl px-5 py-3 text-sm font-semibold text-slate-950 transition hover:opacity-90"
+          disabled={submitting}
+          className="flex shrink-0 items-center justify-center gap-1.5 rounded-xl px-5 py-3 text-sm font-semibold text-slate-950 transition hover:opacity-90 disabled:opacity-60"
           style={{ backgroundImage: gradient }}
         >
           {COPY.emailCta}
@@ -133,7 +142,9 @@ function EmailCapture({
 
 function VerifyDialog({ flow }: { flow: AccountFlow }) {
   const [linkResent, setLinkResent] = useState(false);
-  const resendLink = () => {
+  const resendLink = async () => {
+    const ok = await flow.resendEmail();
+    if (!ok) return;
     setLinkResent(true);
     window.setTimeout(() => setLinkResent(false), 1800);
   };
@@ -151,14 +162,19 @@ function VerifyDialog({ flow }: { flow: AccountFlow }) {
         <p className="mt-2 break-words text-sm text-slate-600">
           {COPY.magicInstruction(flow.email)}
         </p>
-        <button
-          type="button"
-          onClick={flow.completeVerify}
-          className="mt-6 w-full rounded-xl py-3 text-sm font-semibold text-slate-950 transition hover:opacity-90"
-          style={{ backgroundImage: gradient }}
-        >
-          {COPY.magicSimulate}
-        </button>
+        {/* Real verification happens when the user clicks the emailed link, which
+            opens the SPA at /verify?token=... This shortcut is a DEV-only preview
+            of the account view; it is stripped from production builds. */}
+        {import.meta.env.DEV && (
+          <button
+            type="button"
+            onClick={flow.devSimulateVerify}
+            className="mt-6 w-full rounded-xl py-3 text-sm font-semibold text-slate-950 transition hover:opacity-90"
+            style={{ backgroundImage: gradient }}
+          >
+            {COPY.magicSimulate}
+          </button>
+        )}
         <p className="mt-3 text-xs text-slate-400">{COPY.magicNote}</p>
         <div className="mt-4 flex justify-center gap-6 text-xs">
           <button
