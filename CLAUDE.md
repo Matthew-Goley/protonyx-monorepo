@@ -14,9 +14,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 > - **`app/`** — a very old copy of the Vector desktop app. There is **no desktop app anymore**; the product is web-only. Do not read it for reference, do not run it, do not update it.
 > - **`frontend/`** — a stale, **not-live** static marketing site. The live marketing/auth/account site is `../Protonyx Site/` (one level above this monorepo, with its own `CLAUDE.md` and a `CNAME`). Don't edit `frontend/` expecting it to ship; if the task is about the public site, work in `../Protonyx Site/` instead.
 >
-> The folders that matter: **`backend/`** (Fastify API), **`lens-api/`** (Python analytics service), and **`lens-app/`** (the live React web app). The §2 layout below still documents `app/` and `frontend/`, but only so you recognize them as the things to skip.
+> The folders that matter: **`backend/`** (Fastify API), **`lens-api/`** (Python analytics service), **`lens-app/`** (the live React web app), **`lens-ref-web/`** (the pre-launch marketing site), and **`referral-service/`** (the waitlist/referral API). The §2 layout below still documents `app/` and `frontend/`, but only so you recognize them as the things to skip.
 
-There are four deliverables:
+There are five deliverables:
 
 | Product | Stack | Purpose |
 |---|---|---|
@@ -25,8 +25,9 @@ There are four deliverables:
 | **Backend API** (`backend/`) | Fastify + TypeScript on Node, PostgreSQL | Authentication, account profile, download counter, and (eventually) the API the desktop app talks to. |
 | **Lens API** (`lens-api/`) | Python FastAPI, deployed on Railway | Standalone analytics microservice. Live at `https://lens-api-production-b0ab.up.railway.app`. Accepts a portfolio over HTTP, runs the Lens engine, returns the full result dict. Currently called directly from `lens-app` in the browser (dev); intended to be proxied server-to-server via Fastify in production. |
 | **Lens App** (`lens-app/`) | Vite + React + TypeScript | Web app for Lens analytics at `app.use-lens.com`, branded **Lens Arc** (the product's full name; logo assets in `lens-app/assets/lens-arc/`). Calls lens-api directly (dev only) or via Fastify (prod). Stack: React Router, Tailwind CSS, shadcn/ui, Recharts, TanStack Query. |
+| **Referral Service** (`referral-service/`) | Python FastAPI, deployed on Railway | Standalone pre-launch waitlist + referral API for the Lens Arc marketing site (`lens-ref-web/`). Its own Railway service; shares only the Postgres DB. Owns exactly one table (`waitlist`); writes `users` only via the internal `POST /redeem` (launch-time Pro grant). Endpoints: `/join`, `/verify`, `/status`, `/redeem`, `/health`. Read `referral-service/CLAUDE.md` before working in it. |
 
-The three components share **one user database** but **no build system** — each subdirectory is developed independently. There is no root `package.json`, no monorepo tooling (Turbo/Nx/Lerna), no Docker, no CI pipeline. Treat each top-level folder as a self-contained project.
+The components share **one Postgres database** but **no build system** — each subdirectory is developed independently. There is no root `package.json`, no monorepo tooling (Turbo/Nx/Lerna), no Docker, no CI pipeline. Treat each top-level folder as a self-contained project.
 
 The codebase is one developer's project on Windows 11 with Git Bash. Conventions reflect that: forward slashes in paths, LF line endings, no formal linter, no test suite anywhere.
 
@@ -142,18 +143,28 @@ _monorepo/
 ├── lens-ref-web/                  # Pre-launch marketing landing page for Lens Arc (Vite + React + TS + Tailwind v4).
 │                                  # Started as 5 alternate layouts; the product-preview layout won and is now the sole page
 │                                  # (src/layouts/Layout4.tsx, rendered directly by App.tsx, no layout switcher anymore).
-│                                  # All copy/dates/milestones live in src/content.ts. No backend calls; the signup flow (email,
-│                                  # magic-link verification, post-verify hero readout) is fully client-mocked via
-│                                  # src/hooks/useAccountFlow.ts (OTP was prototyped then dropped; useOtpInput.ts is gone). Once
+│                                  # All copy/dates/milestones live in src/content.ts. The signup flow (email -> magic-link
+│                                  # verification -> post-verify hero readout) is wired to the referral-service (src/lib/api.ts +
+│                                  # src/hooks/useAccountFlow.ts): POST /join sends the link, /verify?token= is read from the URL on
+│                                  # load, the /r/<code> share path is captured for attribution, and the verified code is persisted in
+│                                  # localStorage (refreshed via /status). Set VITE_REFERRAL_API_URL (defaults to localhost:8000). Once
 │                                  # verified, the hero's demo-video slot swaps to src/readouts/SignalReadout.tsx (an odometer-style
-│                                  # "months of Pro free" dial + copyable referral link; still mid-rework). A dev-only referral-count
-│                                  # stepper sits bottom right in App.tsx (import.meta.env.DEV guarded, stripped from production builds).
+│                                  # "months of Pro free" dial + copyable referral link; still mid-rework).
 │                                  # A second countdown + email box sits above the footer. Brand images
 │                                  # in assets/lens-arc (mirror of lens-app's) are used for the header/footer wordmark + favicon;
 │                                  # demo videos in assets/video (copies of frontend/assets/video) fill the hero demo window and
 │                                  # the three-step how-it-works walkthrough.
 │                                  # Standalone project: npm install && npm run dev (Vite, port 5173). Not deployed yet.
 │                                  # Has its own CLAUDE.md; read it before working in lens-ref-web/.
+│
+├── referral-service/              # Standalone Python FastAPI waitlist + referral API for lens-ref-web (its own Railway
+│                                  # service; shares only the Postgres DB). Owns exactly one table (waitlist); writes users
+│                                  # only via the internal POST /redeem (launch-time Pro grant). Endpoints: /join, /verify,
+│                                  # /status, /redeem, /health. Entitlement is a pure step function (entitlement.py) that must
+│                                  # stay in lockstep with lens-ref-web's REFERRAL_MILESTONES. Reward math is computed on demand,
+│                                  # never stored; credit accrues only on verification; only direct referrals are counted.
+│                                  # main.py / db.py / entitlement.py / mailer.py (NOT email.py — shadows stdlib) / templates.py.
+│                                  # Has its own CLAUDE.md; read it before working in referral-service/.
 ├── scripts/                       # Admin / DB utility scripts — currently empty
 ├── database/                      # Legacy SQLite dir — gitignored, empty, no longer used
 ├── dev.bat                        # Windows helper: starts backend (npm run dev) + frontend (browser-sync on 5500)
