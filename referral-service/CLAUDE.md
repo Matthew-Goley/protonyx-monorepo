@@ -85,14 +85,14 @@ CREATE TABLE IF NOT EXISTS waitlist (
     id                     SERIAL PRIMARY KEY,
     email                  TEXT UNIQUE NOT NULL,
     verified               BOOLEAN NOT NULL DEFAULT FALSE,
-    verified_at            TIMESTAMP DEFAULT NULL,
+    verified_at            TIMESTAMPTZ DEFAULT NULL,
     referral_code          TEXT UNIQUE DEFAULT NULL,   -- issued on verify (6-char base36)
     referred_by_code       TEXT DEFAULT NULL,          -- code they joined under (first-touch, captured at /join)
     magic_token_hash       TEXT DEFAULT NULL,          -- sha256 of the single-use token; plaintext never stored
-    magic_token_expires_at TIMESTAMP DEFAULT NULL,
+    magic_token_expires_at TIMESTAMPTZ DEFAULT NULL,
     redeemed               BOOLEAN NOT NULL DEFAULT FALSE,
-    redeemed_at            TIMESTAMP DEFAULT NULL,
-    created_at             TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    redeemed_at            TIMESTAMPTZ DEFAULT NULL,
+    created_at             TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 -- + indexes on referral_code, referred_by_code, magic_token_hash
 ```
