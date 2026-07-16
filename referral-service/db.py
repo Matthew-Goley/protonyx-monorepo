@@ -20,14 +20,14 @@ CREATE TABLE IF NOT EXISTS waitlist (
     id                     SERIAL PRIMARY KEY,
     email                  TEXT UNIQUE NOT NULL,
     verified               BOOLEAN NOT NULL DEFAULT FALSE,
-    verified_at            TIMESTAMP DEFAULT NULL,
+    verified_at            TIMESTAMPTZ DEFAULT NULL,
     referral_code          TEXT UNIQUE DEFAULT NULL,
     referred_by_code       TEXT DEFAULT NULL,
     magic_token_hash       TEXT DEFAULT NULL,
-    magic_token_expires_at TIMESTAMP DEFAULT NULL,
+    magic_token_expires_at TIMESTAMPTZ DEFAULT NULL,
     redeemed               BOOLEAN NOT NULL DEFAULT FALSE,
-    redeemed_at            TIMESTAMP DEFAULT NULL,
-    created_at             TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    redeemed_at            TIMESTAMPTZ DEFAULT NULL,
+    created_at             TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 """
 
