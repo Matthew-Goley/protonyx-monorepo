@@ -53,8 +53,8 @@ referral-service/
 ├── main.py            FastAPI app: CORS, slowapi limiter, lifespan (pool + schema), all endpoints
 ├── db.py              asyncpg pool from DATABASE_URL; CREATE TABLE IF NOT EXISTS waitlist; count helper
 ├── entitlement.py     Pure entitlement() + MILESTONES (mirror of lens-ref-web REFERRAL_MILESTONES)
-├── mailer.py          Resend send_magic_link() (fire-and-forget). NOT named email.py (see gotcha below)
-├── templates.py       Magic-link email HTML (Lens Arc branding, dark/teal palette)
+├── mailer.py          Resend send_magic_link() (fire-and-forget, signup vs. returning-login copy). NOT named email.py (see gotcha below)
+├── templates.py       Magic-link email HTML: magic_link_html() (signup) + login_link_html() (returning/already-verified). Lens Arc branding, dark/teal palette
 ├── requirements.txt   Loose >= pins
 ├── Procfile           web: uvicorn main:app --host 0.0.0.0 --port $PORT
 ├── .python-version    3.12
@@ -135,7 +135,7 @@ files.
 | Method | Path | Auth | Behavior |
 |---|---|---|---|
 | `GET` | `/health` | — | `{"status":"ok"}`. Railway health check. |
-| `POST` | `/join` | rate-limited | Body `{ email, referral_code? }`. Validates email (`email_validator`, no MX lookup). Upserts the waitlist row: new/unverified rows get a fresh magic token + magic-link email. `referred_by_code` is captured **only on first insert**, only if the code belongs to a **verified** row and isn't the joiner's own; unknown/invalid codes are silently dropped (a bad referral link never blocks a signup). An already-verified email is a no-op. Always returns 200 `{ success, message }` (enumeration-neutral). |
+| `POST` | `/join` | rate-limited | Body `{ email, referral_code? }`. Validates email (`email_validator`, no MX lookup). Upserts the waitlist row: new/unverified rows get a fresh magic token + magic-link email. `referred_by_code` is captured **only on first insert**, only if the code belongs to a **verified** row and isn't the joiner's own; unknown/invalid codes are silently dropped (a bad referral link never blocks a signup). **An already-verified email also gets a fresh token + email** (`referral_code`/`referred_by_code` untouched) so someone can always get back into an existing account by re-entering their email - this is the *only* login mechanism, there being no password. The email copy differs (`login_link_html` "Log back in" vs. `magic_link_html` "Confirm your email") but the JSON response is identical across all three branches (new / resend-unverified / resend-verified), keeping the endpoint enumeration-neutral. Always returns 200 `{ success, message }`. |
 | `GET` | `/verify` | rate-limited | Query `?token=`. Looks up by `magic_token_hash` with a live expiry; missing/expired → 400. On success: marks verified, clears the token, issues a `referral_code` if absent. Returns `{ success, email, referral_code, referral_link, entitlement }`. Single-use (a second hit of the same token → 400). |
 | `GET` | `/status` | rate-limited | Query `?code=`. Keyed by `referral_code` (counts are low-sensitivity and the code is already shareable). Unknown code → 404. Returns `{ success, verified, referral_count, entitlement }`. |
 | `POST` | `/redeem` | `X-Redeem-Secret` | Body `{ email }`. **Internal, never called by the site.** Loads the waitlist row (must be verified), computes entitlement, finds the `users` row by email (404 if none), writes the Pro grant, stamps the waitlist row redeemed. **Idempotent**: an already-redeemed email re-reports the grant without re-writing, so a referral can never be double-credited. |

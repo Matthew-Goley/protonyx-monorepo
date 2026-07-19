@@ -151,10 +151,6 @@ async def join(request: Request, body: JoinRequest) -> dict:
     async with db.pool().acquire() as conn:
         row = await conn.fetchrow("SELECT verified FROM waitlist WHERE email = $1", email)
 
-        # Already verified: nothing to do, but stay enumeration-neutral.
-        if row is not None and row["verified"]:
-            return {"success": True, "message": MSG_CHECK_EMAIL}
-
         token = _new_token()
         token_hash = _hash_token(token)
 
@@ -177,6 +173,24 @@ async def join(request: Request, body: JoinRequest) -> dict:
                 """,
                 email, referred_by, token_hash, MAGIC_LINK_TTL_MINUTES,
             )
+            returning = False
+        elif row["verified"]:
+            # Already verified: this is someone trying to get back into an
+            # account they already made (their original single-use link is long
+            # since consumed). Issue a fresh token exactly like the resend path
+            # below so they can still get in via email; referral_code and
+            # referred_by_code are untouched. The email copy is worded as a
+            # login, not a signup, but the API response stays identical to the
+            # other branches so the endpoint remains enumeration-neutral.
+            await conn.execute(
+                """
+                UPDATE waitlist
+                SET magic_token_hash = $1, magic_token_expires_at = NOW() + make_interval(mins => $2)
+                WHERE email = $3
+                """,
+                token_hash, MAGIC_LINK_TTL_MINUTES, email,
+            )
+            returning = True
         else:
             # Existing unverified row: refresh the token (acts as a resend).
             # referred_by_code is deliberately left as first-touch captured it.
@@ -188,9 +202,10 @@ async def join(request: Request, body: JoinRequest) -> dict:
                 """,
                 token_hash, MAGIC_LINK_TTL_MINUTES, email,
             )
+            returning = False
 
     verify_url = f"{FRONTEND_BASE_URL}/verify?token={token}"
-    send_magic_link(email, verify_url)
+    send_magic_link(email, verify_url, returning=returning)
     return {"success": True, "message": MSG_CHECK_EMAIL}
 
 
