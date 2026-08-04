@@ -87,7 +87,7 @@ export default function SignalReadout({ flow }: { flow: AccountFlow }) {
         <span className="min-w-0 flex-1 truncate text-left text-sm text-slate-600">
           {flow.referralLink}
         </span>
-        <CopyChip link={flow.referralLink} />
+        <CopyChip link={`https://${flow.referralLink}`} />
       </div>
     </div>
   );

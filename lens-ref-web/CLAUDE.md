@@ -36,9 +36,10 @@ Run from `lens-ref-web/`:
 
 ```
 lens-ref-web/
-├── index.html                     # Font links, favicon (/lens-arc-icon.png), #root
+├── index.html                     # Font links, favicon (/lens-arc-icon.png), Open Graph/Twitter card meta (og:image -> /og-image.png), #root
 ├── public/
-│   └── lens-arc-icon.png          # Favicon, a copy of assets/lens-arc/icon-rounded.png
+│   ├── lens-arc-icon.png          # Favicon, a copy of assets/lens-arc/icon-rounded.png
+│   └── og-image.png               # Link-preview image (og:image/twitter:image), a copy of assets/lens-arc/icon-square.png
 ├── assets/
 │   ├── lens-arc/                  # Brand artwork, mirror of lens-app/assets/lens-arc (see section 7)
 │   ├── video/                     # Demo videos, copies of frontend/assets/video (hero demo + 3 discovery clips)
@@ -107,7 +108,7 @@ State machine `signup -> verifying -> account`, exposed as `useAccountFlow()` an
 - `submitEmail()` is **async**: it regex-validates, then `POST`s `/join` (via `src/lib/api.ts`) with the email and any captured referral code, and opens the verifying step on success. It still **returns `true`/`false`** so the footer `EmailCapture`'s `onSubmitted` can react only on real success. `resendEmail()` re-`POST`s `/join` (the "Resend link" button). `dismissVerify()` goes back. `logout()` clears the persisted code/email from `localStorage` and resets state.
 - **Verification is magic-link only** (`Layout4.tsx`'s `VerifyDialog`): the emailed link opens the SPA at `/verify?token=...`, which the hook reads **on mount** and passes to `api.verify()`; on success it stores the server-issued code + email and shows the account view. The dialog's "I clicked the link" button is now **DEV-only** (`import.meta.env.DEV`) and calls `devSimulateVerify()` — a local preview that does not hit the server (stripped from production builds). Do not reintroduce an OTP switcher.
 - **Referral capture:** on mount the hook reads a `/r/<code>` share path (or `?ref=<code>`) and stashes the code to send on the next `/join`. Both URL forms are cleaned via `history.replaceState`.
-- **Referral code is server-issued** (returned by `/verify` and `/status`), not a client hash. The old FNV-1a `codeFromEmail` is gone. `referralLink` is `COPY.referralLinkBase + code`.
+- **Referral code is server-issued** (returned by `/verify` and `/status`), not a client hash. The old FNV-1a `codeFromEmail` is gone. `referralLink` is `COPY.referralLinkBase + code`, displayed protocol-less (`lens-arc.com/r/...`); `SignalReadout.tsx`'s `CopyChip` prepends `https://` to that value at copy time so the clipboard contents are a real, clickable URL even though the displayed text stays bare.
 - **Persistence:** the verified code + email are stored in `localStorage` (keys `lens_ref_code` / `lens_ref_email`); on load the hook restores the account view and refreshes the live count via `GET /status`. A stale/unknown code (e.g. a DB reset) clears itself and falls back to signup.
 - Derivations from `REFERRAL_MILESTONES`: `currentReward`, `nextMilestone`, `progress` (`min(count / 10, 1)`), `maxed`. `referralCount` now comes from the server (`/verify`, `/status`), not a demo store. `nextStepLine(flow)` produces the single next-step sentence. Consumed by `SignalReadout` (see §5).
 - `useCopyToClipboard()` uses the real clipboard API (with a textarea fallback) and flips a `copied` flag for ~1.8 s, used by `CopyChip` in `src/readouts/shared.tsx`. `useShare()` wraps `navigator.share` when present but isn't wired into the readout (the ask was copy only; add a share affordance only if requested).
@@ -133,7 +134,7 @@ State machine `signup -> verifying -> account`, exposed as `useAccountFlow()` an
 | `arc-dark.png` / `arc-white.png` | The arc mark alone | Not currently used |
 | `icon-nobg.png` | Square icon mark, transparent background | Not currently used |
 | `icon-rounded.png` | Rounded app-tile icon | Copied to `public/lens-arc-icon.png` as the favicon |
-| `icon-square.png` | Square app-tile icon | Not currently used |
+| `icon-square.png` | Square app-tile icon | Copied to `public/og-image.png`, the Open Graph/Twitter card link-preview image |
 
 `assets/video/` holds copies of `frontend/assets/video/`:
 
@@ -154,3 +155,4 @@ The mapping lives in `STEP_VIDEOS` in `Layout4.tsx` and must stay aligned with t
 - **SPA fallback is required for `/verify` and `/r/<code>`.** These are read by the app on load (not real routes/files). Vite's dev server does history-API fallback automatically, so they work in `npm run dev`. When the static build is deployed, the host must serve `index.html` for unmatched paths (e.g. `/verify`, `/r/*`) or those links 404. Both URLs are cleaned to `/` via `history.replaceState` once read.
 - Verified state now **persists** across refreshes: the server-issued referral code + email are kept in `localStorage` (`lens_ref_code` / `lens_ref_email`) and the count is re-fetched via `GET /status` on load. Clearing those keys (or `flow.logout()`) returns to the signup step.
 - `REFERRAL_MILESTONES` drives three things at once: the account-flow derivations, the milestone stepper section, and `SignalReadout`. Changing tiers updates all of them, and **must be mirrored in `referral-service/entitlement.py`'s `MILESTONES`** — the backend computes entitlement from the same table, so the two will disagree if only one is changed.
+- **The Open Graph/Twitter meta tags in `index.html` hardcode `https://lens-arc.com`** for `og:url`, `og:image`, and `twitter:image`, matching `content.ts`'s `referralLinkBase`. Link-preview scrapers require an absolute URL for `og:image`, so it can't be relative; since the site isn't deployed yet, this is a placeholder pointing at the assumed eventual domain. If the real domain differs, update all three tags (and re-verify with a link-preview debugger, since most scrapers cache a fetched `og:image` aggressively).
