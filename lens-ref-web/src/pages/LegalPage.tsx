@@ -10,9 +10,11 @@ import lensArcDark from "../../assets/lens-arc/lens-arc-dark.png";
 // for any future page that just needs "title + body" (about, FAQ, etc.).
 export default function LegalPage({
   title,
+  effectiveDate,
   children,
 }: {
   title: string;
+  effectiveDate?: string;
   children?: ReactNode;
 }) {
   return (
@@ -39,6 +41,9 @@ export default function LegalPage({
         <h1 className="font-display text-3xl font-bold tracking-tight sm:text-4xl">
           {title}
         </h1>
+        {effectiveDate && (
+          <p className="mt-2 text-sm text-slate-500">Effective Date: {effectiveDate}</p>
+        )}
 
         <div className="mt-10 space-y-6 text-sm leading-relaxed text-slate-700">
           {children ?? (

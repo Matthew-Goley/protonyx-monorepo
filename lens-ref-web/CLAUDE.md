@@ -63,10 +63,17 @@ lens-ref-web/
 │   │   └── Layout4.tsx            # The entire marketing page (historical name, winner of the 5-layout exploration)
 │   └── pages/                     # Simple, non-marketing pages, reached via real navigation (footer <a> tags), not
 │       │                          # the landing layout. See "Legal pages" in §5.
-│       ├── LegalPage.tsx          # Reusable plain shell (back link + logo, title, content slot, footer) - reuse this
-│       │                          # for any future title+body page, not just legal ones
-│       ├── TermsPage.tsx          # LegalPage with title=LEGAL_PAGES.terms.title, no body content yet (placeholder)
-│       └── PrivacyPage.tsx        # LegalPage with title=LEGAL_PAGES.privacy.title, no body content yet (placeholder)
+│       ├── LegalPage.tsx          # Reusable plain shell (back link + logo, title, optional effectiveDate, content
+│       │                          # slot, footer) - reuse this for any future title+body page, not just legal ones
+│       ├── legalContent.tsx       # Typography primitives for a numbered legal doc (LegalSection, LegalList,
+│       │                          # LegalTable, LegalContact), shared by Terms/Privacy, reuse for any future doc
+│       ├── TermsPage.tsx          # LegalPage + full Terms of Service body, text sourced verbatim from
+│       │                          # legal-raw/lens-arc-referral-terms.md
+│       └── PrivacyPage.tsx        # LegalPage + full Privacy Policy body, text sourced verbatim from
+│                                  # legal-raw/lens-arc-referral-privacy-policy.md
+├── legal-raw/                     # Source-of-truth legal doc drafts (markdown), NOT wired into the build.
+│                                  # TermsPage.tsx/PrivacyPage.tsx are hand-transcribed from these; if the wording
+│                                  # here changes, the corresponding page component must be updated to match.
 ├── package.json / tsconfig.json / vite.config.ts
 └── CLAUDE.md                      # This file
 ```
@@ -128,9 +135,13 @@ The old dev-only `DemoReferralControl` pill (which stepped a mock referral count
 
 ### Legal pages (src/pages/)
 
-`LegalPage.tsx` is a small, deliberately generic shell for **non-marketing** pages: a plain white background, a header with a "Back to home" link and the wordmark, an `<h1>{title}</h1>`, an open `children` slot for the body, and a minimal footer with just `COPY.legal`. No gradients, no motion, no marketing copy, no `landing.css`-style flourish, it reads as a document rather than a continuation of the landing page. `TermsPage.tsx` and `PrivacyPage.tsx` are both just `<LegalPage title={LEGAL_PAGES.terms.title} />` / `.privacy.title` with **no children yet** — `LegalPage` falls back to an italic `"[{title} content goes here.]"` placeholder when `children` is omitted, so the pages render as real, deliberately-blank pages rather than looking broken. When the actual Terms of Service / Privacy Policy copy is ready, pass it as `children` (plain JSX/markdown-to-JSX, whatever fits) rather than editing `LegalPage.tsx` itself.
+`LegalPage.tsx` is a small, deliberately generic shell for **non-marketing** pages: a plain white background, a header with a "Back to home" link and the wordmark, an `<h1>{title}</h1>` with an optional `effectiveDate` line under it, an open `children` slot for the body, and a minimal footer with just `COPY.legal`. No gradients, no motion, no marketing copy, no `landing.css`-style flourish, it reads as a document rather than a continuation of the landing page. When `children` is omitted it falls back to an italic `"[{title} content goes here.]"` placeholder, useful for scaffolding a future page before its copy exists.
 
-`LegalPage` is written to be reused for any future "title + body" page (about, FAQ, etc.), not just these two, that's the point of keeping it generic instead of building `TermsPage`-specific markup.
+`legalContent.tsx` holds the typography primitives the body content is built from: `LegalSection` (numbered `<h2>` + spaced body), `LegalList` (bullet list), `LegalTable` (bordered header/rows table, used by the Terms rewards schedule), and `LegalContact` (name + `mailto:` line, used by both docs' "Contact Us" sections).
+
+`TermsPage.tsx` and `PrivacyPage.tsx` render `LegalPage` with the full document body, **hand-transcribed verbatim from `legal-raw/lens-arc-referral-terms.md` and `legal-raw/lens-arc-referral-privacy-policy.md`** respectively (structure only: markdown `##` sections become `LegalSection`, bullet lists become `LegalList`, the rewards table becomes `LegalTable`, `**bold**` becomes `<strong>`; wording, punctuation, and dash characters are preserved exactly as written in the source, including the em/en dashes the rest of this app's copy avoids, this is transcribed legal text, not authored copy). The two `legal@protonyxdata.com` mentions in the Privacy Policy body (§7, §8) are wrapped in `mailto:` links as a functional improvement, the visible text is unchanged. **The `legal-raw/*.md` files are the source of truth and are not read at build time** (there's no markdown pipeline), so if their wording changes, the corresponding page component must be manually updated to match, they will silently drift otherwise.
+
+`LegalPage` and `legalContent.tsx` are written to be reused for any future "title + body" page (about, FAQ, a future doc), not just these two, that's the point of keeping them generic instead of building bespoke markup per page.
 
 The footer in `Layout4.tsx` renders a second row below the existing logo/disclaimer/copyright line, mapping `Object.values(LEGAL_PAGES)` to `<a href={page.path}>{page.title}</a>` — adding a third entry to `LEGAL_PAGES` in `content.ts` is enough to add another footer link and route, no other file needs touching except creating the page component itself and wiring it into `App.tsx`'s if-chain.
 
