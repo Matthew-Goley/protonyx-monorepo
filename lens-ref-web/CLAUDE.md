@@ -153,7 +153,7 @@ The footer in `Layout4.tsx` renders a second row below the existing logo/disclai
 
 ## 7. Brand and media assets (assets/)
 
-`assets/lens-arc/` is a mirror of `lens-app/assets/lens-arc/` (which is the source of truth; recopy from there if artwork changes). Semantics:
+`assets/lens-arc/` is mostly a mirror of `lens-app/assets/lens-arc/` (which is the source of truth for the shared files; recopy from there if that artwork changes), plus one file that's local to this project. Semantics:
 
 | File | What it is | Used here |
 |---|---|---|
@@ -162,7 +162,8 @@ The footer in `Layout4.tsx` renders a second row below the existing logo/disclai
 | `arc-dark.png` / `arc-white.png` | The arc mark alone | Not currently used |
 | `icon-nobg.png` | Square icon mark, transparent background | Not currently used |
 | `icon-rounded.png` | Rounded app-tile icon | Copied to `public/lens-arc-icon.png` as the favicon |
-| `icon-square.png` | Square app-tile icon | Copied to `public/og-image.png`, the Open Graph/Twitter card link-preview image |
+| `icon-square.png` | Square app-tile icon | Not currently used (was previously copied to `public/og-image.png`; superseded by `link-ad.png` below) |
+| `link-ad.png` | Link-preview ad graphic, **not** mirrored from `lens-app/` (lens-ref-web-only) | Copied to `public/og-image.png`, the Open Graph/Twitter card link-preview image. Recopy manually if this file is replaced; there's no build step wiring them together. |
 
 `assets/video/` holds copies of `frontend/assets/video/`, re-exported at 2K (2560x1440, 16:9):
 
