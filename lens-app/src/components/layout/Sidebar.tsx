@@ -53,7 +53,7 @@ export function Sidebar() {
                 {isActive && (
                   <span
                     aria-hidden
-                    className="bg-gradient-brand absolute inset-y-2 left-0 w-0.5 rounded-r-sm"
+                    className="bg-gradient-brand absolute inset-y-2 left-0 w-0.5"
                   />
                 )}
                 <Icon size={18} />

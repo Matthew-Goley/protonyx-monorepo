@@ -79,6 +79,21 @@
   --text-score: 56px;
 
   --font-sans: "Sora", ui-sans-serif, system-ui, sans-serif;
+
+  /* Corner radius: every boxy rounded-* utility (cards, buttons, modals,
+     dropdowns, controls) uses one flat 15px radius. rounded-full is untouched
+     (stays a static 9999px, so circles/pills stay circular); elements with no
+     rounded-* class were straight by design and stay straight, since only
+     utilities that read these tokens are affected. */
+  --radius: 15px;
+  --radius-xs: 15px;
+  --radius-sm: 15px;
+  --radius-md: 15px;
+  --radius-lg: 15px;
+  --radius-xl: 15px;
+  --radius-2xl: 15px;
+  --radius-3xl: 15px;
+  --radius-4xl: 15px;
 }
 
 /* Spacing scale (styling.md) — 8px base, every gap a multiple. Exposed for raw
