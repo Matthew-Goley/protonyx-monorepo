@@ -107,7 +107,7 @@ Sits between the referral milestone stepper and the `<footer>`, its own `<sectio
 
 Once `flow.step === "account"`, the hero's demo-video slot is replaced by `SignalReadout` (imported directly in `Layout4.tsx`, no switcher). **Status: not settled.** This started as 5 candidate layouts (`Signal`/`Ring`/`Ticket`/`Track`/`Glass`) compared side by side through a temporary `ReadoutSwitcher` arrow control, same pattern as the earlier OTP-vs-magic-link comparison. The verdict was "none of them are close", but `Signal` was kept as the least-wrong starting point while the other four and the switcher were deleted outright (not tuned, not merged, just gone; don't go looking for `RingReadout` etc., they no longer exist and are not a reference to build from). Expect another pass at `SignalReadout` itself, it is not a finished design.
 
-`Layout4.tsx` wraps `SignalReadout` in a plain `<div className="aspect-[16/10] scale-125">`, no background, no border, no shadow at all, it has never reproduced the video's crisp boxed frame and now has no box whatsoever. The `aspect-[16/10]` reserves the same layout footprint as the video (so nothing else on the page reflows when it swaps in) while `scale-125` (the native CSS `scale` property, not `transform: scale()`, so don't go looking for it on `getComputedStyle(...).transform`) renders it about 25% bigger than that reserved box, bleeding into the surrounding whitespace rather than being clipped to it. The ambient blur-glow div behind it (the ``.absolute -inset-6 rounded-[2rem] opacity-15 blur-2xl`` sibling in `Layout4.tsx`, shared with the logged-out video) is now the only backdrop the readout sits on, since there's no opaque panel to mask it, it reads as a soft color wash behind the text rather than a halo around a box.
+`Layout4.tsx` wraps `SignalReadout` in a plain `<div className="aspect-[16/9] scale-125">`, no background, no border, no shadow at all, it has never reproduced the video's crisp boxed frame and now has no box whatsoever. The `aspect-[16/9]` reserves the same layout footprint as the video (so nothing else on the page reflows when it swaps in) while `scale-125` (the native CSS `scale` property, not `transform: scale()`, so don't go looking for it on `getComputedStyle(...).transform`) renders it about 25% bigger than that reserved box, bleeding into the surrounding whitespace rather than being clipped to it. The ambient blur-glow div behind it (the ``.absolute -inset-6 rounded-[2rem] opacity-15 blur-2xl`` sibling in `Layout4.tsx`, shared with the logged-out video) is now the only backdrop the readout sits on, since there's no opaque panel to mask it, it reads as a soft color wash behind the text rather than a halo around a box.
 
 **Because there is no dark backdrop anymore, `SignalReadout`'s own colors are light-surface colors**, not the dark-surface ones the first draft used: the progress track is `bg-slate-900/10` (was `bg-white/10`, invisible on light), the link pill is `border-slate-200 bg-white shadow-sm` (was `border-white/10 bg-white/5`), and its text is `text-slate-600` (was `text-slate-300`) with the next-milestone caption at `text-slate-400`. If a future readout iteration brings back a dark panel, these will need to flip back; if it stays boxless, keep new elements on this light-surface palette to match.
 
@@ -164,11 +164,11 @@ The footer in `Layout4.tsx` renders a second row below the existing logo/disclai
 | `icon-rounded.png` | Rounded app-tile icon | Copied to `public/lens-arc-icon.png` as the favicon |
 | `icon-square.png` | Square app-tile icon | Copied to `public/og-image.png`, the Open Graph/Twitter card link-preview image |
 
-`assets/video/` holds copies of `frontend/assets/video/`:
+`assets/video/` holds copies of `frontend/assets/video/`, re-exported at 2K (2560x1440, 16:9):
 
 | File | Used here |
 |---|---|
-| `1vector_demo.mp4` | Hero demo window (16/10) |
+| `1vector_demo.mp4` | Hero demo window (16/9) |
 | `discovery_enter.mp4` | How-it-works step 1 (Add your positions) |
 | `discovery_read.mp4` | How-it-works step 2 (Get your caution score) |
 | `discovery_act.mp4` | How-it-works step 3 (See what to fix) |

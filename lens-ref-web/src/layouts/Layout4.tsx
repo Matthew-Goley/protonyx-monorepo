@@ -267,11 +267,11 @@ export default function Layout4() {
               // was, not reproduce its frame. The aspect-ratio div still
               // reserves the same layout footprint (so nothing else on the
               // page shifts); the content is scaled up past it.
-              <div className="aspect-[16/10] scale-125">
+              <div className="aspect-[16/9] scale-125">
                 <SignalReadout flow={flow} />
               </div>
             ) : (
-              <DemoWindow src={vectorDemo} aspect="aspect-[16/10]" />
+              <DemoWindow src={vectorDemo} aspect="aspect-[16/9]" />
             )}
           </div>
         </div>
