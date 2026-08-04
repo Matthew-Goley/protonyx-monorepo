@@ -3,7 +3,7 @@ export const LAUNCH_DATE = "2026-08-11"; // placeholder, easy to change in one p
 export const HERO = {
   headline: "Actionable Insight for Everyone.",
   subhead:
-    "Lens Arc ranks portfolio priorities and surfaces actionable insights for your consideration.",
+    "Lens Arc gives you the insight and answers you need to understand your investment portfolio.",
 };
 
 // Headline words that get the brand gradient, mirroring the frontend/ hero.
