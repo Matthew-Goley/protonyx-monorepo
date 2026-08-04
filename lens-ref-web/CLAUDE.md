@@ -46,10 +46,10 @@ lens-ref-web/
 │   └── protonyx-company/          # Protonyx company wordmarks (white/black), present but not used yet
 ├── src/
 │   ├── main.tsx                   # ReactDOM bootstrap
-│   ├── App.tsx                    # Renders Layout4 (the dev-only DemoReferralControl was removed with the demo store)
+│   ├── App.tsx                    # Plain path-based router: LEGAL_PAGES.terms/privacy.path -> their page, else Layout4
 │   ├── lib/
 │   │   └── api.ts                 # Typed referral-service client (join, verify, status); base URL from VITE_REFERRAL_API_URL
-│   ├── content.ts                 # SINGLE SOURCE OF TRUTH for all copy, dates, milestones, brand values
+│   ├── content.ts                 # SINGLE SOURCE OF TRUTH for all copy, dates, milestones, brand values, LEGAL_PAGES
 │   ├── index.css                  # Tailwind v4 @theme tokens + dial-max animation
 │   ├── vite-env.d.ts              # vite/client types (import.meta.env, .png imports)
 │   ├── hooks/
@@ -59,8 +59,14 @@ lens-ref-web/
 │   │   │                          # them as a starting point, RingReadout/TicketReadout/TrackReadout/GlassReadout are gone.
 │   │   ├── shared.tsx             # useEntrance, RewardText, CopyChip, NextMilestoneLine, gradient - reusable readout bits
 │   │   └── SignalReadout.tsx      # The one kept, still mid-rework (see §5), not a finished design
-│   └── layouts/
-│       └── Layout4.tsx            # The entire page (historical name, winner of the 5-layout exploration)
+│   ├── layouts/
+│   │   └── Layout4.tsx            # The entire marketing page (historical name, winner of the 5-layout exploration)
+│   └── pages/                     # Simple, non-marketing pages, reached via real navigation (footer <a> tags), not
+│       │                          # the landing layout. See "Legal pages" in §5.
+│       ├── LegalPage.tsx          # Reusable plain shell (back link + logo, title, content slot, footer) - reuse this
+│       │                          # for any future title+body page, not just legal ones
+│       ├── TermsPage.tsx          # LegalPage with title=LEGAL_PAGES.terms.title, no body content yet (placeholder)
+│       └── PrivacyPage.tsx        # LegalPage with title=LEGAL_PAGES.privacy.title, no body content yet (placeholder)
 ├── package.json / tsconfig.json / vite.config.ts
 └── CLAUDE.md                      # This file
 ```
@@ -71,9 +77,10 @@ lens-ref-web/
 
 Every user-facing string, date, and number renders from `src/content.ts`. Components never hardcode text. Exports:
 
-- `LAUNCH_DATE` ("2026-08-05", placeholder) and `LAUNCH_DATE_DISPLAY` (derived human-readable form, e.g. "August 5, 2026"), shown as the heading of the footer countdown section (see below).
+- `LAUNCH_DATE` ("2026-08-11", placeholder) and `LAUNCH_DATE_DISPLAY` (derived human-readable form, e.g. "August 11, 2026"), shown as the heading of the footer countdown section (see below).
 - `HERO` (headline "Actionable Insight for Everyone." plus subhead) and `HERO_ACCENTS` (the words rendered in the brand gradient; matches the `frontend/` hero treatment). The headline casing deliberately matches `frontend/`, an exception to the sentence-case rule below. The headline is rendered as a **locked 3-line layout** ("Actionable" / "Insight" / "for Everyone.") regardless of viewport width, see `Headline()` in `Layout4.tsx`, not left to wrap naturally.
 - `HOW_IT_WORKS`, `REFERRAL_MILESTONES` (0/1/3/5/10 referrals), `BRAND` (gradient hexes + wordmark text).
+- `LEGAL_PAGES` (`{ terms: { path, title }, privacy: { path, title } }`): the single source of truth for both the footer link `href`/label and the route each resolves to in `App.tsx`, so they can't drift apart. See "Legal pages" below.
 - `COPY`: all microcopy, including template functions (`magicInstruction`, `nextStep`, `rewardShort`, `referralUnit`, `dialCaption`). `eyebrow` and `countdownUnits` were leftovers from the deleted layouts, kept "in case it comes back"; it did, they now back the footer countdown section (see below). `countdownCaption` ("until free access opens") is still a leftover, it briefly backed that section too but was cut for being redundant with the heading. `previewHeading`, `previewSub`, `dialCaption` are still unused, harmless, reuse or delete as needed. The post-verify reward card (dial + referral link) was removed from the page for now, so `unlockedWord`, `referralRowLabel`, `copyLabel`, `copiedLabel`, and `shareLabel` are currently unused too, kept in case it comes back.
 ### The page (src/layouts/Layout4.tsx)
 
@@ -115,7 +122,17 @@ State machine `signup -> verifying -> account`, exposed as `useAccountFlow()` an
 
 ### App.tsx
 
-`App.tsx` now just renders `Layout4`. The old dev-only `DemoReferralControl` pill (which stepped a mock referral count) and the module-level demo store (`setDemoReferralCount` / `useDemoReferralCount`) were **removed** when the count went server-backed — preview every milestone by seeding referrals in the referral-service DB instead. For a quick visual check of the readout without a running backend, the `VerifyDialog`'s DEV-only "I clicked the link" button (`devSimulateVerify`) jumps to the account view.
+`App.tsx` is a plain path-based router with **no router library**: it reads `window.location.pathname` once at render time and returns `TermsPage`/`PrivacyPage` on an exact match against `LEGAL_PAGES.terms.path`/`.privacy.path`, else `Layout4`. This is intentionally not client-side navigation, all links to these pages are real `<a href>` tags (full page load), so there's no route-change state to keep in sync and no need for a history listener. `vercel.json`'s catch-all rewrite to `/index.html` is what makes `/terms` and `/privacy` resolve on a fresh load or refresh, same mechanism already relied on for `/verify` and `/r/<code>` (see Gotchas).
+
+The old dev-only `DemoReferralControl` pill (which stepped a mock referral count) and the module-level demo store (`setDemoReferralCount` / `useDemoReferralCount`) were **removed** when the count went server-backed — preview every milestone by seeding referrals in the referral-service DB instead. For a quick visual check of the readout without a running backend, the `VerifyDialog`'s DEV-only "I clicked the link" button (`devSimulateVerify`) jumps to the account view.
+
+### Legal pages (src/pages/)
+
+`LegalPage.tsx` is a small, deliberately generic shell for **non-marketing** pages: a plain white background, a header with a "Back to home" link and the wordmark, an `<h1>{title}</h1>`, an open `children` slot for the body, and a minimal footer with just `COPY.legal`. No gradients, no motion, no marketing copy, no `landing.css`-style flourish, it reads as a document rather than a continuation of the landing page. `TermsPage.tsx` and `PrivacyPage.tsx` are both just `<LegalPage title={LEGAL_PAGES.terms.title} />` / `.privacy.title` with **no children yet** — `LegalPage` falls back to an italic `"[{title} content goes here.]"` placeholder when `children` is omitted, so the pages render as real, deliberately-blank pages rather than looking broken. When the actual Terms of Service / Privacy Policy copy is ready, pass it as `children` (plain JSX/markdown-to-JSX, whatever fits) rather than editing `LegalPage.tsx` itself.
+
+`LegalPage` is written to be reused for any future "title + body" page (about, FAQ, etc.), not just these two, that's the point of keeping it generic instead of building `TermsPage`-specific markup.
+
+The footer in `Layout4.tsx` renders a second row below the existing logo/disclaimer/copyright line, mapping `Object.values(LEGAL_PAGES)` to `<a href={page.path}>{page.title}</a>` — adding a third entry to `LEGAL_PAGES` in `content.ts` is enough to add another footer link and route, no other file needs touching except creating the page component itself and wiring it into `App.tsx`'s if-chain.
 
 ## 6. Copy rules
 
@@ -152,7 +169,7 @@ The mapping lives in `STEP_VIDEOS` in `Layout4.tsx` and must stay aligned with t
 - **Dev server port**: Vite defaults to 5173 and auto-increments if it is taken. The referral-service CORS allowlist covers `localhost:5173` and `5174`, so if Vite lands on a different port the API calls will fail CORS — either free up 5173/5174 or add the port to `allow_origins` in `referral-service/main.py`.
 - **`tsc --noEmit` is part of `npm run build`**; a type error fails the build, and `noUnusedLocals` means dead imports break it too.
 - The whole-page arrow-key switcher (the original 5-layout exploration) and the readout's own 5-way `ReadoutSwitcher` are both gone for good, do not reintroduce either. If another readout redesign needs comparing, a fresh temporary switcher is fine, but the four rejected layouts it deleted (`Ring`/`Ticket`/`Track`/`Glass`) are not a starting point, they were rejected wholesale.
-- **SPA fallback is required for `/verify` and `/r/<code>`.** These are read by the app on load (not real routes/files). Vite's dev server does history-API fallback automatically, so they work in `npm run dev`. When the static build is deployed, the host must serve `index.html` for unmatched paths (e.g. `/verify`, `/r/*`) or those links 404. Both URLs are cleaned to `/` via `history.replaceState` once read.
+- **SPA fallback is required for `/verify`, `/r/<code>`, `/terms`, and `/privacy`.** None of these are real files, they're either read by `useAccountFlow` on load (`/verify`, `/r/<code>`, then cleaned to `/` via `history.replaceState`) or matched by `App.tsx`'s router (`/terms`, `/privacy`, which stay in the URL). Vite's dev server does history-API fallback automatically, so all four work in `npm run dev`. When the static build is deployed, the host must serve `index.html` for unmatched paths or these 404, `vercel.json`'s catch-all rewrite (`"/(.*)" -> "/index.html"`) is what does this on Vercel.
 - Verified state now **persists** across refreshes: the server-issued referral code + email are kept in `localStorage` (`lens_ref_code` / `lens_ref_email`) and the count is re-fetched via `GET /status` on load. Clearing those keys (or `flow.logout()`) returns to the signup step.
 - `REFERRAL_MILESTONES` drives three things at once: the account-flow derivations, the milestone stepper section, and `SignalReadout`. Changing tiers updates all of them, and **must be mirrored in `referral-service/entitlement.py`'s `MILESTONES`** — the backend computes entitlement from the same table, so the two will disagree if only one is changed.
 - **The Open Graph/Twitter meta tags in `index.html` hardcode `https://lens-arc.com`** for `og:url`, `og:image`, and `twitter:image`, matching `content.ts`'s `referralLinkBase`. Link-preview scrapers require an absolute URL for `og:image`, so it can't be relative; since the site isn't deployed yet, this is a placeholder pointing at the assumed eventual domain. If the real domain differs, update all three tags (and re-verify with a link-preview debugger, since most scrapers cache a fetched `og:image` aggressively).

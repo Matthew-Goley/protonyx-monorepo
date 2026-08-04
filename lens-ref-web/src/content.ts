@@ -1,4 +1,4 @@
-export const LAUNCH_DATE = "2026-08-05"; // placeholder, easy to change in one place
+export const LAUNCH_DATE = "2026-08-11"; // placeholder, easy to change in one place
 
 export const HERO = {
   headline: "Actionable Insight for Everyone.",
@@ -28,6 +28,14 @@ export const BRAND = {
   gradientTo: "#38bdf8",
   wordmark: "lens arc",
 };
+
+// Simple standalone pages (not part of the marketing layout), linked from the
+// footer. path + title live together here so the footer link, the route
+// match in App.tsx, and the page's own heading can never drift out of sync.
+export const LEGAL_PAGES = {
+  terms: { path: "/terms", title: "Terms of Service" },
+  privacy: { path: "/privacy", title: "Privacy Policy" },
+} as const;
 
 // Human-readable launch date, derived once from LAUNCH_DATE.
 export const LAUNCH_DATE_DISPLAY = new Date(

@@ -9,6 +9,7 @@ import {
   HOW_IT_WORKS,
   LAUNCH_DATE,
   LAUNCH_DATE_DISPLAY,
+  LEGAL_PAGES,
   REFERRAL_MILESTONES,
 } from "../content";
 import { useAccountFlow, type AccountFlow } from "../hooks/useAccountFlow";
@@ -423,15 +424,24 @@ export default function Layout4() {
       </section>
 
       <footer className="border-t border-slate-200 bg-white">
-        <div className="mx-auto flex max-w-7xl flex-col gap-4 px-6 pb-20 pt-10 text-sm text-slate-500 sm:flex-row sm:items-center sm:justify-between">
-          <img
-            src={lensArcDark}
-            alt="Lens Arc"
-            className="h-6 w-auto shrink-0 select-none self-start sm:self-center"
-            draggable={false}
-          />
-          <p className="max-w-2xl leading-relaxed">{COPY.disclaimer}</p>
-          <p className="shrink-0">{COPY.legal}</p>
+        <div className="mx-auto max-w-7xl px-6 pb-20 pt-10">
+          <div className="flex flex-col gap-4 text-sm text-slate-500 sm:flex-row sm:items-center sm:justify-between">
+            <img
+              src={lensArcDark}
+              alt="Lens Arc"
+              className="h-6 w-auto shrink-0 select-none self-start sm:self-center"
+              draggable={false}
+            />
+            <p className="max-w-2xl leading-relaxed">{COPY.disclaimer}</p>
+            <p className="shrink-0">{COPY.legal}</p>
+          </div>
+          <div className="mt-6 flex gap-5 text-xs text-slate-400 sm:mt-4">
+            {Object.values(LEGAL_PAGES).map((page) => (
+              <a key={page.path} href={page.path} className="transition hover:text-slate-700">
+                {page.title}
+              </a>
+            ))}
+          </div>
         </div>
       </footer>
 
