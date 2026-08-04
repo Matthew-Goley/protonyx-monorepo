@@ -81,6 +81,6 @@ export const COPY = {
   referralUnit: (n: number) => (n === 1 ? "referral" : "referrals"),
   disclaimer:
     "Educational tool only. Not investment advice. See full disclaimer in our Terms of Service.",
-  legal: "© 2026 Protonyx",
+  legal: "© 2026 Protonyx LLC",
 };
 

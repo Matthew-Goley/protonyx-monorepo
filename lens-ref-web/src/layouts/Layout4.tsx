@@ -430,7 +430,7 @@ export default function Layout4() {
             className="h-6 w-auto shrink-0 select-none self-start sm:self-center"
             draggable={false}
           />
-          <p className="max-w-md leading-relaxed">{COPY.disclaimer}</p>
+          <p className="max-w-2xl leading-relaxed">{COPY.disclaimer}</p>
           <p className="shrink-0">{COPY.legal}</p>
         </div>
       </footer>
