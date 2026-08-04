@@ -398,7 +398,7 @@ export function PositionsManagerPanel({
                           setSelected(p.ticker)
                           setEditOpen(true)
                         }}
-                        className="flex h-7 w-7 items-center justify-center rounded-md text-secondary transition-colors duration-200 ease-out hover:bg-base hover:text-accent-teal"
+                        className="btn-accent flex h-7 w-7 items-center justify-center rounded-md"
                       >
                         <Pencil size={14} />
                       </button>
@@ -409,7 +409,7 @@ export function PositionsManagerPanel({
                           e.stopPropagation()
                           removeTicker(p.ticker)
                         }}
-                        className="flex h-7 w-7 items-center justify-center rounded-md text-secondary transition-colors duration-200 ease-out hover:bg-base hover:text-accent-red"
+                        className="btn-danger flex h-7 w-7 items-center justify-center rounded-md"
                       >
                         <Trash2 size={14} />
                       </button>

@@ -125,7 +125,7 @@ export function Onboard() {
                           type="button"
                           onClick={() => removePosition(p.ticker)}
                           aria-label={`Remove ${p.ticker}`}
-                          className="absolute top-3 right-3 text-muted transition-colors hover:text-accent-red"
+                          className="btn-danger absolute top-2 right-2 flex h-7 w-7 items-center justify-center rounded-md"
                         >
                           <X size={16} />
                         </button>

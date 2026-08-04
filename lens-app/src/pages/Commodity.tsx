@@ -319,7 +319,7 @@ function ExpandableText({ text }: { text: string }) {
         <button
           type="button"
           onClick={() => setExpanded((v) => !v)}
-          className="mt-1 text-sm font-medium text-accent-teal transition-colors duration-200 ease-out hover:text-primary"
+          className="btn-accent -mx-1 mt-1 rounded-md px-1 py-0.5 text-sm font-medium"
         >
           {expanded ? 'Show less' : 'Show more'}
         </button>

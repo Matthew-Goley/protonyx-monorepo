@@ -91,7 +91,7 @@ export function PositionActionsWidget() {
           onClick={() => setAddOpen(true)}
           aria-label="Add position"
           title="Add position"
-          className="bg-gradient-brand flex flex-1 items-center justify-center rounded-xl text-[#0a0d12] transition-transform duration-200 ease-out hover:scale-[1.03]"
+          className="btn-primary flex flex-1 items-center justify-center rounded-xl"
         >
           <Plus size={32} />
         </button>
@@ -100,7 +100,7 @@ export function PositionActionsWidget() {
           onClick={() => setDrawer(true)}
           aria-label="Manage holdings"
           title="Manage holdings"
-          className="flex flex-1 items-center justify-center rounded-xl border border-subtle text-secondary transition-colors duration-200 ease-out hover:border-[#3a3f4e] hover:bg-card-hover hover:text-primary"
+          className="btn-secondary flex flex-1 items-center justify-center rounded-xl"
         >
           <SlidersHorizontal size={28} />
         </button>
@@ -121,7 +121,7 @@ export function PositionActionsWidget() {
           >
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-xl font-semibold text-primary">Manage holdings</h2>
-              <button onClick={() => { setDrawer(false); setEditing(null) }} className="text-secondary hover:text-primary" aria-label="Close">
+              <button onClick={() => { setDrawer(false); setEditing(null) }} className="btn-ghost flex h-7 w-7 items-center justify-center rounded-md" aria-label="Close">
                 <X size={18} />
               </button>
             </div>

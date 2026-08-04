@@ -63,7 +63,7 @@ export function HistoryModal({
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="flex h-8 w-8 items-center justify-center rounded-md text-secondary transition-colors duration-200 ease-out hover:bg-card-hover hover:text-primary"
+            className="btn-ghost flex h-8 w-8 items-center justify-center rounded-md"
           >
             <X size={18} />
           </button>
@@ -117,7 +117,7 @@ export function HistoryModal({
             <button
               type="button"
               onClick={onClear}
-              className="text-sm text-secondary transition-colors duration-200 ease-out hover:text-accent-red"
+              className="btn-danger -mx-1 -my-0.5 rounded-md px-1 py-0.5 text-sm"
             >
               Clear history
             </button>

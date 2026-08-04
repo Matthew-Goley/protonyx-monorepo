@@ -38,8 +38,7 @@ export interface CycleControlProps {
 }
 
 export function CycleControl({ label, onPrev, onNext, className }: CycleControlProps) {
-  const btn =
-    'flex h-7 w-7 items-center justify-center rounded-md text-secondary transition-colors duration-200 ease-out hover:bg-card-hover hover:text-primary'
+  const btn = 'btn-ghost flex h-7 w-7 items-center justify-center rounded-md'
   return (
     <div className={`flex items-center justify-center gap-3 ${className ?? ''}`}>
       <button type="button" onClick={onPrev} className={btn} aria-label="Previous">
@@ -58,8 +57,7 @@ export function CycleControl({ label, onPrev, onNext, className }: CycleControlP
 // Vertical variant: an up arrow above the label and a down arrow below it. Used
 // by the Portfolio Value widget to step its timeframe (1D / 1W / 1M / 3M / 1Y / ALL).
 export function VerticalCycleControl({ label, onPrev, onNext, className }: CycleControlProps) {
-  const btn =
-    'flex h-6 w-6 items-center justify-center rounded-md text-secondary transition-colors duration-200 ease-out hover:bg-card-hover hover:text-primary'
+  const btn = 'btn-ghost flex h-6 w-6 items-center justify-center rounded-md'
   return (
     <div className={`flex flex-col items-center gap-0.5 ${className ?? ''}`}>
       <button type="button" onClick={onPrev} className={btn} aria-label="Previous timeframe">

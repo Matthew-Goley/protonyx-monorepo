@@ -265,3 +265,170 @@
 .recharts-surface * {
   outline: none;
 }
+
+/* ============================================================
+   Button mechanics ("Mercury"): every button's fill/border/text
+   color, hover response, and motion come from one of five role
+   classes below, never per-component Tailwind color utilities.
+   Size, padding, and corner radius are NOT part of this system;
+   every button keeps its own layout classes and only sources
+   color/hover/motion from:
+     .btn-primary   the main CTA (Sign In, Launch Lens, Save, Upgrade)
+     .btn-secondary neutral bordered/flat action (Cancel, Retry)
+     .btn-ghost     minimal/transparent (Close, cycle arrows, text links)
+     .btn-accent    highlighted secondary (Add Position, Save check)
+     .btn-danger    destructive (Delete, Remove, Clear, Log out)
+   Flat and quiet by design: primary/accent read as solid fills,
+   everything else stays neutral or transparent until the moment
+   you commit to it (hover). No motion, no shadow. */
+:root {
+  --btn-text-decoration-hover: none;
+  --btn-transition: background-color 160ms ease-out, border-color 160ms ease-out, color 160ms ease-out;
+  --btn-hover-transform: none;
+  --btn-active-transform: none;
+
+  /* Primary blends both brand-gradient stops into one solid instead of the
+     raw, slightly neon --color-accent-blue, so the flat CTA still reads as
+     "the same blue" as the gradient used elsewhere (Caution Score, hairlines,
+     sidebar indicator) rather than a louder, unrelated cyan. */
+  --btn-primary-base: color-mix(in srgb, var(--color-accent-blue) 60%, var(--color-brand-blue) 40%);
+  --btn-primary-bg: var(--btn-primary-base);
+  --btn-primary-bg-hover: color-mix(in srgb, var(--btn-primary-base) 78%, black);
+  --btn-primary-text: var(--color-base);
+  --btn-primary-text-hover: var(--color-base);
+  --btn-primary-border: transparent;
+  --btn-primary-border-hover: transparent;
+  --btn-primary-shadow-hover: none;
+
+  /* Secondary is a proper visible gray chip at rest (--color-subtle), not a
+     surface that barely differs from the card behind it. */
+  --btn-secondary-bg: var(--color-subtle);
+  --btn-secondary-bg-hover: color-mix(in srgb, var(--color-subtle) 75%, white);
+  --btn-secondary-text: var(--color-primary);
+  --btn-secondary-text-hover: var(--color-primary);
+  --btn-secondary-border: transparent;
+  --btn-secondary-border-hover: transparent;
+  --btn-secondary-shadow-hover: none;
+
+  --btn-ghost-bg: transparent;
+  --btn-ghost-bg-hover: var(--color-card-hover);
+  --btn-ghost-text: var(--color-secondary);
+  --btn-ghost-text-hover: var(--color-primary);
+  --btn-ghost-border: transparent;
+  --btn-ghost-border-hover: transparent;
+  --btn-ghost-shadow-hover: none;
+
+  /* Accent stays a soft tint on hover rather than a solid fill, so it never
+     reads as the same weight/color as primary - only primary ever commits to
+     a fully opaque blue. */
+  --btn-accent-bg: transparent;
+  --btn-accent-bg-hover: color-mix(in srgb, var(--color-accent-teal) 18%, transparent);
+  --btn-accent-text: var(--color-accent-teal);
+  --btn-accent-text-hover: var(--color-accent-teal);
+  --btn-accent-border: transparent;
+  --btn-accent-border-hover: transparent;
+  --btn-accent-shadow-hover: none;
+
+  --btn-danger-bg: transparent;
+  --btn-danger-bg-hover: var(--color-accent-red);
+  --btn-danger-text: var(--color-accent-red);
+  --btn-danger-text-hover: #ffffff;
+  --btn-danger-border: transparent;
+  --btn-danger-border-hover: transparent;
+  --btn-danger-shadow-hover: none;
+}
+
+.btn-primary,
+.btn-secondary,
+.btn-ghost,
+.btn-accent,
+.btn-danger {
+  transition: var(--btn-transition);
+}
+.btn-primary {
+  background: var(--btn-primary-bg);
+  color: var(--btn-primary-text);
+  border: 1px solid var(--btn-primary-border);
+}
+.btn-primary:hover:not(:disabled) {
+  background: var(--btn-primary-bg-hover);
+  color: var(--btn-primary-text-hover);
+  border-color: var(--btn-primary-border-hover);
+  box-shadow: var(--btn-primary-shadow-hover);
+  transform: var(--btn-hover-transform);
+}
+.btn-primary:active:not(:disabled) {
+  transform: var(--btn-active-transform);
+}
+
+.btn-secondary {
+  background: var(--btn-secondary-bg);
+  color: var(--btn-secondary-text);
+  border: 1px solid var(--btn-secondary-border);
+}
+.btn-secondary:hover:not(:disabled) {
+  background: var(--btn-secondary-bg-hover);
+  color: var(--btn-secondary-text-hover);
+  border-color: var(--btn-secondary-border-hover);
+  box-shadow: var(--btn-secondary-shadow-hover);
+  transform: var(--btn-hover-transform);
+  text-decoration: var(--btn-text-decoration-hover);
+  text-underline-offset: 3px;
+}
+.btn-secondary:active:not(:disabled) {
+  transform: var(--btn-active-transform);
+}
+
+.btn-ghost {
+  background: var(--btn-ghost-bg);
+  color: var(--btn-ghost-text);
+  border: 1px solid var(--btn-ghost-border);
+}
+.btn-ghost:hover:not(:disabled) {
+  background: var(--btn-ghost-bg-hover);
+  color: var(--btn-ghost-text-hover);
+  border-color: var(--btn-ghost-border-hover);
+  box-shadow: var(--btn-ghost-shadow-hover);
+  transform: var(--btn-hover-transform);
+  text-decoration: var(--btn-text-decoration-hover);
+  text-underline-offset: 3px;
+}
+.btn-ghost:active:not(:disabled) {
+  transform: var(--btn-active-transform);
+}
+
+.btn-accent {
+  background: var(--btn-accent-bg);
+  color: var(--btn-accent-text);
+  border: 1px solid var(--btn-accent-border);
+}
+.btn-accent:hover:not(:disabled) {
+  background: var(--btn-accent-bg-hover);
+  color: var(--btn-accent-text-hover);
+  border-color: var(--btn-accent-border-hover);
+  box-shadow: var(--btn-accent-shadow-hover);
+  transform: var(--btn-hover-transform);
+  text-decoration: var(--btn-text-decoration-hover);
+  text-underline-offset: 3px;
+}
+.btn-accent:active:not(:disabled) {
+  transform: var(--btn-active-transform);
+}
+
+.btn-danger {
+  background: var(--btn-danger-bg);
+  color: var(--btn-danger-text);
+  border: 1px solid var(--btn-danger-border);
+}
+.btn-danger:hover:not(:disabled) {
+  background: var(--btn-danger-bg-hover);
+  color: var(--btn-danger-text-hover);
+  border-color: var(--btn-danger-border-hover);
+  box-shadow: var(--btn-danger-shadow-hover);
+  transform: var(--btn-hover-transform);
+  text-decoration: var(--btn-text-decoration-hover);
+  text-underline-offset: 3px;
+}
+.btn-danger:active:not(:disabled) {
+  transform: var(--btn-active-transform);
+}

@@ -128,7 +128,7 @@ export function AddPositionModal({
             type="button"
             onClick={onClose}
             disabled={validating}
-            className="text-sm text-secondary transition-all duration-200 ease-out hover:text-primary disabled:opacity-50"
+            className="btn-ghost -mx-1 -my-0.5 rounded-md px-1 py-0.5 text-sm disabled:opacity-50"
           >
             Cancel
           </button>
