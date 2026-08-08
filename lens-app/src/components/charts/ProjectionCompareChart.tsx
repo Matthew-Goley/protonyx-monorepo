@@ -66,6 +66,21 @@ interface CompareTooltipProps {
   payload?: Array<{ payload?: Record<string, unknown> }>
   valueFormatter: (v: number) => string
 }
+// Outer-band fields ride the payload as plain [lower, upper] tuples (same
+// shape the Area components consume). null/undefined when the method has no
+// bands (moving average) or on rows outside the projected range.
+function readBand(v: unknown): [number, number] | null {
+  if (
+    Array.isArray(v) &&
+    v.length === 2 &&
+    typeof v[0] === 'number' &&
+    typeof v[1] === 'number'
+  ) {
+    return [v[0], v[1]]
+  }
+  return null
+}
+
 function CompareTooltip({ active, payload, valueFormatter }: CompareTooltipProps) {
   if (!active || !payload || payload.length === 0) return null
   const row = payload.find((p) => p.payload)?.payload
@@ -86,6 +101,8 @@ function CompareTooltip({ active, payload, valueFormatter }: CompareTooltipProps
   }
   if (current == null || lens == null) return null
 
+  const currentBand = readBand(row.currentBand)
+  const lensBand = readBand(row.lensBand)
   const delta = lens - current
   return (
     <div className="rounded-md border border-subtle bg-card px-3 py-2 text-sm shadow-lg">
@@ -97,11 +114,19 @@ function CompareTooltip({ active, payload, valueFormatter }: CompareTooltipProps
         <span className="text-secondary">Current</span>
         <span className="ml-auto font-medium text-primary">{valueFormatter(current)}</span>
       </div>
+      <p className="pl-3.5 text-[11px] text-muted">
+        {currentBand
+          ? `${valueFormatter(currentBand[0])} - ${valueFormatter(currentBand[1])}`
+          : ' '}
+      </p>
       <div className="mt-1 flex items-center gap-2">
         <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: '#38bdf8' }} />
         <span className="text-secondary">With Lens</span>
         <span className="ml-auto font-medium text-primary">{valueFormatter(lens)}</span>
       </div>
+      <p className="pl-3.5 text-[11px] text-muted">
+        {lensBand ? `${valueFormatter(lensBand[0])} - ${valueFormatter(lensBand[1])}` : ' '}
+      </p>
       {Math.abs(delta) > 0.5 && (
         <p
           className="mt-1.5 border-t border-subtle pt-1.5 text-right text-xs font-medium"
@@ -162,6 +187,8 @@ export function ProjectionCompareChart({
           <Tooltip
             cursor={{ stroke: CHART_COLORS.subtle, strokeDasharray: '3 3' }}
             content={<CompareTooltip valueFormatter={fmtValue} />}
+            isAnimationActive={false}
+            wrapperStyle={{ pointerEvents: 'none' }}
           />
 
           {showBands && (
