@@ -19,9 +19,11 @@ It talks to **two** backends:
 | Backend | Base URL (dev) | Purpose | Auth |
 |---|---|---|---|
 | **Fastify** (`../backend`) | `http://localhost:3000` | Auth (login/signup/logout), `/me`, Stripe checkout/portal, subscription status | httpOnly `session` cookie (`credentials: 'include'`) |
-| **lens-api** (`../lens-api`, Railway) | `https://lens-api-production-b0ab.up.railway.app` | `POST /analyze`, `GET /ticker/{symbol}/info`, `GET /health` | `X-API-Key` header (browser-direct, **dev only**) |
+| **lens-api** (`../lens-api`, Railway) | `VITE_LENS_API_URL` (Railway host) | `POST /analyze`, `GET /ticker/{symbol}/info`, `GET /health` | `X-API-Key` header from `VITE_LENS_API_KEY` (browser-direct, **dev only**) |
 
-**The lens-api key is currently hardcoded in `src/api/lens.ts` and shipped to the browser.** This is a known pre-launch debt: before production, all `/analyze` calls must be proxied server-to-server through Fastify so the key never reaches client code. See the comment at the top of `src/api/lens.ts` and §9.
+**Both backends are configured entirely through env vars** (`VITE_API_URL`, `VITE_LENS_API_URL`, `VITE_LENS_API_KEY`) - there are no absolute URLs or keys left as string literals in `src/`. See §2 Environment and `.env.example`.
+
+**The lens-api key is still exposed to the browser, now as an env var rather than a source literal.** Vite inlines every `VITE_` var into the client bundle at build time, so moving it out of the source did **not** make it secret - it only removed it from version control. The pre-launch debt that remains is the exposure itself: before production, all lens-api calls must be proxied server-to-server through Fastify so the key never reaches client code. See the comment at the top of `src/api/lens.ts` and §9.
 
 ---
 
@@ -43,8 +45,9 @@ There is **no test framework**. Do not introduce one unless explicitly asked. Ve
 ### Environment
 
 - `VITE_API_URL` (optional) overrides the Fastify base URL. It is now centralized in **`src/lib/backend.ts`** as `export const BACKEND_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3000'`, alongside a `backendFetch<T>()` helper (always `credentials: 'include'` + JSON headers, unwraps `{ success, message }`, throws `Error(message)` on failure). `AuthContext`, `Settings`, and `UpgradePrompt` import `BACKEND_URL` from there; `src/api/positions.ts` uses `backendFetch`. Add new Fastify calls through this module rather than re-declaring the const.
-- The lens-api base URL and key are **not** env-driven, they are hardcoded constants in `src/api/lens.ts`.
-- There is no `.env` checked in. Vite only exposes vars prefixed `VITE_`.
+- `VITE_LENS_API_URL` and `VITE_LENS_API_KEY` (both **required**) configure the lens-api client in **`src/api/lens.ts`**, read as `import.meta.env.VITE_LENS_API_URL ?? ''`. There is deliberately **no fallback URL** (a fallback would just re-hardcode the host); when either is missing the file logs a DEV-only console warning and every lens-api call fails. Add new lens-api config here, not as a literal.
+- **`.env.example` (checked in) is the list of every var the app reads** - add a placeholder entry there in the same change that introduces a new `VITE_` var, and mirror the type in `src/vite-env.d.ts`'s `ImportMetaEnv` interface (which types all three vars, so `import.meta.env` reads are not `any`).
+- `.env` holds the real local values and is **gitignored** (matched by the `.env` line in the monorepo-root `.gitignore`; `lens-app/.gitignore` does not need its own rule). Never commit it. Vite only exposes vars prefixed `VITE_`, and **every one of them is inlined into the client bundle** - treat all of them as public.
 
 ---
 
@@ -320,7 +323,8 @@ Single typed client object `lensApi`:
 - **Invalidate `['lens-analysis']`** whenever you mutate positions or risk tier, or Dashboard/Analysis will show stale data.
 - **`BACKEND_URL` + `backendFetch` live in `src/lib/backend.ts`** (extracted once the positions endpoints added several Fastify call sites). Import from there; do not re-declare the `VITE_API_URL ?? 'http://localhost:3000'` const inline anymore.
 - **Theme tokens go in `src/index.css` `@theme`**, not `tailwind.config.js` (which is dead). Don't hardcode hex in components except in recharts color props.
-- **The lens-api key is exposed client-side (`src/api/lens.ts`).** This is the single biggest pre-launch item: move `/analyze`, `/ticker/*/info`, and `/health` behind Fastify (server-to-server, cookie-authed) and delete the hardcoded key. Don't add new browser-direct lens-api calls that widen this exposure without flagging it.
+- **All config is env-driven; no absolute URLs or keys in `src/`.** `VITE_API_URL` (Fastify, via `src/lib/backend.ts`) and `VITE_LENS_API_URL` / `VITE_LENS_API_KEY` (lens-api, via `src/api/lens.ts`) are the only three. When you add a var: read it through `import.meta.env`, declare it in `src/vite-env.d.ts`, and add a placeholder line to `.env.example` in the same change.
+- **The lens-api key is still exposed client-side (`src/api/lens.ts`), now as `VITE_LENS_API_KEY` rather than a source literal.** Env var is **not** the same as secret: Vite inlines `VITE_` vars into the bundle, so the key still ships to every browser - it is just out of version control. This remains the single biggest pre-launch item: move `/analyze`, `/ticker/*/info`, and `/health` behind Fastify (server-to-server, cookie-authed) and drop the client-side key entirely. Don't add new browser-direct lens-api calls that widen this exposure without flagging it.
 - **Live config debt to watch:** the Stripe `cancel_url` on the backend points at `/portfolio` (per `../CLAUDE.md`), but this app has no `/portfolio` route (it's `/onboard`/`/dashboard`). If you touch the checkout flow, reconcile the redirect targets with the actual routes here (`/success` exists; `/portfolio` does not).
 - **Positions, `risk_tier`, and all preferences are server-backed** (Postgres — positions via `/positions`; `risk_tier` via `PUT /settings/risk-tier`; theme/date_format/layout/tuning-blocks via `PUT /settings` into `users.settings` JSONB, read on `AuthContext.user`, see §5). **The lens-app uses no cookies at all** (`src/lib/cookies.ts` is deleted). The `/analyze` path is still browser-direct to lens-api with positions assembled on the client — moving state to the server did **not** move analyze server-to-server. When you touch positions, invalidate `['positions']` + `['lens-analysis']` and keep `['positions']` out of the localStorage persister.
 - **No tests, no CI.** Verify against `npm run dev` at `localhost:5173`. Confirm the Fastify dev server (`../backend`, port 3000) and your network access to the Railway lens-api are up, or `/me` and `/analyze` will fail.
