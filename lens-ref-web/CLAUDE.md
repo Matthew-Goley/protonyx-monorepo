@@ -30,6 +30,7 @@ Run from `lens-ref-web/`:
 - **Vite 6 + React 19 + TypeScript (strict)**. React plugin plus `@tailwindcss/vite`.
 - **Tailwind CSS v4**: no `tailwind.config.js`; theme tokens live in `src/index.css` under `@theme` (`--font-sans` Inter, `--font-display` Sora). Custom CSS in that file is `.dial-max` (a celebration glow, `prefers-reduced-motion`-guarded) and `.readout-drift` (a slow-drifting background glow, same guard); both are currently unused, they belonged to two of the four rejected readout layouts (see §5), left in case a future readout wants them.
 - **lucide-react** for icons.
+- **@vercel/analytics** for Vercel Web Analytics: `<Analytics />` is mounted once in `src/main.tsx`, next to `<App />`. Import path is `@vercel/analytics/react` (the Vite/React entry), **not** `/next`, which is what the Vercel dashboard's default Next.js snippet shows. It is a no-op outside a Vercel deployment, so no dev-only guard is needed; page views only appear once the site is deployed with Web Analytics enabled for the project. Because `App.tsx` navigates with real `<a href>` full page loads (no client-side router), every route change is a fresh pageview automatically.
 - **Fonts** (Sora for display/wordmark, Inter for body) load from Google Fonts via `<link>` in `index.html`.
 
 ## 4. File map
@@ -45,7 +46,7 @@ lens-ref-web/
 │   ├── video/                     # Demo videos, copies of frontend/assets/video (hero demo + 3 discovery clips)
 │   └── protonyx-company/          # Protonyx company wordmarks (white/black), present but not used yet
 ├── src/
-│   ├── main.tsx                   # ReactDOM bootstrap
+│   ├── main.tsx                   # ReactDOM bootstrap + Vercel <Analytics /> mount
 │   ├── App.tsx                    # Plain path-based router: LEGAL_PAGES.terms/privacy.path -> their page, else Layout4
 │   ├── lib/
 │   │   └── api.ts                 # Typed referral-service client (join, verify, status); base URL from VITE_REFERRAL_API_URL
