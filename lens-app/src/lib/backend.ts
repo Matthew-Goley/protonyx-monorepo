@@ -2,6 +2,10 @@
 // pattern used to be copy-pasted per file; with the positions endpoints there are
 // now several call sites, so it lives here. `credentials: 'include'` is always set
 // so the httpOnly session cookie rides along.
+//
+// All app config is env-driven (see .env.example); the lens-api equivalents are
+// VITE_LENS_API_URL / VITE_LENS_API_KEY in @/api/lens. This one keeps a localhost
+// fallback because local dev points at the Fastify dev server by default.
 export const BACKEND_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3000'
 
 // Thin fetch wrapper that always sends the session cookie + JSON headers and

@@ -6,11 +6,21 @@ import type {
   MonteCarloSettings,
 } from '@/api/settings'
 
-// DEV ONLY: API key hardcoded for direct browser -> lens-api calls.
-// Before launch, move all /analyze calls to the Fastify backend (server-to-server)
-// so this key is never exposed in client code.
-const LENS_API_URL = 'https://lens-api-production-b0ab.up.railway.app'
-const LENS_API_KEY = '855ef5bd16e46fd3f425246c13ee621b6d788e6824187e6c9cc187bc4cf6a79b'
+// lens-api config, env-driven (see .env.example). Same pattern as the Fastify
+// BACKEND_URL in @/lib/backend, so both services are configured the same way.
+//
+// SECURITY: VITE_ vars are inlined into the client bundle at build time, so the
+// key is still reachable from the browser - it is an env var instead of a string
+// literal, not a secret. Before launch, move all lens-api calls to the Fastify
+// backend (server-to-server) so the key never reaches client code at all.
+const LENS_API_URL = import.meta.env.VITE_LENS_API_URL ?? ''
+const LENS_API_KEY = import.meta.env.VITE_LENS_API_KEY ?? ''
+
+if (import.meta.env.DEV && (!LENS_API_URL || !LENS_API_KEY)) {
+  console.warn(
+    '[lens-api] VITE_LENS_API_URL and/or VITE_LENS_API_KEY is not set. Copy .env.example to .env and fill them in.',
+  )
+}
 
 export interface Position {
   ticker: string
