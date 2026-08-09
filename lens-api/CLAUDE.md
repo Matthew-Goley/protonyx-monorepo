@@ -463,7 +463,7 @@ This service is **deployed and live** at `https://lens-api-production-b0ab.up.ra
 
 To redeploy after a code change: commit the change, then run `railway up` from `lens-api/`.
 
-**CORS:** `main.py` uses `CORSMiddleware` allowing origins `http://localhost:5173` (Lens App dev server) and `https://app.use-lens.com` (production). This is a temporary accommodation while the browser calls lens-api directly during development. Once Fastify proxies all `/analyze` calls server-to-server, the CORS origins can be removed. If you add another dev origin, edit the `allow_origins` list in `main.py`.
+**CORS:** `main.py` uses `CORSMiddleware` allowing origins `http://localhost:5173` (Lens App dev server), `https://app.use-lens.com`, and `https://app.lens-arc.com` (production). `allow_methods` and `allow_headers` are both `["*"]` (the browser sends a custom `X-API-Key` header, so the header allowlist must cover it), and `allow_credentials=False` because auth here is a static shared-secret header, not cookies. This is a temporary accommodation while the browser calls lens-api directly during development. Once Fastify proxies all `/analyze` calls server-to-server, the CORS origins can be removed. If you add another dev or production origin, edit the `allow_origins` list in `main.py` - an origin missing from that list makes Starlette's `CORSMiddleware` reject the **preflight** with a bare `400 Bad Request` before the route (and its 401 API-key check) is ever reached, so a 400 on `OPTIONS` means "origin not allowlisted", not "bad key".
 
 **Rate limiting:** Not yet implemented. If the service is exposed publicly (even with API key auth), add `slowapi` or similar. For server-to-server use it is less critical.
 
