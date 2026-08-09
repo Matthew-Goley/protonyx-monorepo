@@ -35,7 +35,7 @@ app = FastAPI(title="Lens API", version="1.0.0")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "https://app.use-lens.com"],
+    allow_origins=["http://localhost:5173", "https://app.lens-arc.com"],
     allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
