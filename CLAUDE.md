@@ -46,7 +46,7 @@ _monorepo/
 │   │   ├── version.json           # Single source of truth for the latest Vector version (served by GET /version)
 │   │   ├── constants.ts           # Current TOS + EULA versions (CURRENT_TOS_VERSION, CURRENT_EULA_VERSION). Also exports BETA_ACTIVE = false, but nothing imports it — the /beta-status route reads process.env.BETA_ACTIVE directly, and signup gating uses betaConfig.ts
 │   │   ├── betaConfig.ts          # BETA_ACTIVE kill switch + MAX_BETA_USERS cap, read from env (gates signup)
-│   │   ├── waitlist.ts            # grantWaitlistProTime() - converts a verified referral-waitlist entry into earned free Pro time at signup (never throws)
+│   │   ├── waitlist.ts            # grantWaitlistProTime() - converts a verified referral-waitlist entry into earned free Pro time at signup (never throws) + writes the grant notification
 │   │   ├── middleware/
 │   │   │   └── authenticate.ts    # JWT preHandler — checks Authorization: Bearer header first, falls back to session cookie
 │   │   └── routes/
@@ -325,9 +325,10 @@ Protected routes use `{ preHandler: authenticate }`. The middleware reads `Autho
 
 ```sql
 -- DEV ONLY (process.env.NODE_ENV === "development"): wipe every boot.
--- positions is dropped explicitly BEFORE users: DROP TABLE users CASCADE only
--- removes the FK constraint, leaving orphaned positions rows whose user_id would
+-- Every child table is dropped explicitly BEFORE users: DROP TABLE users CASCADE
+-- only removes the FK constraint, leaving orphaned child rows whose user_id would
 -- re-bind to a freshly reseeded testuser once SERIAL restarts at 1.
+DROP TABLE IF EXISTS notifications CASCADE;
 DROP TABLE IF EXISTS positions CASCADE;
 DROP TABLE IF EXISTS users CASCADE;
 
@@ -384,6 +385,21 @@ CREATE TABLE IF NOT EXISTS positions (
     UNIQUE (user_id, ticker)
 );
 
+-- Per-user notifications. Same idempotent CREATE TABLE IF NOT EXISTS pattern as
+-- positions (persists in prod, dropped/recreated in dev), created AFTER users
+-- because of the FK. `type` is a free-text discriminator so the client can pick
+-- an icon later; `is_read` follows the is_active naming already on users.
+-- WRITE-ONLY today: the only writer is grantWaitlistProTime() and nothing reads
+-- it yet (the lens-app TopBar popover is still hardcoded) - see below.
+CREATE TABLE IF NOT EXISTS notifications (
+    id         SERIAL PRIMARY KEY,
+    user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    type       TEXT NOT NULL DEFAULT 'general',
+    message    TEXT NOT NULL,
+    is_read    BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
 -- DEV ONLY: seed a known test account (risk_tier seeded 'regular' so its seeded
 -- positions have a matching profile and it lands straight on the dashboard).
 INSERT INTO users (username, email, password, plan, beta_access, subscription_status, risk_tier)
@@ -407,7 +423,9 @@ The `eula_version_accepted` / `eula_accepted_at` pair tracks End User License Ag
 
 The `positions` table holds the user's portfolio, one row per `(user_id, ticker)` (unique), matching the lens-app `Position` shape (`ticker, shares, equity, price, sector?, name?, added_at`). It is served by `routes/positions.ts` (see the endpoints table). `shares`/`equity`/`price` are `NUMERIC`, which node-postgres returns as **strings**, so the route layer coerces them back to numbers via a single `rowToPosition()` mapper before responding. `ON DELETE CASCADE` on the FK means deleting a user removes their positions automatically.
 
-**Critical dev behavior:** when `NODE_ENV=development`, the `positions` and `users` tables are **dropped and recreated on every boot** (positions first, because of the FK). Every restart of `npm run dev` wipes all accounts + positions and re-seeds `testuser` (password `password123`) plus 2-3 sample positions so dev lands on a populated dashboard. This is intentional during early schema churn — there is no migration tooling, so dropping is the simplest way to apply schema changes. Do **not** run dev mode against a database that holds data you care about. In any other environment (`NODE_ENV !== "development"`), the `DROP` and seeds are skipped and `CREATE TABLE IF NOT EXISTS` runs as normal, so `positions` persists in prod exactly like `users`.
+The `notifications` table holds per-user in-app messages. **It is write-only today:** the only code that inserts into it is `grantWaitlistProTime()` (see below), and nothing reads it yet - there is no `GET /notifications` route, and the lens-app `TopBar` notification popover is still a hardcoded "No new notifications." placeholder. Wiring the read path (route + popover) is the outstanding follow-up; until then a granted user's notification exists in the DB but is invisible in the UI.
+
+**Critical dev behavior:** when `NODE_ENV=development`, the `notifications`, `positions`, and `users` tables are **dropped and recreated on every boot** (the two child tables first, because of the FK). Every restart of `npm run dev` wipes all accounts + positions and re-seeds `testuser` (password `password123`) plus 2-3 sample positions so dev lands on a populated dashboard. This is intentional during early schema churn — there is no migration tooling, so dropping is the simplest way to apply schema changes. Do **not** run dev mode against a database that holds data you care about. In any other environment (`NODE_ENV !== "development"`), the `DROP` and seeds are skipped and `CREATE TABLE IF NOT EXISTS` runs as normal, so `positions` persists in prod exactly like `users`.
 
 All queries use parameterized `$1, $2, ...` placeholders. Never interpolate user input into SQL.
 
@@ -492,7 +510,11 @@ Someone who joined the pre-launch referral waitlist on `lens-ref-web` earns free
 3. Grants `months = min(1 + referral_count, 12)`: `UPDATE users SET plan = 'pro', plan_expires_at = NOW() + make_interval(months => $1::int)`. The `::int` cast is required - node-postgres sends parameters as text and Postgres cannot infer the type inside a named-argument call.
 4. Stamps the entry: `UPDATE waitlist SET redeemed = TRUE, redeemed_at = NOW()`.
 
-All four steps run in **one transaction** on a dedicated client. The whole function is **best-effort and never throws**: no match, an unverified entry, an already-redeemed entry, or a `waitlist` table that does not exist in this environment (Fastify never creates it - `referral-service` owns that DDL) all roll back and return `0`. **A signup must never fail because of this**; preserve that property.
+The grant `UPDATE` carries `RETURNING plan_expires_at` so step 5 quotes the expiry Postgres actually stored rather than re-deriving the date in JS.
+
+5. **After the COMMIT**, inserts one row into `notifications` (`type = 'waitlist_pro_grant'`) whose `message` names the months earned and the expiry as a readable date, e.g. `"You earned 3 months of free Lens Pro from the referral waitlist. Your Pro access runs until November 11, 2026."` (built by `buildGrantMessage()`, formatted `en-US` long month). This insert is **deliberately outside the transaction and wrapped in its own try/catch**: Postgres aborts a whole transaction on any statement error, so an in-transaction insert could not be made non-fatal and a failure would roll back real earned Pro time for the sake of a cosmetic row. Out here it fails alone and is logged. **This is the only path that writes a notification** - the Stripe webhook branches deliberately do not (a paid subscription has no expiry to announce).
+
+Steps 1-4 run in **one transaction** on a dedicated client. The whole function is **best-effort and never throws**: no match, an unverified entry, an already-redeemed entry, or a `waitlist` table that does not exist in this environment (Fastify never creates it - `referral-service` owns that DDL) all roll back and return `0`. **A signup must never fail because of this**; preserve that property.
 
 **Expiry is lazy, in `GET /me`.** Before reading the profile, `/me` runs an idempotent `UPDATE users SET plan = 'free', plan_expires_at = NULL WHERE id = $1 AND plan = 'pro' AND plan_expires_at IS NOT NULL AND plan_expires_at < NOW()`. That keeps **`users.plan` the single honest source of truth for access**, so `lens-app` and everything else downstream need zero changes and there is no scheduled job to run. `POST /login` does not carry this check because it returns only `{ success, message, token }` - no plan data - and the client's next call is `/me` regardless.
 

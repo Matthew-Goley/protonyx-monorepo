@@ -2,6 +2,13 @@
 // button and every "open the app" link point here.
 export const APP_URL = "https://app.lens-arc.com";
 
+// Deep link into the app's sign-up tab with the email prefilled. Earned Pro
+// time is keyed to the email address, so the claim CTA has to carry it across:
+// the app's Login page reads ?mode=signup&email= on mount and opens on Sign Up
+// with that address filled in.
+export const appSignupUrl = (email: string) =>
+  `${APP_URL}/login?mode=signup&email=${encodeURIComponent(email)}`;
+
 // Route paths, single source of truth for App.tsx's matcher and every internal
 // link. The referral signup flow lives under /referral; the legacy /ref/<code>
 // and /r/<code> share paths (already distributed publicly) are redirected to
@@ -106,6 +113,9 @@ export const COPY = {
   rewardSummaryLifetime: "You earned lifetime free Pro",
   redeemNote:
     "Being redeemed now: your Pro time applies automatically when you sign in to app.lens-arc.com with this same email.",
+  claimNote:
+    "No app account yet? Your Pro time is claimed by creating one with this same email address. Sign up with a different address and the time will not follow.",
+  claimCta: "Create your account",
   accountSignIn: "Sign in",
   accountTitle: "Your account",
   accountSignInHint:

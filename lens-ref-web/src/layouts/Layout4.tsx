@@ -3,6 +3,7 @@ import type { FormEvent } from "react";
 import { ArrowRight, Check } from "lucide-react";
 import {
   APP_URL,
+  appSignupUrl,
   BRAND,
   COPY,
   HERO,
@@ -12,6 +13,7 @@ import {
 } from "../content";
 import { type AccountFlow } from "../hooks/useAccountFlow";
 import { useAccount } from "../hooks/accountContext";
+import { BtnLink } from "../components/buttons";
 import SignalReadout from "../readouts/SignalReadout";
 import lensArcDark from "../../assets/lens-arc/lens-arc-dark.png";
 import vectorDemo from "../../assets/video/1vector_demo.mp4";
@@ -22,6 +24,10 @@ const gradient = `linear-gradient(135deg, ${BRAND.gradientFrom}, ${BRAND.gradien
 // earned, and that it is being redeemed in the app right now. This is the
 // launched-product framing: the program's value is something you HAVE, not
 // something coming soon.
+//
+// The claim CTA is the exit from this page: earned time only lands on an app
+// account created with this same verified email, so the button deep-links to
+// the app's sign-up tab with the address prefilled (see appSignupUrl).
 function RedemptionNote({ flow }: { flow: AccountFlow }) {
   const summary =
     flow.currentReward === "Lifetime free"
@@ -34,6 +40,11 @@ function RedemptionNote({ flow }: { flow: AccountFlow }) {
         {summary}
       </p>
       <p className="mt-1 text-xs leading-relaxed text-slate-600">{COPY.redeemNote}</p>
+      <p className="mt-2.5 text-xs leading-relaxed text-slate-600">{COPY.claimNote}</p>
+      <BtnLink role="primary" href={appSignupUrl(flow.email)} className="mt-3.5 w-full">
+        {COPY.claimCta}
+        <ArrowRight size={15} />
+      </BtnLink>
     </div>
   );
 }

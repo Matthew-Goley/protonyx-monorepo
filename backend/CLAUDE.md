@@ -90,14 +90,15 @@ Auth is resolved by `src/middleware/authenticate.ts`, which checks `Authorizatio
 | `src/routes/subscription.ts` | /subscription/status |
 | `src/constants.ts` | CURRENT_TOS_VERSION, CURRENT_EULA_VERSION |
 | `src/betaConfig.ts` | BETA_ACTIVE, MAX_BETA_USERS (read from env) |
-| `src/waitlist.ts` | `grantWaitlistProTime()` - converts a verified referral-waitlist entry into earned free Pro time at signup (one transaction, never throws) |
+| `src/waitlist.ts` | `grantWaitlistProTime()` - converts a verified referral-waitlist entry into earned free Pro time at signup (one transaction, never throws), then writes the `notifications` row announcing the months earned + expiry date |
 | `src/version.json` | Latest Vector app version string |
 | `src/email.ts` | Resend send helpers (fire-and-forget) |
 | `src/emailTemplates.ts` | Inline HTML for welcome + verify + reset emails |
 
 ## Critical behaviors to preserve
 
-- **Dev mode wipes the DB on every boot** (`NODE_ENV=development` triggers `DROP TABLE positions CASCADE` then `DROP TABLE users CASCADE`, and reseeds `testuser` + sample positions). Positions is dropped first because `DROP users CASCADE` only removes the FK, not the child rows. Never run dev against a database with real accounts.
+- **Dev mode wipes the DB on every boot** (`NODE_ENV=development` triggers `DROP TABLE notifications CASCADE`, `DROP TABLE positions CASCADE`, then `DROP TABLE users CASCADE`, and reseeds `testuser` + sample positions). The child tables are dropped first because `DROP users CASCADE` only removes the FK, not the child rows. Never run dev against a database with real accounts.
+- **`notifications` is write-only right now.** `grantWaitlistProTime()` is its only writer; there is no `GET /notifications` route and the lens-app TopBar popover is still a hardcoded placeholder, so nothing surfaces these rows yet. Wiring the read path is the follow-up. The insert sits **after** the grant's COMMIT in its own try/catch on purpose: Postgres aborts a transaction on any statement error, so an in-transaction insert could not fail non-fatally and would cost the user real earned Pro time. Only the waitlist path notifies; the Stripe webhook branches do not.
 - **`positions` table** is created with `CREATE TABLE IF NOT EXISTS` (persists in prod, dropped only in dev). One row per `(user_id, ticker)`. `NUMERIC` columns come back as strings from node-postgres, so `routes/positions.ts` coerces them to numbers via `rowToPosition()` before responding.
 - **Per-user prefs are in Postgres, not cookies.** `users.risk_tier` (onboarding profile, `null` until set) and `users.settings` (JSONB blob: theme, date_format, dashboard layout, and the four analyze tuning blocks) replaced the old lens-app cookies. `/me` returns both; `routes/settings.ts` writes them (`PUT /settings` is a top-level `settings || $1::jsonb` merge, so each key sent replaces that whole key).
 - **Stripe webhook needs the raw body.** `routes/stripe.ts` overrides the `application/json` parser in its plugin scope to receive a raw `Buffer` (required for signature verification); non-webhook routes in that scope `JSON.parse` the buffer manually. The webhook route sets `config: { rateLimit: false }` so Stripe can deliver events freely. It maps events to users via `metadata.userId` (checkout) or `stripe_customer_id` (subscription/invoice).

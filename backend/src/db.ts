@@ -7,11 +7,12 @@ const pool = new Pool({
 
 const setup = async () => {
     // Dev-only: wipe the tables on boot so schema changes take effect.
-    // Guarded so production never drops data. positions is dropped explicitly
-    // (before users): a plain DROP TABLE users CASCADE only removes the FK
-    // constraint, leaving orphaned positions rows whose user_id would re-bind to
+    // Guarded so production never drops data. Every child table is dropped
+    // explicitly (before users): a plain DROP TABLE users CASCADE only removes
+    // the FK constraint, leaving orphaned rows whose user_id would re-bind to
     // a freshly reseeded testuser once SERIAL restarts at 1.
     if (process.env.NODE_ENV === "development") {
+        await pool.query("DROP TABLE IF EXISTS notifications CASCADE");
         await pool.query("DROP TABLE IF EXISTS positions CASCADE");
         await pool.query("DROP TABLE IF EXISTS users CASCADE");
     }
@@ -59,6 +60,31 @@ const setup = async () => {
             name TEXT DEFAULT NULL,
             added_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
             UNIQUE (user_id, ticker)
+        )
+    `);
+
+    // Per-user notifications, one row per message. Created with
+    // CREATE TABLE IF NOT EXISTS (same idempotent pattern as positions and the
+    // ALTERs below) so it runs in every environment and persists in prod; in dev
+    // it is dropped and recreated on every boot alongside users (see the drop
+    // block above). Placed after users because of the FK.
+    //
+    // Currently WRITE-ONLY: the only writer is grantWaitlistProTime() in
+    // waitlist.ts, and nothing reads it yet - the lens-app TopBar notification
+    // popover is still a hardcoded "No new notifications." placeholder. A
+    // GET /notifications route and the popover wiring are the follow-up.
+    //
+    // `type` is a free-text discriminator so the client can pick an icon later
+    // ('waitlist_pro_grant' is the first and only value in use); `is_read`
+    // matches the is_active naming already on users.
+    await pool.query(`
+        CREATE TABLE IF NOT EXISTS notifications (
+            id SERIAL PRIMARY KEY,
+            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            type TEXT NOT NULL DEFAULT 'general',
+            message TEXT NOT NULL,
+            is_read BOOLEAN NOT NULL DEFAULT FALSE,
+            created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
         )
     `);
 

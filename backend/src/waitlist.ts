@@ -7,6 +7,22 @@ const BASE_MONTHS = 1;
 const MAX_MONTHS = 12;
 
 /**
+ * The in-app notification announcing the grant. The expiry is spelled out as a
+ * readable date ("November 11, 2026") rather than a timestamp, because this
+ * string is shown to the user verbatim. The date comes from the row Postgres
+ * actually wrote, so it can never disagree with plan_expires_at.
+ */
+function buildGrantMessage(months: number, expiresAt: Date): string {
+    const readableDate = expiresAt.toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "long",
+        day: "numeric"
+    });
+    const monthWord = months === 1 ? "month" : "months";
+    return `You earned ${months} ${monthWord} of free Lens Pro from the referral waitlist. Your Pro access runs until ${readableDate}.`;
+}
+
+/**
  * Converts a verified, unredeemed waitlist entry into free Pro time on a
  * freshly created user row, then stamps the entry redeemed.
  *
@@ -61,13 +77,17 @@ export async function grantWaitlistProTime(userId: number, email: string): Promi
 
         // plan is the source of truth for access; plan_expires_at is what makes
         // this grant a trial rather than a permanent upgrade. GET /me expires it.
-        await client.query(
+        // RETURNING hands back the expiry Postgres computed, so the notification
+        // below quotes the stored date rather than re-deriving it in JS.
+        const grantResult = await client.query(
             `UPDATE users
              SET plan = 'pro',
                  plan_expires_at = NOW() + make_interval(months => $1::int)
-             WHERE id = $2`,
+             WHERE id = $2
+             RETURNING plan_expires_at`,
             [months, userId]
         );
+        const expiresAt = grantResult.rows[0]?.plan_expires_at as Date | undefined;
 
         await client.query(
             "UPDATE waitlist SET redeemed = TRUE, redeemed_at = NOW() WHERE id = $1",
@@ -75,6 +95,29 @@ export async function grantWaitlistProTime(userId: number, email: string): Promi
         );
 
         await client.query("COMMIT");
+
+        // Notified only on this waitlist-grant path. The Stripe webhook branches
+        // deliberately do NOT write a notification: a paid subscription has no
+        // expiry to announce.
+        //
+        // Written AFTER the commit, on purpose. The grant is the precious part
+        // and is already durable here. Inside the transaction this insert could
+        // not be made non-fatal: Postgres aborts the whole transaction on any
+        // statement error, so a failure (e.g. the table missing) would roll back
+        // real earned Pro time for the sake of a cosmetic row. Out here it can
+        // fail alone.
+        if (expiresAt) {
+            try {
+                await client.query(
+                    `INSERT INTO notifications (user_id, type, message)
+                     VALUES ($1, 'waitlist_pro_grant', $2)`,
+                    [userId, buildGrantMessage(months, expiresAt)]
+                );
+            } catch (err) {
+                console.error("Waitlist Pro notification failed (grant unaffected):", err);
+            }
+        }
+
         return months;
     } catch (err) {
         try {

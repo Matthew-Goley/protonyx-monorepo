@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -23,7 +23,18 @@ function Field({
 export function Login() {
   const { login, signup } = useAuth()
   const navigate = useNavigate()
-  const [tab, setTab] = useState<Tab>('signin')
+
+  // Deep link from the referral site's "claim your Pro time" CTA:
+  // /login?mode=signup&email=<url-encoded>. Both params are read once, through
+  // lazy useState initializers, so the tab stays plain local state that the user
+  // can still switch freely (the params only pick the starting values). Sign in
+  // is unaffected: anything other than mode=signup lands on it as before.
+  // URLSearchParams.get() percent-decodes for us, so no decodeURIComponent here
+  // (calling it again would throw on a literal % in the value).
+  const [searchParams] = useSearchParams()
+  const [tab, setTab] = useState<Tab>(() =>
+    searchParams.get('mode') === 'signup' ? 'signup' : 'signin',
+  )
 
   // Sign in
   const [username, setUsername] = useState('')
@@ -32,7 +43,7 @@ export function Login() {
 
   // Sign up
   const [suUsername, setSuUsername] = useState('')
-  const [suEmail, setSuEmail] = useState('')
+  const [suEmail, setSuEmail] = useState(() => searchParams.get('email') ?? '')
   const [suPassword, setSuPassword] = useState('')
 
   const [error, setError] = useState<string | null>(null)
