@@ -1,5 +1,14 @@
 import { useEffect, useRef, useState } from "react";
-import { BRAND, COPY, REFERRAL_MILESTONES, ROUTES } from "../content";
+import {
+  appOpenUrl,
+  BRAND,
+  COPY,
+  earnedMonths,
+  monthsLabel,
+  REFERRAL_BASE_MONTHS,
+  REFERRAL_MAX_MONTHS,
+  ROUTES,
+} from "../content";
 import * as api from "../lib/api";
 
 export type Step = "signup" | "verifying" | "account";
@@ -13,8 +22,9 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const LS_CODE = "lens_ref_code";
 const LS_EMAIL = "lens_ref_email";
 
-const MAX_REFERRALS =
-  REFERRAL_MILESTONES[REFERRAL_MILESTONES.length - 1].referrals;
+// Referrals needed to reach the 12-month cap: one month is the verification
+// base, so every remaining month is one referral.
+const MAX_REFERRALS = REFERRAL_MAX_MONTHS - REFERRAL_BASE_MONTHS;
 
 // Pull a referral code out of the current URL: the canonical
 // /referral/ref/<code> share-link path, either legacy form (/ref/<code>,
@@ -181,14 +191,19 @@ export function useAccountFlow() {
     setReferralCount(0);
   };
 
-  let currentReward = REFERRAL_MILESTONES[0].reward;
-  for (const m of REFERRAL_MILESTONES) {
-    if (referralCount >= m.referrals) currentReward = m.reward;
-  }
-  const next = REFERRAL_MILESTONES.find((m) => m.referrals > referralCount) ?? null;
-  const nextMilestone = next
-    ? { remaining: next.referrals - referralCount, reward: next.reward }
-    : null;
+  // The number the backend will actually grant at signup. Derived from the same
+  // linear formula as backend/src/waitlist.ts, NOT looked up in a milestone
+  // table: a table lookup rounds an in-between count down to the nearest tier,
+  // which is what made this site show 2 months for an account granted 3.
+  const months = earnedMonths(referralCount);
+  const currentReward = monthsLabel(months);
+  const maxed = months >= REFERRAL_MAX_MONTHS;
+
+  // Linear formula, so the next step is always exactly one more referral for one
+  // more month, right up to the cap.
+  const nextMilestone = maxed
+    ? null
+    : { remaining: 1, reward: monthsLabel(months + 1) };
 
   return {
     step,
@@ -202,11 +217,17 @@ export function useAccountFlow() {
     logout,
     referralCount,
     progress: Math.min(referralCount / MAX_REFERRALS, 1),
-    maxed: nextMilestone === null,
+    maxed,
+    /** Months the backend will grant. The single number every surface must show. */
+    earnedMonths: months,
     currentReward,
     nextMilestone,
     referralCode,
     referralLink: COPY.referralLinkBase + referralCode,
+    /** Href for generic "open the app" CTAs: carries the verified email so the
+     *  sign-up form is prefilled, without forcing the sign-up tab. Falls back to
+     *  the bare app URL when there is no verified email to carry. */
+    appHref: appOpenUrl(step === "account" ? email : null),
   };
 }
 

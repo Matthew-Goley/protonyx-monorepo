@@ -112,21 +112,32 @@ CREATE TABLE IF NOT EXISTS waitlist (
 
 ## 4. Reward math (`entitlement.py`)
 
-`MILESTONES` **must stay in lockstep with `REFERRAL_MILESTONES` in
-`lens-ref-web/src/content.ts`.** It is a step function keyed on referral
-thresholds, not a linear "X months per referral" formula:
+`months = min(BASE_MONTHS + referral_count, MAX_MONTHS)` — **linear**: one base
+month for verifying your own email, plus exactly one month per verified referral,
+capped at 12. Unverified → `months=0`. `lifetime` is still in the response shape
+(`main.py`'s `/redeem` branches on it, and it is part of the public `/verify` and
+`/status` payloads) but is **always `False`**: no input produces a lifetime grant.
 
-| Referrals (>=) | Reward | `entitlement()` |
-|---|---|---|
-| 0 | 1 month | `months=1` |
-| 1 | 2 months | `months=2` |
-| 3 | 4 months | `months=4` |
-| 5 | 6 months | `months=6` |
-| 10 | Lifetime (cap) | `months=None, lifetime=True` |
+This formula is expressed in **three** places and they must change together:
 
-Counts between thresholds map **down** to the nearest lower milestone (2→2mo,
-4→4mo, 6-9→6mo). Unverified → `months=0`. If you change the tiers, change **both**
-files.
+| File | Constants |
+|---|---|
+| `backend/src/waitlist.ts` | `BASE_MONTHS` / `MAX_MONTHS` — **the path that actually grants at signup** |
+| `referral-service/entitlement.py` | `BASE_MONTHS` / `MAX_MONTHS` — the `/redeem` grant path |
+| `lens-ref-web/src/content.ts` | `REFERRAL_BASE_MONTHS` / `REFERRAL_MAX_MONTHS` — what the site displays |
+
+**This used to be a step function** (thresholds 0/1/3/5/10, topping out at
+lifetime) here and in `lens-ref-web`, while the backend was already linear. The
+two disagreed for every count between thresholds: 2 verified referrals computed
+2 months here and displayed "2 months" on the site, while signup granted **3**.
+The lifetime tier was worse, an unbackable promise, since the grant caps at 12
+months. Do not reintroduce thresholds.
+
+> **Open item:** the published referral Terms (`lens-ref-web/legal-raw/lens-arc-referral-terms.md`,
+> rendered by `src/pages/TermsPage.tsx`) still state the OLD step schedule,
+> including "Ten verified referrals grants lifetime free access". That legal text
+> was deliberately left untouched and now contradicts the implemented formula.
+> It needs an owner decision, see the root `CLAUDE.md` note.
 
 ---
 
@@ -135,10 +146,41 @@ files.
 | Method | Path | Auth | Behavior |
 |---|---|---|---|
 | `GET` | `/health` | — | `{"status":"ok"}`. Railway health check. |
-| `POST` | `/join` | rate-limited | Body `{ email, referral_code? }`. Validates email (`email_validator`, no MX lookup). Upserts the waitlist row: new/unverified rows get a fresh magic token + magic-link email. `referred_by_code` is captured **only on first insert**, only if the code belongs to a **verified** row and isn't the joiner's own; unknown/invalid codes are silently dropped (a bad referral link never blocks a signup). **An already-verified email also gets a fresh token + email** (`referral_code`/`referred_by_code` untouched) so someone can always get back into an existing account by re-entering their email - this is the *only* login mechanism, there being no password. The email copy differs (`login_link_html` "Log back in" vs. `magic_link_html` "Confirm your email") but the JSON response is identical across all three branches (new / resend-unverified / resend-verified), keeping the endpoint enumeration-neutral. Always returns 200 `{ success, message }`. |
+| `POST` | `/join` | rate-limited | **Gated by `WAITLIST_OPEN` (default false, see below): when closed, an email with no existing waitlist row is rejected 403 `"The Lens Arc referral program has closed to new participants."` and no row is created.** The gate sits *after* the row lookup, not at the top of the handler, so the other two branches keep working while closed. Body `{ email, referral_code? }`. Validates email (`email_validator`, no MX lookup). Upserts the waitlist row: new/unverified rows get a fresh magic token + magic-link email. `referred_by_code` is captured **only on first insert**, only if the code belongs to a **verified** row and isn't the joiner's own; unknown/invalid codes are silently dropped (a bad referral link never blocks a signup). **An already-verified email also gets a fresh token + email** (`referral_code`/`referred_by_code` untouched) so someone can always get back into an existing account by re-entering their email - this is the *only* login mechanism, there being no password. The email copy differs (`login_link_html` "Log back in" vs. `magic_link_html` "Confirm your email") but the JSON response is identical across all three branches (new / resend-unverified / resend-verified), keeping the endpoint enumeration-neutral. Always returns 200 `{ success, message }`. |
 | `GET` | `/verify` | rate-limited | Query `?token=`. Looks up by `magic_token_hash` with a live expiry; missing/expired → 400. On success: marks verified, clears the token, issues a `referral_code` if absent. Returns `{ success, email, referral_code, referral_link, entitlement }`. Single-use (a second hit of the same token → 400). |
 | `GET` | `/status` | rate-limited | Query `?code=`. Keyed by `referral_code` (counts are low-sensitivity and the code is already shareable). Unknown code → 404. Returns `{ success, verified, referral_count, entitlement }`. |
 | `POST` | `/redeem` | `X-Redeem-Secret` | Body `{ email }`. **Internal, never called by the site.** Loads the waitlist row (must be verified), computes entitlement, finds the `users` row by email (404 if none), writes the Pro grant, stamps the waitlist row redeemed. **Idempotent**: an already-redeemed email re-reports the grant without re-writing, so a referral can never be double-credited. |
+
+### The program is closed (`WAITLIST_OPEN`)
+
+The referral program has ended. `WAITLIST_OPEN` defaults to **`false`**, so an
+unset or misspelled env var leaves it closed rather than silently reopening it.
+
+**Closed means "no new rows", not "no access."** The gate is a single check in
+`POST /join`, placed **after** the `SELECT ... FROM waitlist WHERE email = $1`
+and before the `INSERT`, because only the `row is None` branch is a signup. The
+other two branches of `/join` are not:
+
+| `/join` branch | Closed behavior | Why |
+|---|---|---|
+| No existing row | **403, no row created** | This is the signup. |
+| Existing **unverified** row | Fresh token + email, as before | The magic token TTL is 30 min, so re-requesting a link here is the **only** way an unverified row can still finish verifying. |
+| Existing **verified** row | Fresh token + email, as before | `/join` is the service's **only** login mechanism (no passwords anywhere). |
+
+`GET /verify`, `GET /status` and `POST /redeem` are **never** gated by this flag.
+Existing rows are never touched, expired, or clawed back, and the entitlement math
+is unchanged, so `backend/src/waitlist.ts :: grantWaitlistProTime` keeps honoring
+every pre-existing row exactly as before when that person creates a real account.
+
+Because no new row can be created while closed, `referred_by_code` can never be
+newly captured, so referral attribution ends on its own. The `ref_code` handling
+in the first-touch branch is left in place, unreachable while closed and correct
+again if the flag is ever flipped back.
+
+> **Known trade-off:** while closed, `/join` is no longer enumeration-neutral. A
+> known email returns `MSG_CHECK_EMAIL`, an unknown one returns the 403. That is
+> inherent in rejecting new signups with a clear message; the value of
+> enumerating a closed waitlist is low.
 
 ### Auth model
 
@@ -191,6 +233,7 @@ referral-only user).
 | `REFERRAL_LINK_BASE` | Display base for the share link (no scheme, matches `content.ts`). Default `lens-arc.com/r/`. |
 | `MAGIC_LINK_TTL_MINUTES` | Token lifetime, default 30. |
 | `REDEEM_SECRET` | Shared secret guarding `POST /redeem`. |
+| `WAITLIST_OPEN` | Is the program accepting **new** participants? **Defaults to `false` (closed)**; only the literal `"true"` opens it. See "The program is closed" below. |
 | `PORT` | Injected by Railway; the `Procfile` reads it. |
 
 **CORS** allowlist is hardcoded in `main.py` (`allow_credentials=False`, no

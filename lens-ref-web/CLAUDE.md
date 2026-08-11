@@ -130,6 +130,37 @@ Mounted once in `App.tsx`, fixed on every page. The design is **Hairline**, winn
 
 The site replicates the **lens-app button experience**: the five Mercury role classes (`.btn-primary/.btn-secondary/.btn-ghost/.btn-accent/.btn-danger`) are ported from `lens-app/src/index.css` with the lens-app dark-theme color values inlined (flat fills, 160 ms color-only transitions, **no motion, no shadow**), and `Btn`/`BtnLink` wrap them with lens-app's geometry (h-10 / px-5 / 500 weight / 15 px radius / teal focus ring; sizes sm/lg). Keep the block in lockstep with lens-app's. **`HeroButton`** is the major-hero CTA (landing hero + closing): the house gradient at hero scale, static, with a Mercury-quiet hover (slight `brightness` darken, no motion, no lift, no glow). The earlier fluid/water-ripple canvas sim that lived here was **cut entirely** (git history only, do not resurrect).
 
+### The referral program is closed (affects /referral)
+
+The program no longer accepts new participants (`WAITLIST_OPEN=false` in
+`referral-service`). The site splits on the **`flow.step === "account"`** test,
+which is exactly the existing localStorage restore path: `useAccountFlow` sets
+step to `"account"` on mount when `lens_ref_code` is present, so a stored code
+means "returning member" and anything else means "visitor with nothing to
+restore". Two consequences on `/referral`:
+
+- **New visitor:** the hero's `EmailCapture` is replaced by `ProgramClosedNotice`
+  (local to `Layout4`), and the milestone-schedule section is not rendered at all,
+  so no refer-to-earn or code-sharing messaging is shown to anyone who cannot act
+  on it. `EmailCapture` was deleted outright rather than disabled: the service
+  rejects an unknown address with a 403, and an input that can only fail is worse
+  than saying so. Restore it from git history if the program ever reopens.
+- **Returning member:** `VerifiedBox`, `RedemptionNote` with its claim CTA, and
+  the milestone section render exactly as before. **`SignalReadout` is the one
+  exception**: its forward-looking affordances were stripped, because referring is
+  impossible for everyone now, not just new visitors. Gone are the share-link row,
+  the "refer 1 more friend, unlock N months" caption, and the progress bar (it
+  tracked referrals toward the 12-month cap, so a partly filled bar implied
+  headroom that no longer exists). What remains is the earned-months odometer and
+  its "months free" label: a statement of what they already have. The earned
+  amount and claim CTA were deliberately left untouched.
+
+The notice points existing members at the nav's `AccountMenu` **Sign in** popover,
+which is deliberately kept: it runs the same `flow.submitEmail()` -> `POST /join`
+call, and that still succeeds for any address that already has a waitlist row.
+That is the recovery path for a member who cleared their browser storage, so do
+not remove it while any unredeemed row exists.
+
 ### The /referral page (src/layouts/Layout4.tsx)
 
 Deliberately minimal now: **hero + milestone timeline + footer, nothing else.** The page's job is "see the Pro time you earned and watch it redeem", not "get early access". Top to bottom: hero (gradient headline; subhead points program members at verifying to see their earned time; email capture (`COPY.emailCta` "Continue with email") or, once verified, `VerifiedBox` **plus `RedemptionNote`**; an "Already verified? Open Lens Arc" line; disclaimer; beside the demo video or the post-verify `SignalReadout`), the five-node milestone stepper (headed "The referral program", presented as the earning schedule), and the footer (legal links from `LEGAL_PAGES`). The `VerifyDialog` renders at the page root whenever the flow step is `"verifying"`. The page's own header is gone (the app-wide NavBar covers it, the hero pads past the fixed bar), and so are the old how-it-works video rows and the closing "Lens Arc is live" claim section (cut in the launch trim; the hero's `EmailCapture` is now the only one, though the component still accepts the `className`/`onSubmitted` props the removed second instance used).
@@ -147,7 +178,7 @@ The `/verify` route must keep rendering the referral page in `App.tsx`; the hook
 
 ### The post-verify readout (src/readouts/)
 
-Unchanged by the restructure; see git history of this section if needed. `SignalReadout` (odometer months dial + referral link row) still replaces the hero video once `flow.step === "account"`, still mid-rework, still light-surface colors, wrapped in the boxless `aspect-[16/9] scale-125` div in `Layout4.tsx`.
+`SignalReadout` still replaces the hero video once `flow.step === "account"`, still mid-rework, still light-surface colors, wrapped in the boxless `aspect-[16/9] scale-125` div in `Layout4.tsx`. It is now **just the earned-months odometer + its "months free" label** (plus the `maxed` sparkle at 12 months): the referral-link row, the next-milestone caption, and the progress bar were removed when the program closed, since none of them can be acted on any more. `CopyChip` and `NextMilestoneLine` are still exported from `readouts/shared.tsx`, and `referralLink` / `nextMilestone` / `progress` are still on the flow, all **dormant** and unrendered, so reopening the program means putting them back rather than rebuilding them. `useCopyToClipboard` / `useShare` in `useAccountFlow.ts` are dormant for the same reason.
 
 ### Simple content pages (SimplePage + pages/)
 
@@ -197,6 +228,8 @@ The landing page imports them through the `VIDEOS` map in `src/landing/landingCo
 - **Exactly one `useAccountFlow()` instance may exist** (`AccountProvider`). A second instance would double-consume the single-use `/verify` magic-link token. Always read the flow through `useAccount()`.
 - Verified state persists in `localStorage` (`lens_ref_code` / `lens_ref_email`); the count refreshes via `GET /status` on load; a stale code clears itself back to signup.
 - **New dark-background sections must carry `data-nav-dark`**, or the adaptive NavBar renders its light theme over them (see §5 The nav). Every arrow-key comparison this project has run (landing designs, nav variants, readouts) is now resolved and deleted; the losers are git history, not references.
-- `REFERRAL_MILESTONES` drives the account-flow derivations, the /referral milestone stepper, and `SignalReadout`, and **must mirror `referral-service/entitlement.py`'s `MILESTONES`**.
+- **Earned Pro time is a LINEAR formula, not a step function.** `earnedMonths(referralCount) = min(REFERRAL_BASE_MONTHS + referrals, REFERRAL_MAX_MONTHS)` in `content.ts` is the site's single source of truth, and it mirrors `backend/src/waitlist.ts` (the code that actually grants at signup) and `referral-service/entitlement.py`. All three must change together. `REFERRAL_MILESTONES` is now **derived** from `earnedMonths()` at display points `[0, 1, 3, 5, 11]`, so the /referral stepper cannot drift from the formula. It was previously an independent step table (0/1/3/5/10 → 1/2/4/6/Lifetime) that rounded in-between counts **down**, which made the site show "2 months" for an account the backend granted 3; the lifetime tier was unbackable since the grant caps at 12 months. Do not reintroduce thresholds, and do not hand-write reward labels.
+- **The published referral Terms still describe the OLD step schedule** (`legal-raw/lens-arc-referral-terms.md` → `src/pages/TermsPage.tsx`), including a "10+ → Lifetime" row. That legal text was deliberately left untouched when the code was reconciled and currently contradicts it. See the open item in the root `CLAUDE.md`.
+- **Query-carrying app links must target `/login` directly**, never bare `APP_URL`: lens-app's catch-all `<Navigate to="/login" replace />` does not preserve search params, so `${APP_URL}?email=...` arrives stripped. `content.ts` exposes two builders. `appSignupUrl(email)` → `/login?mode=signup&email=...` for CTAs that explicitly mean "create your account" (the claim CTA); it degrades to a bare `?mode=signup` rather than emitting a dangling `email=`. `appOpenUrl(email)` → `/login?email=...` for generic Enter/Open Lens Arc buttons: it carries the email so the sign-up form is prefilled if the visitor switches tabs, but deliberately does **not** force the sign-up tab (a member who already has an app account wants to sign in), and falls back to bare `APP_URL` with no verified email. Every generic CTA reads `flow.appHref` (from `useAccountFlow`), which picks between them.
 - **Open Graph meta in `index.html` hardcodes `https://lens-arc.com`** for `og:url`/`og:image`/`twitter:image`; update all three (and re-verify with a link-preview debugger) if the domain changes.
 - The app the nav's "Get started" button opens is `APP_URL` in `content.ts` (`https://app.lens-arc.com`), one place to change if the app domain moves.

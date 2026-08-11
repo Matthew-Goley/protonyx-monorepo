@@ -12,7 +12,21 @@ export default async function stripeRoutes(app: FastifyInstance) {
 
     const stripe = new Stripe(stripeKey);
     const WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET ?? "";
+
+    // Base URL every Stripe redirect is built from. Env-driven so local dev keeps
+    // pointing at the Vite server; production must set LENS_APP_URL to the real
+    // app origin (https://app.lens-arc.com).
     const LENS_APP_URL = process.env.LENS_APP_URL ?? "http://localhost:5173";
+
+    // Production shipped for a while with LENS_APP_URL still set to the localhost
+    // default, which sent every paying customer to a dead localhost:5173 tab after
+    // checkout. The value is only observable in the Railway dashboard, so nothing
+    // surfaced it. Warn loudly at boot instead of failing silently again.
+    if (process.env.NODE_ENV === "production" && LENS_APP_URL.includes("localhost")) {
+        console.warn(
+            `LENS_APP_URL is "${LENS_APP_URL}" in production - Stripe will redirect customers to localhost. Set it to the deployed app origin.`
+        );
+    }
 
     // Fastify v5 requires removing the built-in JSON parser before overriding it.
     // This scope only affects routes registered in this plugin.
@@ -53,8 +67,11 @@ export default async function stripeRoutes(app: FastifyInstance) {
                 },
             ],
             metadata: { userId: String(userId) },
+            // Both paths must be real lens-app routes. /portfolio was neither, so a
+            // cancelled checkout hit the app's catch-all and dumped an already
+            // signed-in user on /login. /dashboard is where they came from.
             success_url: `${LENS_APP_URL}/success?session_id={CHECKOUT_SESSION_ID}`,
-            cancel_url: `${LENS_APP_URL}/portfolio`,
+            cancel_url: `${LENS_APP_URL}/dashboard`,
         };
 
         if (user.stripe_customer_id) {

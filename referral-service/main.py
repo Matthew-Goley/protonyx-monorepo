@@ -47,6 +47,13 @@ REDEEM_SECRET = os.environ.get("REDEEM_SECRET", "")
 
 MSG_CHECK_EMAIL = "Check your email for your verification link."
 
+# Referral program kill switch. Defaults to CLOSED: the program has ended, so an
+# unset or misspelled env var must never silently reopen it. Set WAITLIST_OPEN=true
+# to accept new participants again.
+WAITLIST_OPEN = os.environ.get("WAITLIST_OPEN", "false").strip().lower() == "true"
+
+MSG_PROGRAM_CLOSED = "The Lens Arc referral program has closed to new participants."
+
 # Base36; ambiguity is fine here, codes are copied not typed.
 _CODE_ALPHABET = "abcdefghijklmnopqrstuvwxyz0123456789"
 
@@ -150,6 +157,24 @@ async def join(request: Request, body: JoinRequest) -> dict:
 
     async with db.pool().acquire() as conn:
         row = await conn.fetchrow("SELECT verified FROM waitlist WHERE email = $1", email)
+
+        # Program-closed gate. Deliberately placed AFTER the row lookup rather than
+        # at the top of the handler, because only the `row is None` branch below
+        # creates a waitlist row. The other two branches are not signups:
+        #   - an existing UNVERIFIED row needs a fresh link to finish verifying at
+        #     all (the token TTL is 30 minutes, so anyone whose original link
+        #     lapsed can only get in by re-requesting one here), and
+        #   - an existing VERIFIED row uses this as its ONLY login mechanism,
+        #     there being no password anywhere in this service.
+        # Closing at the top would strand every pre-existing row, which is exactly
+        # what must not happen. Closed means "no new rows", not "no access".
+        #
+        # Trade-off: while closed this endpoint is no longer enumeration-neutral
+        # (a known email gets MSG_CHECK_EMAIL, an unknown one gets a 403). That is
+        # inherent in rejecting new signups with a clear message, and the value of
+        # enumerating a closed waitlist is low.
+        if row is None and not WAITLIST_OPEN:
+            raise HTTPException(status_code=403, detail=MSG_PROGRAM_CLOSED)
 
         token = _new_token()
         token_hash = _hash_token(token)

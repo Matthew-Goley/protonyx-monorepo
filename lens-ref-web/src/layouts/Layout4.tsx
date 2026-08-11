@@ -1,8 +1,6 @@
 import { useState } from "react";
-import type { FormEvent } from "react";
 import { ArrowRight, Check } from "lucide-react";
 import {
-  APP_URL,
   appSignupUrl,
   BRAND,
   COPY,
@@ -29,15 +27,11 @@ const gradient = `linear-gradient(135deg, ${BRAND.gradientFrom}, ${BRAND.gradien
 // account created with this same verified email, so the button deep-links to
 // the app's sign-up tab with the address prefilled (see appSignupUrl).
 function RedemptionNote({ flow }: { flow: AccountFlow }) {
-  const summary =
-    flow.currentReward === "Lifetime free"
-      ? COPY.rewardSummaryLifetime
-      : COPY.rewardSummary(flow.currentReward.replace(/ free$/i, "").toLowerCase());
   return (
     <div className="mt-3 rounded-xl border border-teal-200 bg-teal-50/70 p-3.5 text-left">
       <p className="flex items-center gap-2 text-sm font-semibold text-teal-700">
         <Check size={15} className="shrink-0" />
-        {summary}
+        {COPY.rewardSummary(flow.earnedMonths)}
       </p>
       <p className="mt-1 text-xs leading-relaxed text-slate-600">{COPY.redeemNote}</p>
       <p className="mt-2.5 text-xs leading-relaxed text-slate-600">{COPY.claimNote}</p>
@@ -99,50 +93,23 @@ function DemoWindow({ src, aspect = "aspect-video" }: { src: string; aspect?: st
   );
 }
 
-function EmailCapture({
-  flow,
-  onSubmitted,
-  className = "max-w-lg",
-}: {
-  flow: AccountFlow;
-  onSubmitted?: () => void;
-  className?: string;
-}) {
-  const [submitting, setSubmitting] = useState(false);
-
-  const submit = async (e: FormEvent) => {
-    e.preventDefault();
-    if (submitting) return;
-    setSubmitting(true);
-    try {
-      if (await flow.submitEmail()) onSubmitted?.();
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
+// Replaces the email capture now that the program has ended. Sits in the same
+// slot, so the hero keeps its shape. The email form is gone entirely rather than
+// disabled: the service rejects a brand-new address with a 403, and offering an
+// input that can only fail is worse than saying so plainly. Existing members are
+// pointed at the nav's Sign in popover, which still runs the same /join call and
+// still works for any address that already has a waitlist row.
+function ProgramClosedNotice() {
   return (
-    <form onSubmit={submit} noValidate className={className}>
-      <div className="flex flex-col gap-2 sm:flex-row">
-        <input
-          type="email"
-          value={flow.email}
-          onChange={(e) => flow.setEmail(e.target.value)}
-          placeholder={COPY.emailPlaceholder}
-          aria-label="email address"
-          className="min-w-0 flex-1 rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 transition focus:border-teal-500 focus:outline-none"
-        />
-        <button
-          type="submit"
-          disabled={submitting}
-          className="btn-primary flex shrink-0 items-center justify-center gap-1.5 rounded-[15px] px-5 py-3 text-sm font-medium disabled:pointer-events-none disabled:opacity-50"
-        >
-          {COPY.emailCta}
-          <ArrowRight size={15} />
-        </button>
-      </div>
-      {flow.emailError && <p className="mt-2 text-xs text-rose-600">{flow.emailError}</p>}
-    </form>
+    <div className="max-w-lg rounded-xl border border-slate-300 bg-white p-4 text-left shadow-sm">
+      <p className="text-sm font-semibold text-slate-900">{COPY.programClosedHeading}</p>
+      <p className="mt-1.5 text-sm leading-relaxed text-slate-600">
+        {COPY.programClosedBody}
+      </p>
+      <p className="mt-2.5 text-xs leading-relaxed text-slate-500">
+        {COPY.programClosedMember}
+      </p>
+    </div>
   );
 }
 
@@ -237,19 +204,23 @@ export default function Layout4() {
             {HERO.subhead}
           </p>
           <div className="mt-8 max-w-lg">
+            {/* The localStorage restore in useAccountFlow is what separates the
+                two audiences: a stored lens_ref_code puts step at "account" on
+                mount (returning member, view unchanged from before the program
+                closed), anything else is a visitor with nothing to restore. */}
             {flow.step === "account" ? (
               <>
                 <VerifiedBox email={flow.email} onLogout={flow.logout} />
                 <RedemptionNote flow={flow} />
               </>
             ) : (
-              <EmailCapture flow={flow} />
+              <ProgramClosedNotice />
             )}
           </div>
           <p className="mt-3 text-sm text-slate-500">
             {COPY.alreadyHaveAccount}{" "}
             <a
-              href={APP_URL}
+              href={flow.appHref}
               className="font-medium text-teal-600 underline-offset-4 transition hover:underline"
             >
               {COPY.openApp}
@@ -281,6 +252,11 @@ export default function Layout4() {
         </div>
       </section>
 
+      {/* The earning schedule is refer-to-earn messaging, so it is hidden from
+          anyone who cannot act on it: with the program closed, a new visitor can
+          neither join nor be referred. Returning members keep it, unchanged, as
+          the context for the amount they already earned. */}
+      {flow.step === "account" && (
       <section className="border-t border-slate-200">
         <div className="mx-auto max-w-7xl px-6 py-20">
           <h2 className="font-display text-2xl font-bold tracking-tight sm:text-3xl">
@@ -354,6 +330,7 @@ export default function Layout4() {
           </div>
         </div>
       </section>
+      )}
 
       <footer className="border-t border-slate-200 bg-white">
         <div className="mx-auto max-w-7xl px-6 pb-20 pt-10">

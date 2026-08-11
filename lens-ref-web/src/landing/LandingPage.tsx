@@ -4,6 +4,7 @@ import { CLASSIC, VIDEOS } from "./landingContent";
 import { Clip, Reveal } from "./shared";
 import SavingsSection from "./SavingsSection";
 import { HeroButton } from "../components/buttons";
+import { useAccount } from "../hooks/accountContext";
 import lensArcDark from "../../assets/lens-arc/lens-arc-dark.png";
 
 // One icon per trust item, in CLASSIC.trust order.
@@ -48,6 +49,9 @@ function DemoWindow({ src }: { src: string }) {
 }
 
 export default function LandingPage() {
+  // Only for the app CTAs' href: a verified member carries their email into the
+  // sign-up form so earned Pro time cannot be lost to a mistyped second address.
+  const flow = useAccount();
   return (
     <div className="min-h-screen bg-[#f2f1ee] font-sans text-[#1f2230]">
       {/* The persistent NavBar (mounted in App.tsx) floats over this hero.
@@ -79,7 +83,7 @@ export default function LandingPage() {
               {CLASSIC.subtitle}
             </p>
             <div className="mt-2 flex flex-wrap items-center gap-7">
-              <HeroButton href={NAV.app.href}>
+              <HeroButton href={flow.appHref}>
                 {CLASSIC.ctaPrimary}
                 <ArrowRight size={17} />
               </HeroButton>

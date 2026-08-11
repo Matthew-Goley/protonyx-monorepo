@@ -13,7 +13,8 @@ import {
 } from "lucide-react";
 import SimplePage from "../components/SimplePage";
 import { BtnLink } from "../components/buttons";
-import { APP_URL, NAV, ROUTES } from "../content";
+import { NAV, ROUTES } from "../content";
+import { useAccount } from "../hooks/accountContext";
 
 // The /lens-arc page: a deeper, plain-language walkthrough of what the Lens
 // engine actually does, written for a non-technical investor who wants to know
@@ -80,6 +81,8 @@ const ANALYZERS = [
 ];
 
 export default function EnginePage() {
+  // Only for the app CTA's href, see LandingPage.
+  const flow = useAccount();
   return (
     <SimplePage
       title="The Lens engine"
@@ -226,7 +229,7 @@ export default function EnginePage() {
         </Section>
 
         <div className="flex flex-wrap items-center gap-4 border-t border-slate-200 pt-8">
-          <BtnLink href={APP_URL} role="primary">
+          <BtnLink href={flow.appHref} role="primary">
             <LineChart size={16} aria-hidden="true" />
             Run it on your portfolio
           </BtnLink>

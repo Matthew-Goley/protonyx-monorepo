@@ -20,13 +20,6 @@ export function useEntrance() {
   return shown;
 }
 
-// Pulls the leading number out of a reward string ("2 months free" -> 2),
-// NaN for the non-numeric top tier ("Lifetime free").
-export function monthsFromReward(reward: string): number {
-  const match = reward.match(/\d+/);
-  return match ? parseInt(match[0], 10) : NaN;
-}
-
 // Icon-only copy affordance shared by every readout: tap to copy the referral
 // link, a brief ping burst + checkmark swap for feedback, no text label so it
 // never competes with the reward number for attention.

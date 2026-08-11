@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { ArrowUpRight, Check, Mail, User } from "lucide-react";
-import { APP_URL, COPY, ROUTES } from "../content";
+import { COPY, ROUTES } from "../content";
 import { useAccount } from "../hooks/accountContext";
 
 // The nav's account slot. Signed out it offers the magic-link sign-in
@@ -101,11 +101,7 @@ export default function AccountMenu({ light = false }: { light?: boolean }) {
               <div className="rounded-xl border border-teal-400/25 bg-teal-400/10 p-3.5">
                 <p className="flex items-center gap-2 text-sm font-semibold text-teal-300">
                   <Check size={15} className="shrink-0" />
-                  {flow.currentReward === "Lifetime free"
-                    ? COPY.rewardSummaryLifetime
-                    : COPY.rewardSummary(
-                        flow.currentReward.replace(/ free$/i, "").toLowerCase()
-                      )}
+                  {COPY.rewardSummary(flow.earnedMonths)}
                 </p>
                 <p className="mt-1.5 text-xs leading-relaxed text-white/55">
                   {COPY.redeemNote}
@@ -114,7 +110,7 @@ export default function AccountMenu({ light = false }: { light?: boolean }) {
 
               <div className="space-y-1 text-sm">
                 <a
-                  href={APP_URL}
+                  href={flow.appHref}
                   className="flex items-center justify-between rounded-lg px-2.5 py-2 text-white/75 transition-colors duration-200 hover:bg-white/5 hover:text-white"
                 >
                   {COPY.openApp}
