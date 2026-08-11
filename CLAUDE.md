@@ -14,7 +14,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 > - **`app/`** — a very old copy of the Vector desktop app. There is **no desktop app anymore**; the product is web-only. Do not read it for reference, do not run it, do not update it.
 > - **`frontend/`** — a stale, **not-live** static marketing site. The live marketing/auth/account site is `../Protonyx Site/` (one level above this monorepo, with its own `CLAUDE.md` and a `CNAME`). Don't edit `frontend/` expecting it to ship; if the task is about the public site, work in `../Protonyx Site/` instead.
 >
-> The folders that matter: **`backend/`** (Fastify API), **`lens-api/`** (Python analytics service), **`lens-app/`** (the live React web app), **`lens-ref-web/`** (the pre-launch marketing site), and **`referral-service/`** (the waitlist/referral API). The §2 layout below still documents `app/` and `frontend/`, but only so you recognize them as the things to skip.
+> The folders that matter: **`backend/`** (Fastify API), **`lens-api/`** (Python analytics service), **`lens-app/`** (the live React web app), **`lens-ref-web/`** (the lens-arc.com marketing site), and **`referral-service/`** (the waitlist/referral API). The §2 layout below still documents `app/` and `frontend/`, but only so you recognize them as the things to skip.
 
 There are five deliverables:
 
@@ -140,20 +140,33 @@ _monorepo/
 │   ├── main.py
 │   └── vector/
 │
-├── lens-ref-web/                  # Pre-launch marketing landing page for Lens Arc (Vite + React + TS + Tailwind v4).
-│                                  # Started as 5 alternate layouts; the product-preview layout won and is now the sole page
-│                                  # (src/layouts/Layout4.tsx, rendered directly by App.tsx, no layout switcher anymore).
-│                                  # All copy/dates/milestones live in src/content.ts. The signup flow (email -> magic-link
-│                                  # verification -> post-verify hero readout) is wired to the referral-service (src/lib/api.ts +
-│                                  # src/hooks/useAccountFlow.ts): POST /join sends the link, /verify?token= is read from the URL on
-│                                  # load, the /r/<code> share path is captured for attribution, and the verified code is persisted in
-│                                  # localStorage (refreshed via /status). Set VITE_REFERRAL_API_URL (defaults to localhost:8000). Once
-│                                  # verified, the hero's demo-video slot swaps to src/readouts/SignalReadout.tsx (an odometer-style
-│                                  # "months of Pro free" dial + copyable referral link; still mid-rework).
-│                                  # A second countdown + email box sits above the footer. Brand images
-│                                  # in assets/lens-arc (mirror of lens-app's) are used for the header/footer wordmark + favicon;
-│                                  # demo videos in assets/video (copies of frontend/assets/video) fill the hero demo window and
-│                                  # the three-step how-it-works walkthrough.
+├── lens-ref-web/                  # The lens-arc.com marketing site (Vite + React + TS + Tailwind v4). Grew out of the
+│                                  # pre-launch referral landing page; the product is now messaged as launched and PAID
+│                                  # (no "free" CTAs; referral page reframed as earned-Pro-time redemption). A
+│                                  # persistent theme-adaptive NavBar on every page (the "Hairline" design; flips
+│                                  # dark/light glass via data-nav-dark section markers) carries Engine/Referral
+│                                  # links, an Enter Lens Arc CTA, and an account menu (magic-link sign-in via
+│                                  # the referral-service, visible site-wide). Buttons replicate lens-app's
+│                                  # Mercury mechanics; hero CTAs are static gradient HeroButtons. The landing
+│                                  # page's headline sections include a savings calculator (slider: 1% AUM
+│                                  # advisor fee vs $120/yr Lens Arc). Routes
+│                                  # (plain path router in src/App.tsx, no router lib): / (landing page in the
+│                                  # established frontend/ house style, src/landing/LandingPage.tsx; picked from a
+│                                  # four-design comparison whose losers were deleted),
+│                                  # /lens-arc (plain-language engine trust page), /legal/terms +
+│                                  # /legal/privacy (verbatim from legal-raw/, on the shared SimplePage template), and
+│                                  # /referral (the original referral page, src/layouts/Layout4.tsx, post-launch copy)
+│                                  # with /referral/ref/:code share links. Legacy /ref/:code, /r/:code, /terms,
+│                                  # /privacy redirect in place (publicly shared links; do not remove). The signup flow
+│                                  # (email -> magic-link verification -> post-verify hero readout) is wired to the
+│                                  # referral-service (src/lib/api.ts + src/hooks/useAccountFlow.ts): POST /join sends
+│                                  # the link, /verify?token= is read on load, the share-path code is captured for
+│                                  # attribution, and the verified code persists in localStorage (refreshed via
+│                                  # /status). Set VITE_REFERRAL_API_URL (defaults to localhost:8000). Once verified,
+│                                  # the hero's demo-video slot swaps to src/readouts/SignalReadout.tsx (still
+│                                  # mid-rework). Brand images in assets/lens-arc (mirror of lens-app's); the four 2K
+│                                  # demo videos in assets/video feed the /referral walkthrough and all four landing
+│                                  # designs. Nav links to the app at https://app.lens-arc.com (APP_URL in content.ts).
 │                                  # Standalone project: npm install && npm run dev (Vite, port 5173). Not deployed yet.
 │                                  # Has its own CLAUDE.md; read it before working in lens-ref-web/.
 │
