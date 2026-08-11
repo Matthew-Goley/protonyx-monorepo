@@ -1,4 +1,4 @@
-import LegalPage from "./LegalPage";
+import SimplePage from "../components/SimplePage";
 import { LegalContact, LegalList, LegalSection, LegalTable } from "./legalContent";
 import { LEGAL_PAGES } from "../content";
 
@@ -7,7 +7,7 @@ import { LEGAL_PAGES } from "../content";
 // stay in sync.
 export default function TermsPage() {
   return (
-    <LegalPage title={LEGAL_PAGES.terms.title} effectiveDate="4 August 2026">
+    <SimplePage title={LEGAL_PAGES.terms.title} effectiveDate="4 August 2026" serif>
       <p>
         These Referral Program Terms ("Terms") govern participation in the Lens Arc referral
         and waitlist program operated by Protonyx LLC ("Protonyx," "we," "us," or "our") at
@@ -135,6 +135,6 @@ export default function TermsPage() {
         <p>Questions about the Program or these Terms can be sent to:</p>
         <LegalContact name="Protonyx LLC" email="legal@protonyxdata.com" />
       </LegalSection>
-    </LegalPage>
+    </SimplePage>
   );
 }
