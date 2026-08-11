@@ -1,4 +1,4 @@
-import LegalPage from "./LegalPage";
+import SimplePage from "../components/SimplePage";
 import { LegalContact, LegalList, LegalSection } from "./legalContent";
 import { LEGAL_PAGES } from "../content";
 
@@ -7,7 +7,7 @@ import { LEGAL_PAGES } from "../content";
 // must stay in sync.
 export default function PrivacyPage() {
   return (
-    <LegalPage title={LEGAL_PAGES.privacy.title} effectiveDate="4 August 2026">
+    <SimplePage title={LEGAL_PAGES.privacy.title} effectiveDate="4 August 2026" serif>
       <p>
         This Privacy Policy explains how Protonyx LLC ("Protonyx," "we," "us," or "our")
         collects, uses, and protects information on the Lens Arc referral and waitlist site
@@ -145,6 +145,6 @@ export default function PrivacyPage() {
         <p>Questions about this policy or your data can be sent to:</p>
         <LegalContact name="Protonyx LLC" email="legal@protonyxdata.com" />
       </LegalSection>
-    </LegalPage>
+    </SimplePage>
   );
 }
