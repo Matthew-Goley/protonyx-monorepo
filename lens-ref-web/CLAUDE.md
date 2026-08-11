@@ -4,13 +4,28 @@ Reference for working in `lens-ref-web/`. Read this before changing anything her
 
 ## 1. What this is
 
-The pre-launch marketing landing page for **Lens Arc** (the web product that lives in `lens-app/`). The page has exactly one job: capture an email address before launch. Free access opens on a launch date, and signups earn free Pro time that scales with referrals.
+The full **lens-arc.com marketing site** for Lens Arc (the web product that lives in `lens-app/`, deployed separately at `app.lens-arc.com`). It grew out of the pre-launch referral landing page; the referral/waitlist flow still exists intact, relocated under `/referral`. The product is messaged as **launched and paid**: real payments, no "get started free" CTAs anywhere, and the referral program is framed as earned Pro time being redeemed (see §5 and §6).
 
-- **Wired to a real backend.** The signup flow (email -> magic-link verification -> post-verify referral readout) calls the **referral-service** (`referral-service/`, FastAPI on Railway) via `src/lib/api.ts`. It is no longer mocked. The base URL comes from `VITE_REFERRAL_API_URL` (defaults to `http://localhost:8000`; see `.env.example`).
-- **Not deployed yet.** The referral share-link domain is `lens-arc.com/r/...` (`content.ts` `referralLinkBase`); magic links point at `{FRONTEND_BASE_URL}/verify?token=...` (configured on the service side).
-- Standalone project on the frontend side: it shares no code, tooling, or build with `backend/`, `lens-api/`, `lens-app/`, or `referral-service/`. Its only runtime dependency is the referral-service HTTP API.
+A **persistent NavBar** (`src/components/NavBar.tsx`, mounted app-wide in `App.tsx`) sits fixed on every page: wordmark, Engine link, Referral program link, the account slot (`AccountMenu`, sign in from any page via the referral-service magic link), and the "Enter Lens Arc" CTA to `APP_URL`. The design is **Hairline** (winner of a 3-variant comparison; Float/Ledger and the switcher are deleted) and the bar is **theme-adaptive**: dark glass over `data-nav-dark` sections, light glass with dark text over white content (see §5).
 
-History, so the file names make sense: this started as five complete alternate layouts switched live with arrow keys. The product-preview layout (number 4) won; the other four and the switcher were deleted. `src/layouts/Layout4.tsx` keeps its historical name and is now the entire page. The post-verify readout (§5) went through the same "build several, compare, delete the losers" process separately, on a smaller scale.
+Routes (all matched by `src/App.tsx`, no router library):
+
+| Path | Page | Notes |
+|---|---|---|
+| `/` | `src/landing/LandingPage.tsx` | Landing page in the established house style (see §5) |
+| `/lens-arc` | `src/pages/EnginePage.tsx` | Plain-language technical dive into the Lens engine, trust-building for non-technical investors. Every claim grounded in `lens-api/CLAUDE.md` §11; do not invent capabilities |
+| `/legal/terms` | `src/pages/TermsPage.tsx` | Referral-program Terms, verbatim from `legal-raw/lens-arc-referral-terms.md` |
+| `/legal/privacy` | `src/pages/PrivacyPage.tsx` | Referral-site Privacy Policy, verbatim from `legal-raw/lens-arc-referral-privacy-policy.md` |
+| `/referral` | `src/layouts/Layout4.tsx` | The original referral landing page (historical file name), copy updated to post-launch messaging |
+| `/referral/ref/:code` | `src/layouts/Layout4.tsx` | Canonical referral share links (code captured by `useAccountFlow` on mount) |
+| `/verify?token=...` | `src/layouts/Layout4.tsx` | Magic-link return path, consumed by `useAccountFlow` on mount |
+
+**Legacy redirects (do not remove):** `/ref/:code` and `/r/:code` were shared publicly (DMs, LinkedIn) before the restructure. `App.tsx` rewrites them in place (`history.replaceState`, code preserved) to `/referral/ref/:code` before any page mounts. `/terms` and `/privacy` similarly rewrite to `/legal/terms` / `/legal/privacy`. Unknown paths fall through to the landing page.
+
+- **Wired to a real backend.** The signup flow (email -> magic-link verification -> post-verify hero readout) calls the **referral-service** (`referral-service/`, FastAPI on Railway) via `src/lib/api.ts`. Base URL from `VITE_REFERRAL_API_URL` (defaults to `http://localhost:8000`). The restructure did not touch `api.ts` or the flow's API logic, only where the flow lives and which paths it reads.
+- Standalone project on the frontend side: shares no code or build with `backend/`, `lens-api/`, `lens-app/`, or `referral-service/`. Its only runtime dependency is the referral-service HTTP API.
+
+History, so the file names make sense: the site started as five alternate pre-launch layouts switched with arrow keys; the product-preview layout won and kept its `Layout4.tsx` name (now the `/referral` page). The `/` landing page went through the same process during the restructure: four complete designs (Classic, Noir, Brutalist, Swiss) behind an arrow-key crossfade switcher, compared live; **Classic won** and the other three plus the switcher were deleted outright (git history only, not a reference to build from).
 
 ## 2. Commands
 
@@ -20,7 +35,7 @@ Run from `lens-ref-web/`:
 |---|---|---|
 | Install deps | `npm install` | |
 | Dev server | `npm run dev` | Vite, `http://localhost:5173` |
-| Type check | `npx tsc --noEmit` | Single flat `tsconfig.json` (not the solution-style setup lens-app has), so a bare `tsc --noEmit` works here |
+| Type check | `npx tsc --noEmit` | Single flat `tsconfig.json`, so a bare `tsc --noEmit` works here |
 | Build | `npm run build` | `tsc --noEmit && vite build` to `dist/` |
 | Preview build | `npm run preview` | |
 | Test / lint | *(none)* | No test framework, no linter. Match existing style (2-space indent, double quotes). |
@@ -28,161 +43,160 @@ Run from `lens-ref-web/`:
 ## 3. Stack
 
 - **Vite 6 + React 19 + TypeScript (strict)**. React plugin plus `@tailwindcss/vite`.
-- **Tailwind CSS v4**: no `tailwind.config.js`; theme tokens live in `src/index.css` under `@theme` (`--font-sans` Inter, `--font-display` Sora). Custom CSS in that file is `.dial-max` (a celebration glow, `prefers-reduced-motion`-guarded) and `.readout-drift` (a slow-drifting background glow, same guard); both are currently unused, they belonged to two of the four rejected readout layouts (see §5), left in case a future readout wants them.
+- **Tailwind CSS v4**: no `tailwind.config.js`; theme tokens live in `src/index.css` under `@theme`: `--font-sans` AND `--font-display` are both **Sora** (the one site face; `font-display` classes are redundant but harmless), and `--font-serif` is **Times New Roman**, reserved for the actual legal document bodies (via `SimplePage`'s `serif` prop). `src/index.css` also holds the landing hero glow (`.hero-pulse`, `prefers-reduced-motion`-guarded), the `.savings-slider` chrome, and the legacy `.dial-max` / `.readout-drift` (unused, kept for a future readout).
 - **lucide-react** for icons.
-- **@vercel/analytics** for Vercel Web Analytics: `<Analytics />` is mounted once in `src/main.tsx`, next to `<App />`. Import path is `@vercel/analytics/react` (the Vite/React entry), **not** `/next`, which is what the Vercel dashboard's default Next.js snippet shows. It is a no-op outside a Vercel deployment, so no dev-only guard is needed; page views only appear once the site is deployed with Web Analytics enabled for the project. Because `App.tsx` navigates with real `<a href>` full page loads (no client-side router), every route change is a fresh pageview automatically.
-- **Fonts** (Sora for display/wordmark, Inter for body) load from Google Fonts via `<link>` in `index.html`.
+- **@vercel/analytics**: `<Analytics />` mounted once in `src/main.tsx`. Import path is `@vercel/analytics/react`. All navigation is real `<a href>` full page loads, so every route change is a fresh pageview.
+- **Fonts** load from Google Fonts via `<link>` in `index.html`: **Sora only** (Times New Roman is a system font).
 
 ## 4. File map
 
 ```
 lens-ref-web/
-├── index.html                     # Font links, favicon (/lens-arc-icon.png), Open Graph/Twitter card meta (og:image -> /og-image.png), #root
-├── public/
-│   ├── lens-arc-icon.png          # Favicon, a copy of assets/lens-arc/icon-rounded.png
-│   └── og-image.png               # Link-preview image (og:image/twitter:image), a copy of assets/lens-arc/icon-square.png
+├── index.html                     # Font links, favicon, Open Graph/Twitter meta (og:image -> /og-image.png), #root
+├── vercel.json                    # Catch-all rewrite to /index.html (SPA fallback for every route)
+├── public/                        # lens-arc-icon.png (favicon), og-image.png (link preview)
 ├── assets/
-│   ├── lens-arc/                  # Brand artwork, mirror of lens-app/assets/lens-arc (see section 7)
-│   ├── video/                     # Demo videos, copies of frontend/assets/video (hero demo + 3 discovery clips)
-│   └── protonyx-company/          # Protonyx company wordmarks (white/black), present but not used yet
+│   ├── lens-arc/                  # Brand artwork, mirror of lens-app/assets/lens-arc (see §7)
+│   ├── video/                     # The four 2K 16:9 product recordings (see §7)
+│   └── protonyx-company/          # Protonyx wordmarks, still unused
 ├── src/
 │   ├── main.tsx                   # ReactDOM bootstrap + Vercel <Analytics /> mount
-│   ├── App.tsx                    # Plain path-based router: LEGAL_PAGES.terms/privacy.path -> their page, else Layout4
-│   ├── lib/
-│   │   └── api.ts                 # Typed referral-service client (join, verify, status); base URL from VITE_REFERRAL_API_URL
-│   ├── content.ts                 # SINGLE SOURCE OF TRUTH for all copy, dates, milestones, brand values, LEGAL_PAGES
-│   ├── index.css                  # Tailwind v4 @theme tokens + dial-max animation
-│   ├── vite-env.d.ts              # vite/client types (import.meta.env, .png imports)
+│   ├── App.tsx                    # Path router + legacy redirects (see §1 route table), wrapped in
+│   │                              # AccountProvider with the persistent NavBar above the routed page
+│   ├── content.ts                 # Copy/config source of truth: APP_URL, ROUTES, NAV, REFERRAL_REF_BASE,
+│   │                              # LEGACY_LEGAL_PATHS, HERO, REFERRAL_MILESTONES, BRAND,
+│   │                              # LEGAL_PAGES (/legal/* paths), COPY (paid-product microcopy + account strings)
+│   ├── index.css                  # Tailwind v4 @theme tokens + landing animations + the Mercury button
+│   │                              # mechanics ported from lens-app + the .fluid-btn hero-CTA sim (see §5 Buttons)
+│   ├── lib/api.ts                 # Typed referral-service client (join, verify, status) - UNCHANGED by restructure
 │   ├── hooks/
-│   │   └── useAccountFlow.ts      # Signup state machine + referral derivations + clipboard/share helpers
-│   ├── readouts/                  # The post-verify hero readout (see §5). Was a 5-way comparison; 4 were rejected
-│   │   │                          # wholesale ("none of them are close") and deleted, not tuned - do not resurrect
-│   │   │                          # them as a starting point, RingReadout/TicketReadout/TrackReadout/GlassReadout are gone.
-│   │   ├── shared.tsx             # useEntrance, RewardText, CopyChip, NextMilestoneLine, gradient - reusable readout bits
-│   │   └── SignalReadout.tsx      # The one kept, still mid-rework (see §5), not a finished design
-│   ├── layouts/
-│   │   └── Layout4.tsx            # The entire marketing page (historical name, winner of the 5-layout exploration)
-│   └── pages/                     # Simple, non-marketing pages, reached via real navigation (footer <a> tags), not
-│       │                          # the landing layout. See "Legal pages" in §5.
-│       ├── LegalPage.tsx          # Reusable plain shell (back link + logo, title, optional effectiveDate, content
-│       │                          # slot, footer) - reuse this for any future title+body page, not just legal ones
-│       ├── legalContent.tsx       # Typography primitives for a numbered legal doc (LegalSection, LegalList,
-│       │                          # LegalTable, LegalContact), shared by Terms/Privacy, reuse for any future doc
-│       ├── TermsPage.tsx          # LegalPage + full Terms of Service body, text sourced verbatim from
-│       │                          # legal-raw/lens-arc-referral-terms.md
-│       └── PrivacyPage.tsx        # LegalPage + full Privacy Policy body, text sourced verbatim from
-│                                  # legal-raw/lens-arc-referral-privacy-policy.md
-├── legal-raw/                     # Source-of-truth legal doc drafts (markdown), NOT wired into the build.
-│                                  # TermsPage.tsx/PrivacyPage.tsx are hand-transcribed from these; if the wording
-│                                  # here changes, the corresponding page component must be updated to match.
-├── package.json / tsconfig.json / vite.config.ts
+│   │   ├── useAccountFlow.ts      # Signup state machine. Routing-facing bits: captures /referral/ref/<code>
+│   │   │                          # (plus legacy /ref/<code>, /r/<code>, ?ref=), cleans URLs to /referral
+│   │   └── accountContext.tsx     # AccountProvider + useAccount(): the ONE shared flow instance (see §5)
+│   ├── components/
+│   │   ├── NavBar.tsx             # Persistent site nav (Hairline, comparison winner), theme-adaptive via
+│   │   │                          # the data-nav-dark section markers (see §5)
+│   │   ├── AccountMenu.tsx        # The nav's account slot: magic-link sign-in popover / earned-Pro summary
+│   │   ├── buttons.tsx            # Btn/BtnLink (lens-app Mercury roles) + HeroButton (static gradient hero CTA)
+│   │   └── SimplePage.tsx         # THE shared content-page template: title block, content slot, basic footer
+│   │                              # (no header of its own; the app-wide NavBar covers it). Used by /lens-arc
+│   │                              # and both /legal/* pages. Replaced pages/LegalPage.tsx.
+│   ├── landing/
+│   │   ├── LandingPage.tsx        # The / page: the established frontend/ house style (see §5)
+│   │   ├── SavingsSection.tsx     # The savings calculator section (slider -> 1% AUM fee vs Lens Arc, see §5)
+│   │   ├── landingContent.ts      # ALL landing copy (CLASSIC + SAVINGS incl. the calculator's math constants)
+│   │   │                          # + the VIDEOS map. Components never hardcode text
+│   │   └── shared.tsx             # Reveal (IntersectionObserver fade-up) + Clip (autoplay video)
+│   ├── readouts/                  # Post-verify hero readout (SignalReadout + shared.tsx), unchanged, still mid-rework
+│   ├── layouts/Layout4.tsx        # The /referral page (historical name). Post-launch copy; countdown replaced by LiveBadge
+│   └── pages/
+│       ├── EnginePage.tsx         # /lens-arc content (SimplePage shell)
+│       ├── legalContent.tsx       # Legal typography primitives (LegalSection/List/Table/Contact)
+│       ├── TermsPage.tsx          # SimplePage + Terms body (verbatim from legal-raw/)
+│       └── PrivacyPage.tsx        # SimplePage + Privacy body (verbatim from legal-raw/)
+├── legal-raw/                     # Source-of-truth legal doc drafts (markdown), NOT wired into the build
 └── CLAUDE.md                      # This file
 ```
 
 ## 5. Architecture
 
-### content.ts is the only place copy lives
+### content.ts and landingContent.ts are the only places copy lives
 
-Every user-facing string, date, and number renders from `src/content.ts`. Components never hardcode text. Exports:
+Components never hardcode text. `src/content.ts` holds shared copy/config (routes, nav, referral copy, legal page registry). `src/landing/landingContent.ts` holds the landing designs' copy (exports `CLASSIC`, `NOIR`, `BRUT`, `SWISS`, and `VIDEOS`) because it is large and landing-only. The pre-launch `LAUNCH_DATE` / countdown exports are gone; `COPY` now carries post-launch strings (`liveBadge`, `claimHeading`, `claimSub`, `openApp`, `alreadyHaveAccount`).
 
-- `LAUNCH_DATE` ("2026-08-11", placeholder) and `LAUNCH_DATE_DISPLAY` (derived human-readable form, e.g. "August 11, 2026"), shown as the heading of the footer countdown section (see below).
-- `HERO` (headline "Actionable Insight for Everyone." plus subhead) and `HERO_ACCENTS` (the words rendered in the brand gradient; matches the `frontend/` hero treatment). The headline casing deliberately matches `frontend/`, an exception to the sentence-case rule below. The headline is rendered as a **locked 3-line layout** ("Actionable" / "Insight" / "for Everyone.") regardless of viewport width, see `Headline()` in `Layout4.tsx`, not left to wrap naturally.
-- `HOW_IT_WORKS`, `REFERRAL_MILESTONES` (0/1/3/5/10 referrals), `BRAND` (gradient hexes + wordmark text).
-- `LEGAL_PAGES` (`{ terms: { path, title }, privacy: { path, title } }`): the single source of truth for both the footer link `href`/label and the route each resolves to in `App.tsx`, so they can't drift apart. See "Legal pages" below.
-- `COPY`: all microcopy, including template functions (`magicInstruction`, `nextStep`, `rewardShort`, `referralUnit`, `dialCaption`). `eyebrow` and `countdownUnits` were leftovers from the deleted layouts, kept "in case it comes back"; it did, they now back the footer countdown section (see below). `countdownCaption` ("until free access opens") is still a leftover, it briefly backed that section too but was cut for being redundant with the heading. `previewHeading`, `previewSub`, `dialCaption` are still unused, harmless, reuse or delete as needed. The post-verify reward card (dial + referral link) was removed from the page for now, so `unlockedWord`, `referralRowLabel`, `copyLabel`, `copiedLabel`, and `shareLabel` are currently unused too, kept in case it comes back.
-### The page (src/layouts/Layout4.tsx)
+`COPY.referralLinkBase` is `"lens-arc.com" + REFERRAL_REF_BASE` (i.e. `lens-arc.com/referral/ref/`), so newly copied share links use the canonical route. Old `lens-arc.com/r/<code>` links keep working through the App.tsx redirect.
 
-Light theme. Top to bottom: header (wordmark image left, bare `dd:hh:mm:ss` countdown text right, driven by `LAUNCH_DATE`), hero (gradient-accented headline, subhead, then an email capture form that, once verified, is replaced in the exact same slot by a `VerifiedBox`, disclaimer) beside a hero visual that is **either** the Vector demo video (logged out) **or** the post-verify readout (logged in), see below, a "how it works" walkthrough of three stacked rows (each a 16/9 `DemoWindow` discovery video on the left, gradient step number + title + detail on the right, copy from `HOW_IT_WORKS`), a five-node referral milestone stepper (horizontal on `md+`, stacked cards on mobile, static, not tied to the live referral count), **a second, centered section repeating the countdown (this time with labeled day/hour/minute/second tiles and the launch date) plus a second email box**, and the footer. The `VerifyDialog` (magic-link verification) renders at the page root whenever the flow step is `"verifying"`.
+### The landing page (src/landing/)
 
-`VerifiedBox` is the only thing rendered in the hero's signup slot once `flow.step === "account"`: a single bordered box, same `px-4 py-3` height as the email input it replaces, reading "Verified as `{email}`" with a check icon on the left (`COPY.verifiedAs`) and a small "Log out" link on the right (`flow.logout`). The same component is reused verbatim in the footer countdown section once verified, so that second email box doesn't sit there asking for an email that's already been submitted.
+`LandingPage.tsx` is the single `/` page, in the established Protonyx house style ported from `frontend/` (`index.html` + `landing.css`), set in Sora like the rest of the site: dark `#0c0f16` hero with the pulsing radial glow (`.hero-pulse`), teal/blue `#2dd4bf -> #38bdf8` gradient accents on the "Actionable Insight for Everyone." headline, macOS-framed demo windows (traffic-light chrome), dark three-step discovery walkthrough (the three discovery clips, headed "Three steps. One loop." with no eyebrow), **the savings calculator section**, a two-item light trust strip ("Nothing to connect." with an Unplug icon, "Your data is secure." with a ShieldCheck icon; the icons live in `TRUST_ICONS` in `LandingPage.tsx`, order-matched to `CLASSIC.trust`), light closing CTA ("Start now.", no eyebrow), footer. Credibility (the "real, tested" message) is carried by the real product recordings and the /lens-arc page; the old third trust item stating it outright was cut.
 
-### The footer countdown section (src/layouts/Layout4.tsx)
+**The savings calculator** (`SavingsSection.tsx`, between discovery and the trust strip) is a headline element, not a footnote: a range slider of money invested (25k-1M, default 250k) drives a live comparison card - a typical financial advisor fee (1% AUM) computed from the amount, Lens Arc's flat $120/year beneath it, and the difference as the big gradient "You'd save $X / year" number. All copy and every math constant (`advisorRate: 0.01`, `lensAnnual: 120`, slider bounds) live in `SAVINGS` in `landingContent.ts`; the asterisk footnote states the 1% AUM assumption and that the comparison is illustrative. Keep `lensAnnual` in sync with real Lens Arc pricing if it changes. Slider chrome is `.savings-slider` in `index.css` (the filled/unfilled track split is an inline gradient set by the component).
 
-Sits between the referral milestone stepper and the `<footer>`, its own `<section>`: `COPY.eyebrow` ("Free access opens") as a small uppercase label, `LAUNCH_DATE_DISPLAY` as the heading, 4 tiles (`bg-[#f6f7f9]` chips, one per entry in `parts` from `useCountdown()` zipped with `COPY.countdownUnits`) showing the zero-padded day/hour/minute/second counts with their unit labels underneath, then either `EmailCapture` or `VerifiedBox` depending on `flow.step`, same condition as the hero.
+The page carries the three required messages: the product is an investment tool that makes choosing stocks simple (hero + workflow), user data is secure (trust strip), and this is real, tested software (the four real product recordings + the /lens-arc page). Copy comes from `CLASSIC` in `landingContent.ts`; scroll sections fade in via `Reveal` (`shared.tsx`).
 
-**This `EmailCapture` is the same component as the hero's, not a copy**, called with two extra props the hero instance doesn't pass: `className="mx-auto"` (the default is `"max-w-lg"`, left-aligned for the hero's column; this one needs centering under the countdown) and `onSubmitted={() => window.scrollTo({ top: 0, behavior: "smooth" })}`. Both instances share the same `flow.email`/`flow.setEmail` state, so typing in one and switching to the other preserves whatever was typed. `EmailCapture`'s `submit()` handler now calls `flow.submitEmail()` (which returns `true`/`false` depending on whether the email passed validation and the verifying step actually opened) and only fires `onSubmitted` on `true`, so a validation error at the bottom never triggers a pointless scroll-to-top; a real submit does, landing the user back at the hero right as the `VerifyDialog` opens (a `fixed inset-0` overlay, so it's already visible mid-scroll regardless), meaning once they complete verification they're looking at the hero's `VerifiedBox`/readout, not stranded at the bottom of the page.
+This page was picked from a four-design comparison (Classic / Noir / Brutalist / Swiss behind an arrow-key crossfade switcher); the losers and the switcher are deleted, see §1 History and the Gotchas. The page has no header of its own anymore; the app-wide NavBar floats over the dark hero (the hero + discovery sections carry `data-nav-dark` for its adaptive theme). Its hero and closing primary CTAs are `HeroButton`s. The hero's "See the engine" is deliberately a **bare text link** (quieter than the CTA by design, don't promote it back to a button), and the closing section has a **single** CTA (the old "Check your Pro time" secondary button was removed; the closing sub-copy still mentions earned Pro time).
 
-`DemoWindow` is adapted from the `frontend/` `.demo-window` but deliberately drops its macOS-style chrome bar: just a rounded dark frame with a border and shadow around the clip. All videos are `autoPlay muted loop playsInline preload="metadata"`. The walkthrough is deliberately compact (capped at `max-w-5xl`, moderate step-number sizes) so it does not upstage the referral section. The earlier mocked diagnostic-report window (caution gauge + severity flags + action panel) was replaced by the hero video; recover it from git history if it is ever wanted back.
+### The nav (components/NavBar.tsx)
 
-### The post-verify readout (src/readouts/)
+Mounted once in `App.tsx`, fixed on every page. The design is **Hairline**, winner of a 3-variant arrow-key comparison (Float and Ledger, the switcher, and the `lens_nav_variant` localStorage key were all deleted with the loss): a slim h-12 translucent bar, links with gradient underline sweeps, and the Mercury-primary CTA. **It always carries the same controls** (a requirement, not a style choice): wordmark -> `/`, Engine -> `/lens-arc`, Referral program -> `/referral`, the `AccountMenu` slot (takes a `light` prop for its trigger colors), and "Enter Lens Arc" -> `APP_URL`.
 
-Once `flow.step === "account"`, the hero's demo-video slot is replaced by `SignalReadout` (imported directly in `Layout4.tsx`, no switcher). **Status: not settled.** This started as 5 candidate layouts (`Signal`/`Ring`/`Ticket`/`Track`/`Glass`) compared side by side through a temporary `ReadoutSwitcher` arrow control, same pattern as the earlier OTP-vs-magic-link comparison. The verdict was "none of them are close", but `Signal` was kept as the least-wrong starting point while the other four and the switcher were deleted outright (not tuned, not merged, just gone; don't go looking for `RingReadout` etc., they no longer exist and are not a reference to build from). Expect another pass at `SignalReadout` itself, it is not a finished design.
+**The bar is theme-adaptive.** Over a dark section it is dark glass (`bg-[#0c0f16]/70`, white links, white wordmark); over light content it flips to light glass (`bg-white/80`, slate links, dark wordmark), with all colors crossfading 300 ms and the two wordmark images crossfading in place, so it never reads as a murky gray strip on white. Detection: dark sections opt in with a **`data-nav-dark` attribute** (today: the landing hero + discovery sections); on every scroll/resize the bar probes whether a marked section covers its midline (y=24) and picks the theme. **Any new dark-background section must set `data-nav-dark`** or the bar will render its light theme on top of it.
 
-`Layout4.tsx` wraps `SignalReadout` in a plain `<div className="aspect-[16/9] scale-125">`, no background, no border, no shadow at all, it has never reproduced the video's crisp boxed frame and now has no box whatsoever. The `aspect-[16/9]` reserves the same layout footprint as the video (so nothing else on the page reflows when it swaps in) while `scale-125` (the native CSS `scale` property, not `transform: scale()`, so don't go looking for it on `getComputedStyle(...).transform`) renders it about 25% bigger than that reserved box, bleeding into the surrounding whitespace rather than being clipped to it. The ambient blur-glow div behind it (the ``.absolute -inset-6 rounded-[2rem] opacity-15 blur-2xl`` sibling in `Layout4.tsx`, shared with the logged-out video) is now the only backdrop the readout sits on, since there's no opaque panel to mask it, it reads as a soft color wash behind the text rather than a halo around a box.
+### The account (hooks/accountContext.tsx + components/AccountMenu.tsx)
 
-**Because there is no dark backdrop anymore, `SignalReadout`'s own colors are light-surface colors**, not the dark-surface ones the first draft used: the progress track is `bg-slate-900/10` (was `bg-white/10`, invisible on light), the link pill is `border-slate-200 bg-white shadow-sm` (was `border-white/10 bg-white/5`), and its text is `text-slate-600` (was `text-slate-300`) with the next-milestone caption at `text-slate-400`. If a future readout iteration brings back a dark panel, these will need to flip back; if it stays boxless, keep new elements on this light-surface palette to match.
+`AccountProvider` (App root) calls `useAccountFlow()` **once** and shares it via `useAccount()`. This is load-bearing: the flow consumes the single-use `/verify?token=` magic link on mount, so exactly one instance may exist — **never call `useAccountFlow()` directly from a component**; `Layout4` and `AccountMenu` both read the context. Because the verified code/email live in `localStorage`, the account shows on every page. `AccountMenu` is the nav's account slot: signed out it opens a popover with the magic-link email form (sign in from any page, including the landing page — submitting runs the same `flow.submitEmail()` the referral page uses, then shows the check-your-email state); signed in it shows the email, verified-referral count, the earned-Pro summary + redemption note, links to the app and `/referral`, and Log out.
 
-**The months number is the dominant element of the whole readout** (`text-8xl`, `font-display font-bold`, solid `text-slate-900`, deliberately not the brand gradient, the ask was specifically "black"). It's rendered by two local components in `SignalReadout.tsx`: `OdometerDigit` (a column of 0-9 stacked vertically inside an `overflow-hidden` box, `translateY(-{digit}em)` on a `transition-transform`) and `OdometerNumber` (two `OdometerDigit`s, always zero-padded to 2 digits, `"00"`/`"01"`/etc). Changing the `digit` prop mid-transition rolls visibly through every digit in between purely from the CSS transition interpolating the transform, no per-frame JS, so going from 1 to 4 rolls through 2 and 3 on the way, the "dial" effect. `monthsFromReward()` (back in `shared.tsx`) parses the number out of `flow.currentReward`; `useEntrance()` gates the displayed value at `0` until first paint so it always rolls up from `"00"` on mount, then rolls again from wherever it last landed on every milestone change, it never resets to 0 after the initial reveal. The maxed "Lifetime" tier isn't numeric, so it swaps the whole odometer out for a static ∞ glyph (same size/weight/color) plus a sparkle + "lifetime free" caption instead of "`{months}` month(s) free".
+### Buttons (components/buttons.tsx + the Mercury block in index.css)
 
-Below the number: the "month(s) free" / "lifetime free" caption, then the single-line next-milestone nudge (`NextMilestoneLine`, wraps `nextStepLine(flow)`), then the slim animated progress line, then the link row with `CopyChip` (icon-only copy button, ping-burst + checkmark swap, no text label). Shared bits any future readout should reuse live in `shared.tsx`: `useEntrance()`, `monthsFromReward()`, `CopyChip`, `NextMilestoneLine`, and the `gradient` string. `RewardText` (the old gradient-text reward display) and the dial-specific `MAX_MONTHS`/`useCountUp` helpers built for the now-deleted `RingReadout` were both removed since nothing uses them anymore, the odometer replaced what `RewardText` did and needed a different animation approach than `useCountUp`'s per-frame JS tween.
+The site replicates the **lens-app button experience**: the five Mercury role classes (`.btn-primary/.btn-secondary/.btn-ghost/.btn-accent/.btn-danger`) are ported from `lens-app/src/index.css` with the lens-app dark-theme color values inlined (flat fills, 160 ms color-only transitions, **no motion, no shadow**), and `Btn`/`BtnLink` wrap them with lens-app's geometry (h-10 / px-5 / 500 weight / 15 px radius / teal focus ring; sizes sm/lg). Keep the block in lockstep with lens-app's. **`HeroButton`** is the major-hero CTA (landing hero + closing): the house gradient at hero scale, static, with a Mercury-quiet hover (slight `brightness` darken, no motion, no lift, no glow). The earlier fluid/water-ripple canvas sim that lived here was **cut entirely** (git history only, do not resurrect).
+
+### The /referral page (src/layouts/Layout4.tsx)
+
+Deliberately minimal now: **hero + milestone timeline + footer, nothing else.** The page's job is "see the Pro time you earned and watch it redeem", not "get early access". Top to bottom: hero (gradient headline; subhead points program members at verifying to see their earned time; email capture (`COPY.emailCta` "Continue with email") or, once verified, `VerifiedBox` **plus `RedemptionNote`**; an "Already verified? Open Lens Arc" line; disclaimer; beside the demo video or the post-verify `SignalReadout`), the five-node milestone stepper (headed "The referral program", presented as the earning schedule), and the footer (legal links from `LEGAL_PAGES`). The `VerifyDialog` renders at the page root whenever the flow step is `"verifying"`. The page's own header is gone (the app-wide NavBar covers it, the hero pads past the fixed bar), and so are the old how-it-works video rows and the closing "Lens Arc is live" claim section (cut in the launch trim; the hero's `EmailCapture` is now the only one, though the component still accepts the `className`/`onSubmitted` props the removed second instance used).
+
+**`RedemptionNote`** (local to Layout4) renders under the `VerifiedBox`: the earned amount (`COPY.rewardSummary`/`rewardSummaryLifetime` from `flow.currentReward`) plus `COPY.redeemNote` (the time applies automatically when signing in to the app with the same email — matching the Terms §3 redemption language). The same summary + note appear in the nav's `AccountMenu`, so earned time is visible from any page. The flow comes from `useAccount()` (the shared context), not a local hook call; the email submit button uses `.btn-primary` (Mercury).
 
 ### The signup flow (hooks/useAccountFlow.ts)
 
-State machine `signup -> verifying -> account`, exposed as `useAccountFlow()` and typed as `AccountFlow`:
+Unchanged in its API logic (`/join`, `/verify`, `/status` via `src/lib/api.ts`; magic-link only; server-issued referral code; localStorage persistence under `lens_ref_code` / `lens_ref_email`; DEV-only `devSimulateVerify`). What the restructure touched, deliberately confined to routing:
 
-- `submitEmail()` is **async**: it regex-validates, then `POST`s `/join` (via `src/lib/api.ts`) with the email and any captured referral code, and opens the verifying step on success. It still **returns `true`/`false`** so the footer `EmailCapture`'s `onSubmitted` can react only on real success. `resendEmail()` re-`POST`s `/join` (the "Resend link" button). `dismissVerify()` goes back. `logout()` clears the persisted code/email from `localStorage` and resets state.
-- **Verification is magic-link only** (`Layout4.tsx`'s `VerifyDialog`): the emailed link opens the SPA at `/verify?token=...`, which the hook reads **on mount** and passes to `api.verify()`; on success it stores the server-issued code + email and shows the account view. The dialog's "I clicked the link" button is now **DEV-only** (`import.meta.env.DEV`) and calls `devSimulateVerify()` — a local preview that does not hit the server (stripped from production builds). Do not reintroduce an OTP switcher.
-- **Referral capture:** on mount the hook reads a `/r/<code>` share path (or `?ref=<code>`) and stashes the code to send on the next `/join`. Both URL forms are cleaned via `history.replaceState`.
-- **Referral code is server-issued** (returned by `/verify` and `/status`), not a client hash. The old FNV-1a `codeFromEmail` is gone. `referralLink` is `COPY.referralLinkBase + code`, displayed protocol-less (`lens-arc.com/r/...`); `SignalReadout.tsx`'s `CopyChip` prepends `https://` to that value at copy time so the clipboard contents are a real, clickable URL even though the displayed text stays bare.
-- **Persistence:** the verified code + email are stored in `localStorage` (keys `lens_ref_code` / `lens_ref_email`); on load the hook restores the account view and refreshes the live count via `GET /status`. A stale/unknown code (e.g. a DB reset) clears itself and falls back to signup.
-- Derivations from `REFERRAL_MILESTONES`: `currentReward`, `nextMilestone`, `progress` (`min(count / 10, 1)`), `maxed`. `referralCount` now comes from the server (`/verify`, `/status`), not a demo store. `nextStepLine(flow)` produces the single next-step sentence. Consumed by `SignalReadout` (see §5).
-- `useCopyToClipboard()` uses the real clipboard API (with a textarea fallback) and flips a `copied` flag for ~1.8 s, used by `CopyChip` in `src/readouts/shared.tsx`. `useShare()` wraps `navigator.share` when present but isn't wired into the readout (the ask was copy only; add a share affordance only if requested).
+- `referralCodeFromUrl()` matches `/referral/ref/<code>`, legacy `/ref/<code>` and `/r/<code>`, or `?ref=<code>`.
+- URL cleanup after capturing a code or consuming a `/verify` token now `history.replaceState`s to `/referral` (was `/`), so the user stays on the referral page.
 
-### App.tsx
+The `/verify` route must keep rendering the referral page in `App.tsx`; the hook only consumes the token if it mounts. **The hook is instantiated exactly once**, by `AccountProvider` in App.tsx — components read it via `useAccount()` (see "The account" above).
 
-`App.tsx` is a plain path-based router with **no router library**: it reads `window.location.pathname` once at render time and returns `TermsPage`/`PrivacyPage` on an exact match against `LEGAL_PAGES.terms.path`/`.privacy.path`, else `Layout4`. This is intentionally not client-side navigation, all links to these pages are real `<a href>` tags (full page load), so there's no route-change state to keep in sync and no need for a history listener. `vercel.json`'s catch-all rewrite to `/index.html` is what makes `/terms` and `/privacy` resolve on a fresh load or refresh, same mechanism already relied on for `/verify` and `/r/<code>` (see Gotchas).
+### The post-verify readout (src/readouts/)
 
-The old dev-only `DemoReferralControl` pill (which stepped a mock referral count) and the module-level demo store (`setDemoReferralCount` / `useDemoReferralCount`) were **removed** when the count went server-backed — preview every milestone by seeding referrals in the referral-service DB instead. For a quick visual check of the readout without a running backend, the `VerifyDialog`'s DEV-only "I clicked the link" button (`devSimulateVerify`) jumps to the account view.
+Unchanged by the restructure; see git history of this section if needed. `SignalReadout` (odometer months dial + referral link row) still replaces the hero video once `flow.step === "account"`, still mid-rework, still light-surface colors, wrapped in the boxless `aspect-[16/9] scale-125` div in `Layout4.tsx`.
 
-### Legal pages (src/pages/)
+### Simple content pages (SimplePage + pages/)
 
-`LegalPage.tsx` is a small, deliberately generic shell for **non-marketing** pages: a plain white background, a header with a "Back to home" link and the wordmark, an `<h1>{title}</h1>` with an optional `effectiveDate` line under it, an open `children` slot for the body, and a minimal footer with just `COPY.legal`. No gradients, no motion, no marketing copy, no `landing.css`-style flourish, it reads as a document rather than a continuation of the landing page. When `children` is omitted it falls back to an italic `"[{title} content goes here.]"` placeholder, useful for scaffolding a future page before its copy exists.
+`src/components/SimplePage.tsx` is the one shared template for content-first pages: sticky basic navbar (wordmark -> `/`, engine link, Get free Pro, dark "Get started" button -> `APP_URL`), `<h1>` + optional subtitle/effectiveDate, open children slot, basic footer (copyright + legal links + referral link). No hero, no gradients, no motion. It replaced `pages/LegalPage.tsx` (deleted). A `wide` prop widens the shell from `max-w-3xl` to `max-w-5xl` (EnginePage uses it).
 
-`legalContent.tsx` holds the typography primitives the body content is built from: `LegalSection` (numbered `<h2>` + spaced body), `LegalList` (bullet list), `LegalTable` (bordered header/rows table, used by the Terms rewards schedule), and `LegalContact` (name + `mailto:` line, used by both docs' "Contact Us" sections).
+`TermsPage.tsx` / `PrivacyPage.tsx`: both pass `serif` to `SimplePage`, so the document area (title + body) renders in **Times New Roman** (matching the old `frontend/` legal styling; the nav/footer chrome stays Sora). Bodies are unchanged, still hand-transcribed **verbatim** from `legal-raw/lens-arc-referral-terms.md` / `legal-raw/lens-arc-referral-privacy-policy.md` (the `legal-raw/*.md` files remain the source of truth and are not read at build time; update the page component when they change). Note these documents cover the **referral program / waitlist site**, not the Lens Arc application itself; both docs say the app will have its own separate Terms/Privacy, which do not exist in this repo yet.
 
-`TermsPage.tsx` and `PrivacyPage.tsx` render `LegalPage` with the full document body, **hand-transcribed verbatim from `legal-raw/lens-arc-referral-terms.md` and `legal-raw/lens-arc-referral-privacy-policy.md`** respectively (structure only: markdown `##` sections become `LegalSection`, bullet lists become `LegalList`, the rewards table becomes `LegalTable`, `**bold**` becomes `<strong>`; wording, punctuation, and dash characters are preserved exactly as written in the source, including the em/en dashes the rest of this app's copy avoids, this is transcribed legal text, not authored copy). The two `legal@protonyxdata.com` mentions in the Privacy Policy body (§7, §8) are wrapped in `mailto:` links as a functional improvement, the visible text is unchanged. **The `legal-raw/*.md` files are the source of truth and are not read at build time** (there's no markdown pipeline), so if their wording changes, the corresponding page component must be manually updated to match, they will silently drift otherwise.
-
-`LegalPage` and `legalContent.tsx` are written to be reused for any future "title + body" page (about, FAQ, a future doc), not just these two, that's the point of keeping them generic instead of building bespoke markup per page.
-
-The footer in `Layout4.tsx` renders a second row below the existing logo/disclaimer/copyright line, mapping `Object.values(LEGAL_PAGES)` to `<a href={page.path}>{page.title}</a>` — adding a third entry to `LEGAL_PAGES` in `content.ts` is enough to add another footer link and route, no other file needs touching except creating the page component itself and wiring it into `App.tsx`'s if-chain.
+`EnginePage.tsx` (/lens-arc): reassuring plain-language walkthrough of the engine for non-technical investors. Content is grounded in `lens-api/CLAUDE.md` §11 (8 analyzers, severity scale, caution score 1-99 formula shape, 11-level CTA priorities, sector-aware buys, risk tiers, Monte Carlo, determinism, the 50-portfolio x 3-tier parity harness) plus documented backend security facts (no brokerage credentials, httpOnly cookies, bcrypt, holdings excluded from the persisted client cache). **Do not add capabilities, stats, or advice-framed language the engine docs do not support.**
 
 ## 6. Copy rules
 
 - **No em dashes anywhere** (copy, comments, commit messages). Use a comma, colon, period, or hyphen.
-- **Sentence case only**, never Title Case or ALL CAPS. One sanctioned exception: the hero headline "Actionable Insight for Everyone." matches the `frontend/` hero verbatim.
+- **Sentence case only**, never Title Case or ALL CAPS in source strings. Two sanctioned exceptions: the hero headline "Actionable Insight for Everyone." (matches `frontend/`), and the Brutalist design which renders sentence-case strings uppercase via CSS.
 - **Tool-framed language** (diagnostic, analysis, flags, caution score). Never advice-framed language (recommend, guarantee, will outperform).
+- The product is **launched and paid**: never reintroduce "coming soon" / countdown-to-launch copy, and never write "free" CTAs ("Get started free", "Join free", etc.). The app CTA is "Enter Lens Arc". The only sanctioned "free" wording is about **already-earned referral Pro time** (which really is free time being redeemed) and the milestone schedule's reward labels.
 
 ## 7. Brand and media assets (assets/)
 
-`assets/lens-arc/` is mostly a mirror of `lens-app/assets/lens-arc/` (which is the source of truth for the shared files; recopy from there if that artwork changes), plus one file that's local to this project. Semantics:
-
-| File | What it is | Used here |
-|---|---|---|
-| `lens-arc-dark.png` | Full wordmark, dark text, for light surfaces | Header and footer logo in `Layout4.tsx` (imported from outside `src/`, which Vite allows) |
-| `lens-arc-white.png` | Full wordmark, white text, for dark surfaces | Not currently used (page is light) |
-| `arc-dark.png` / `arc-white.png` | The arc mark alone | Not currently used |
-| `icon-nobg.png` | Square icon mark, transparent background | Not currently used |
-| `icon-rounded.png` | Rounded app-tile icon | Copied to `public/lens-arc-icon.png` as the favicon |
-| `icon-square.png` | Square app-tile icon | Not currently used (was previously copied to `public/og-image.png`; superseded by `link-ad.png` below) |
-| `link-ad.png` | Link-preview ad graphic, **not** mirrored from `lens-app/` (lens-ref-web-only) | Copied to `public/og-image.png`, the Open Graph/Twitter card link-preview image. Recopy manually if this file is replaced; there's no build step wiring them together. |
-
-`assets/video/` holds copies of `frontend/assets/video/`, re-exported at 2K (2560x1440, 16:9):
+`assets/lens-arc/` is mostly a mirror of `lens-app/assets/lens-arc/` (source of truth; recopy if that artwork changes) plus the local `link-ad.png`:
 
 | File | Used here |
 |---|---|
-| `1vector_demo.mp4` | Hero demo window (16/9) |
-| `discovery_enter.mp4` | How-it-works step 1 (Add your positions) |
-| `discovery_read.mp4` | How-it-works step 2 (Get your caution score) |
-| `discovery_act.mp4` | How-it-works step 3 (See what to fix) |
+| `lens-arc-dark.png` | Wordmark on light surfaces: SimplePage nav, /referral header/footer, Classic design footer |
+| `lens-arc-white.png` | Wordmark on dark surfaces: Classic design nav, Noir design nav |
+| `arc-dark.png` / `arc-white.png` / `icon-nobg.png` / `icon-square.png` | Not currently used |
+| `icon-rounded.png` | Copied to `public/lens-arc-icon.png` (favicon) |
+| `link-ad.png` | Copied to `public/og-image.png` (link-preview image); recopy manually if replaced |
 
-The mapping lives in `STEP_VIDEOS` in `Layout4.tsx` and must stay aligned with the order of `HOW_IT_WORKS` in `content.ts`. `assets/protonyx-company/` holds the Protonyx company wordmarks (white and black); they are present but not used anywhere on the page yet.
+`assets/video/` holds the four product recordings, re-exported at 2K (2560x1440, 16:9), copies of `frontend/assets/video/`:
+
+| File | Used |
+|---|---|
+| `1vector_demo.mp4` | /referral hero; / hero demo window |
+| `discovery_enter.mp4` | / workflow step 1 |
+| `discovery_read.mp4` | / workflow step 2 |
+| `discovery_act.mp4` | / workflow step 3 |
+
+The landing page imports them through the `VIDEOS` map in `src/landing/landingContent.ts`; `Layout4.tsx` imports only `1vector_demo.mp4` (its how-it-works video rows were removed in the launch trim, so the discovery clips now appear only on `/`).
 
 ## 8. Gotchas
 
-- **Dev server port**: Vite defaults to 5173 and auto-increments if it is taken. The referral-service CORS allowlist covers `localhost:5173` and `5174`, so if Vite lands on a different port the API calls will fail CORS — either free up 5173/5174 or add the port to `allow_origins` in `referral-service/main.py`.
-- **`tsc --noEmit` is part of `npm run build`**; a type error fails the build, and `noUnusedLocals` means dead imports break it too.
-- The whole-page arrow-key switcher (the original 5-layout exploration) and the readout's own 5-way `ReadoutSwitcher` are both gone for good, do not reintroduce either. If another readout redesign needs comparing, a fresh temporary switcher is fine, but the four rejected layouts it deleted (`Ring`/`Ticket`/`Track`/`Glass`) are not a starting point, they were rejected wholesale.
-- **SPA fallback is required for `/verify`, `/r/<code>`, `/terms`, and `/privacy`.** None of these are real files, they're either read by `useAccountFlow` on load (`/verify`, `/r/<code>`, then cleaned to `/` via `history.replaceState`) or matched by `App.tsx`'s router (`/terms`, `/privacy`, which stay in the URL). Vite's dev server does history-API fallback automatically, so all four work in `npm run dev`. When the static build is deployed, the host must serve `index.html` for unmatched paths or these 404, `vercel.json`'s catch-all rewrite (`"/(.*)" -> "/index.html"`) is what does this on Vercel.
-- Verified state now **persists** across refreshes: the server-issued referral code + email are kept in `localStorage` (`lens_ref_code` / `lens_ref_email`) and the count is re-fetched via `GET /status` on load. Clearing those keys (or `flow.logout()`) returns to the signup step.
-- `REFERRAL_MILESTONES` drives three things at once: the account-flow derivations, the milestone stepper section, and `SignalReadout`. Changing tiers updates all of them, and **must be mirrored in `referral-service/entitlement.py`'s `MILESTONES`** — the backend computes entitlement from the same table, so the two will disagree if only one is changed.
-- **The Open Graph/Twitter meta tags in `index.html` hardcode `https://lens-arc.com`** for `og:url`, `og:image`, and `twitter:image`, matching `content.ts`'s `referralLinkBase`. Link-preview scrapers require an absolute URL for `og:image`, so it can't be relative; since the site isn't deployed yet, this is a placeholder pointing at the assumed eventual domain. If the real domain differs, update all three tags (and re-verify with a link-preview debugger, since most scrapers cache a fetched `og:image` aggressively).
+- **Dev server port**: Vite defaults to 5173 and auto-increments if taken. The referral-service CORS allowlist covers `localhost:5173`/`5174`; other ports fail CORS (free the port or add it to `allow_origins` in `referral-service/main.py`).
+- **`tsc --noEmit` is part of `npm run build`**; `noUnusedLocals` means dead imports break the build.
+- **SPA fallback is required for every route**: `/lens-arc`, `/legal/*`, `/referral`, `/referral/ref/<code>`, `/verify`, and the legacy `/ref/<code>`, `/r/<code>`, `/terms`, `/privacy`. None are real files; `vercel.json`'s catch-all rewrite serves `index.html` for all of them on Vercel, and Vite's dev server does history-API fallback automatically.
+- **The legacy redirects in `App.tsx` are load-bearing**: `/ref/<code>` and `/r/<code>` were distributed publicly pre-restructure. Removing them breaks real shared links. They rewrite via `history.replaceState` before any page mounts, which is what lets `useAccountFlow` capture the code from the canonical path.
+- Every arrow-key switcher this project has ever had is now deleted: the pre-launch 5-layout exploration, the readouts' `ReadoutSwitcher`, and the restructure's 4-design landing switcher. The rejected layouts (`Ring`/`Ticket`/`Track`/`Glass` readouts; `Noir`/`Brutalist`/`Swiss` landing designs) are gone wholesale and are not a reference to build from. If another comparison is ever needed, build a fresh temporary switcher and delete it with the losers.
+- **Exactly one `useAccountFlow()` instance may exist** (`AccountProvider`). A second instance would double-consume the single-use `/verify` magic-link token. Always read the flow through `useAccount()`.
+- Verified state persists in `localStorage` (`lens_ref_code` / `lens_ref_email`); the count refreshes via `GET /status` on load; a stale code clears itself back to signup.
+- **New dark-background sections must carry `data-nav-dark`**, or the adaptive NavBar renders its light theme over them (see §5 The nav). Every arrow-key comparison this project has run (landing designs, nav variants, readouts) is now resolved and deleted; the losers are git history, not references.
+- `REFERRAL_MILESTONES` drives the account-flow derivations, the /referral milestone stepper, and `SignalReadout`, and **must mirror `referral-service/entitlement.py`'s `MILESTONES`**.
+- **Open Graph meta in `index.html` hardcodes `https://lens-arc.com`** for `og:url`/`og:image`/`twitter:image`; update all three (and re-verify with a link-preview debugger) if the domain changes.
+- The app the nav's "Get started" button opens is `APP_URL` in `content.ts` (`https://app.lens-arc.com`), one place to change if the app domain moves.
