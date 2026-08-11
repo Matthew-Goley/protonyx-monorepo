@@ -170,12 +170,13 @@ indistinguishable from a Stripe one to the rest of the app. Lifetime →
 `plan_expires_at = NULL`. `stripe_customer_id` is left untouched (NULL for a
 referral-only user).
 
-> **Enforcement gap (known, deferred, out of scope).** The app gates access
-> purely on `subscription_status === 'active'` (`lens-app/src/lib/
-> subscription.ts`); nothing reads `plan_expires_at`. So a time-limited referral
-> grant will **not** auto-expire. If/when that matters, add a scheduled job that
-> flips `subscription_status` to `'inactive'` when `plan_expires_at < NOW()`. Do
-> not build it as part of this service.
+> **Expiry is enforced, lazily, by the Fastify backend.** `GET /me`
+> (`backend/src/routes/debug.ts`) downgrades any row with `plan = 'pro' AND
+> plan_expires_at IS NOT NULL AND plan_expires_at < NOW()` to `plan = 'free',
+> plan_expires_at = NULL` before returning the profile, so a time-limited grant
+> written here does auto-expire and **no scheduled job is needed**. Note the
+> backend treats `plan` as the source of truth for access, not
+> `subscription_status`. Do not build expiry into this service.
 
 ---
 

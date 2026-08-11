@@ -45,14 +45,14 @@ LENS_APP_URL=http://localhost:5173  # frontend URL for Stripe redirect URLs
 
 | Method | Path | Auth | Description |
 |---|---|---|---|
-| POST | `/signup` | - | Create account (beta-gated) |
+| POST | `/signup` | - | Create account (beta-gated); converts a matching waitlist entry into free Pro time |
 | POST | `/login` | - | Login — sets httpOnly `session` cookie (7 days) AND returns `token` in body for non-browser callers |
 | POST | `/logout` | - | Clears the `session` cookie |
 | GET | `/verify-email?token=` | - | Verify email address |
 | POST | `/resend-verification` | JWT | Re-send verification email |
 | POST | `/forgot-password` | - | Request password reset link |
 | POST | `/reset-password` | - | Set new password via reset token |
-| GET | `/me` | JWT | Full user profile |
+| GET | `/me` | JWT | Full user profile; lazily expires a lapsed free-Pro trial before responding |
 | GET | `/protected` | JWT | Smoke test |
 | POST | `/download` | JWT | Increment download counter |
 | GET | `/version` | - | Current Vector app version |
@@ -90,6 +90,7 @@ Auth is resolved by `src/middleware/authenticate.ts`, which checks `Authorizatio
 | `src/routes/subscription.ts` | /subscription/status |
 | `src/constants.ts` | CURRENT_TOS_VERSION, CURRENT_EULA_VERSION |
 | `src/betaConfig.ts` | BETA_ACTIVE, MAX_BETA_USERS (read from env) |
+| `src/waitlist.ts` | `grantWaitlistProTime()` - converts a verified referral-waitlist entry into earned free Pro time at signup (one transaction, never throws) |
 | `src/version.json` | Latest Vector app version string |
 | `src/email.ts` | Resend send helpers (fire-and-forget) |
 | `src/emailTemplates.ts` | Inline HTML for welcome + verify + reset emails |
@@ -100,6 +101,8 @@ Auth is resolved by `src/middleware/authenticate.ts`, which checks `Authorizatio
 - **`positions` table** is created with `CREATE TABLE IF NOT EXISTS` (persists in prod, dropped only in dev). One row per `(user_id, ticker)`. `NUMERIC` columns come back as strings from node-postgres, so `routes/positions.ts` coerces them to numbers via `rowToPosition()` before responding.
 - **Per-user prefs are in Postgres, not cookies.** `users.risk_tier` (onboarding profile, `null` until set) and `users.settings` (JSONB blob: theme, date_format, dashboard layout, and the four analyze tuning blocks) replaced the old lens-app cookies. `/me` returns both; `routes/settings.ts` writes them (`PUT /settings` is a top-level `settings || $1::jsonb` merge, so each key sent replaces that whole key).
 - **Stripe webhook needs the raw body.** `routes/stripe.ts` overrides the `application/json` parser in its plugin scope to receive a raw `Buffer` (required for signature verification); non-webhook routes in that scope `JSON.parse` the buffer manually. The webhook route sets `config: { rateLimit: false }` so Stripe can deliver events freely. It maps events to users via `metadata.userId` (checkout) or `stripe_customer_id` (subscription/invoice).
+- **Waitlist conversion must never block a signup.** `src/waitlist.ts` runs at the end of `POST /signup` and swallows every failure (no match, unverified, already redeemed, or no `waitlist` table in this environment, which Fastify never creates since `referral-service` owns that DDL). Keep it in a try/catch that returns `0`. It claims the row with `FOR UPDATE` inside one transaction so a concurrent `referral-service` `POST /redeem` cannot double-grant.
+- **`plan` is the source of truth for access; `plan_expires_at IS NULL` means "never expires."** Earned waitlist time sets both (`plan='pro'` + a real expiry); `GET /me` lazily downgrades a lapsed one to `plan='free', plan_expires_at=NULL`. All three Stripe webhook branches write `plan_expires_at` explicitly so a paying subscriber is never caught by that expiry. **Do not gate on `subscription_status`**: it is stale in production (every row reads `'inactive'`) and this feature deliberately neither reads nor writes it.
 - **CORS allowlist** is hardcoded in `server.ts`. Current origins: 5500/5501 (static frontend), 5173 (lens-app Vite), `protonyxdata.com`, `app.use-lens.com`. Methods: `GET, POST, PUT, DELETE, PATCH` (`PUT` is needed for `PUT /positions` bulk-replace). `credentials: true` must stay set — without it browsers will not send the session cookie. Adding any new origin requires editing `server.ts`.
 - **Session cookie flags** are environment-gated: `sameSite: lax, secure: false` in dev (localhost cross-port); `sameSite: none, secure: true` in prod (cross-domain). Do not flatten to one value.
 - **`@fastify/cookie`** must be registered before any route that reads or sets the cookie. Registration is in `server.ts` after the CORS plugin.

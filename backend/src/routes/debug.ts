@@ -30,6 +30,21 @@ export default async function debugRoutes(app: FastifyInstance) {
     // Current user profile (protected)
     // Never select password or stripe_customer_id.
     app.get("/me", { preHandler: authenticate }, async (request: any, reply: any) => {
+        // Lazy expiry of earned free Pro time. A lapsed trial is downgraded here,
+        // before the profile is read, so `plan` stays the single honest source of
+        // truth for access and nothing downstream needs its own expiry logic.
+        // Paying subscribers are never caught by this: Stripe grants explicitly
+        // set plan_expires_at to NULL.
+        await pool.query(
+            `UPDATE users
+             SET plan = 'free', plan_expires_at = NULL
+             WHERE id = $1
+               AND plan = 'pro'
+               AND plan_expires_at IS NOT NULL
+               AND plan_expires_at < NOW()`,
+            [request.user.id]
+        );
+
         const result = await pool.query(
             `SELECT id, username, email, plan, plan_expires_at, member_since,
                     last_login, beta_access, download_count, email_verified, is_active,

@@ -7,6 +7,7 @@ import { sendWelcomeEmail, sendVerificationEmail, sendPasswordResetEmail } from 
 import { authenticate } from "../middleware/authenticate";
 import { CURRENT_TOS_VERSION } from "../constants";
 import { BETA_ACTIVE, MAX_BETA_USERS } from "../betaConfig";
+import { grantWaitlistProTime } from "../waitlist";
 
 const JWT_SECRET = process.env.JWT_SECRET as string;
 
@@ -66,12 +67,22 @@ export default async function authRoutes(app: FastifyInstance) {
         const hashedPassword = await bcrypt.hash(password, 10);
 
         // Push to db. New accounts auto-accept the current TOS version at
-        // creation time (the signup form carries the agreement notice).
-        await pool.query(
+        // creation time (the signup form carries the agreement notice). They start
+        // on 'free': Pro is only ever granted by the waitlist conversion below or
+        // by a real Stripe subscription.
+        const insertResult = await pool.query(
             `INSERT INTO users (username, email, password, plan, beta_access, tos_version_accepted, tos_accepted_at)
-            VALUES ($1, $2, $3, 'pro', true, $4, NOW())`,
+            VALUES ($1, $2, $3, 'free', true, $4, NOW())
+            RETURNING id`,
             [username, email, hashedPassword, CURRENT_TOS_VERSION]
         );
+        const newUserId = insertResult.rows[0].id as number;
+
+        // Waitlist conversion: if this email verified on the referral waitlist and
+        // has not claimed yet, convert the entry into earned free Pro time.
+        // Best-effort - every failure path inside returns 0 without throwing, so a
+        // missing match (or a missing waitlist table) never blocks a signup.
+        await grantWaitlistProTime(newUserId, email);
 
         // Issue email-verification token and store it on the new row
         const verificationToken = crypto.randomBytes(32).toString("hex");

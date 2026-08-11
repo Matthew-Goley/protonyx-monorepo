@@ -107,8 +107,11 @@ export default async function stripeRoutes(app: FastifyInstance) {
                 const userId = session.metadata?.userId;
                 const customerId = session.customer as string;
                 if (userId) {
+                    // plan_expires_at is cleared explicitly: a real subscriber must
+                    // never carry a trial expiry left over from earned waitlist time,
+                    // or GET /me's lazy expiry would eventually downgrade them.
                     await pool.query(
-                        "UPDATE users SET plan = 'pro', subscription_status = 'active', stripe_customer_id = $1 WHERE id = $2",
+                        "UPDATE users SET plan = 'pro', subscription_status = 'active', plan_expires_at = NULL, stripe_customer_id = $1 WHERE id = $2",
                         [customerId, parseInt(userId, 10)]
                     );
                 }
@@ -117,8 +120,10 @@ export default async function stripeRoutes(app: FastifyInstance) {
             case "customer.subscription.deleted": {
                 const subscription = event.data.object as Stripe.Subscription;
                 const customerId = subscription.customer as string;
+                // Dropping to free also clears any expiry so no stale trial date
+                // is left behind on a non-Pro row.
                 await pool.query(
-                    "UPDATE users SET plan = 'free', subscription_status = 'cancelled' WHERE stripe_customer_id = $1",
+                    "UPDATE users SET plan = 'free', subscription_status = 'cancelled', plan_expires_at = NULL WHERE stripe_customer_id = $1",
                     [customerId]
                 );
                 break;
@@ -127,7 +132,7 @@ export default async function stripeRoutes(app: FastifyInstance) {
                 const invoice = event.data.object as Stripe.Invoice;
                 const customerId = invoice.customer as string;
                 await pool.query(
-                    "UPDATE users SET plan = 'free', subscription_status = 'inactive' WHERE stripe_customer_id = $1",
+                    "UPDATE users SET plan = 'free', subscription_status = 'inactive', plan_expires_at = NULL WHERE stripe_customer_id = $1",
                     [customerId]
                 );
                 break;
