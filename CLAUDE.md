@@ -57,6 +57,7 @@ _monorepo/
 │   │       ├── stripe.ts          # /stripe/create-checkout-session, /stripe/portal, /stripe/webhook
 │   │       ├── subscription.ts    # /subscription/status
 │   │       ├── positions.ts       # /positions CRUD (GET, PUT bulk-replace, POST add/upsert, PATCH :ticker, DELETE :ticker) - per-user portfolio in Postgres
+│   │       ├── notifications.ts   # GET /notifications (newest first, capped 50) + PATCH /notifications/read (bulk mark-read) - backs the lens-app TopBar popover
 │   │       └── settings.ts        # PUT /settings/risk-tier (users.risk_tier) + PUT /settings (users.settings JSONB merge) - per-user prefs in Postgres
 │   ├── package.json
 │   ├── tsconfig.json
@@ -311,7 +312,7 @@ If `RESEND_API_KEY` is missing, signup still succeeds — `sendWelcomeEmail` is 
    - `https://protonyxdata.com`
    - `https://app.use-lens.com`
    Methods: `GET, POST, PUT, DELETE, PATCH` (`PUT` was added for `PUT /positions` bulk-replace - a JSON `PUT` triggers a CORS preflight, so the method must be allowlisted). `credentials: true` is set so the lens-app can send the httpOnly session cookie. Adding any new origin (staging URL, another deployed frontend) requires editing this list in `server.ts`.
-3. **Route modules**: `authRoutes`, `debugRoutes`, `legalRoutes`, `betaRoutes`, `stripeRoutes`, `subscriptionRoutes`, `positionsRoutes`, `settingsRoutes`. All are mounted at the **root path** with no prefix. The `/protected` and `/me` endpoints live under `debug.ts` for historical reasons even though they are not strictly debug, the `/legal/*` endpoints live under `legal.ts`, the public `/beta/status` endpoint lives under `beta.ts`, the Stripe checkout/portal/webhook endpoints live under `stripe.ts`, `GET /subscription/status` lives under `subscription.ts`, the `/positions` CRUD lives under `positions.ts`, and `PUT /settings/risk-tier` lives under `settings.ts`.
+3. **Route modules**: `authRoutes`, `debugRoutes`, `legalRoutes`, `betaRoutes`, `stripeRoutes`, `subscriptionRoutes`, `positionsRoutes`, `settingsRoutes`, `notificationsRoutes`. All are mounted at the **root path** with no prefix. The `/protected` and `/me` endpoints live under `debug.ts` for historical reasons even though they are not strictly debug, the `/legal/*` endpoints live under `legal.ts`, the public `/beta/status` endpoint lives under `beta.ts`, the Stripe checkout/portal/webhook endpoints live under `stripe.ts`, `GET /subscription/status` lives under `subscription.ts`, the `/positions` CRUD lives under `positions.ts`, and `PUT /settings/risk-tier` lives under `settings.ts`.
 
    `stripeRoutes` overrides the `application/json` content-type parser in its plugin scope to receive raw `Buffer` bodies - required for Stripe webhook signature verification. Non-webhook routes in that scope parse the buffer manually with `JSON.parse((request.body as Buffer).toString())`. The webhook route also sets `config: { rateLimit: false }` to skip the global rate limiter so Stripe can deliver events freely.
 
@@ -389,8 +390,9 @@ CREATE TABLE IF NOT EXISTS positions (
 -- positions (persists in prod, dropped/recreated in dev), created AFTER users
 -- because of the FK. `type` is a free-text discriminator so the client can pick
 -- an icon later; `is_read` follows the is_active naming already on users.
--- WRITE-ONLY today: the only writer is grantWaitlistProTime() and nothing reads
--- it yet (the lens-app TopBar popover is still hardcoded) - see below.
+-- Written by grantWaitlistProTime(); read via GET /notifications and cleared via
+-- PATCH /notifications/read (routes/notifications.ts), which back the lens-app
+-- TopBar notification popover.
 CREATE TABLE IF NOT EXISTS notifications (
     id         SERIAL PRIMARY KEY,
     user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -423,7 +425,7 @@ The `eula_version_accepted` / `eula_accepted_at` pair tracks End User License Ag
 
 The `positions` table holds the user's portfolio, one row per `(user_id, ticker)` (unique), matching the lens-app `Position` shape (`ticker, shares, equity, price, sector?, name?, added_at`). It is served by `routes/positions.ts` (see the endpoints table). `shares`/`equity`/`price` are `NUMERIC`, which node-postgres returns as **strings**, so the route layer coerces them back to numbers via a single `rowToPosition()` mapper before responding. `ON DELETE CASCADE` on the FK means deleting a user removes their positions automatically.
 
-The `notifications` table holds per-user in-app messages. **It is write-only today:** the only code that inserts into it is `grantWaitlistProTime()` (see below), and nothing reads it yet - there is no `GET /notifications` route, and the lens-app `TopBar` notification popover is still a hardcoded "No new notifications." placeholder. Wiring the read path (route + popover) is the outstanding follow-up; until then a granted user's notification exists in the DB but is invisible in the UI.
+The `notifications` table holds per-user in-app messages. The only code that inserts into it is `grantWaitlistProTime()` (see below); it is read by `GET /notifications` and cleared by `PATCH /notifications/read` (`routes/notifications.ts`), which back the lens-app `TopBar` notification popover. Read and unread rows are returned together, newest first, capped at 50 - a read notification stays in the list, it just stops counting toward the unread indicator.
 
 **Critical dev behavior:** when `NODE_ENV=development`, the `notifications`, `positions`, and `users` tables are **dropped and recreated on every boot** (the two child tables first, because of the FK). Every restart of `npm run dev` wipes all accounts + positions and re-seeds `testuser` (password `password123`) plus 2-3 sample positions so dev lands on a populated dashboard. This is intentional during early schema churn — there is no migration tooling, so dropping is the simplest way to apply schema changes. Do **not** run dev mode against a database that holds data you care about. In any other environment (`NODE_ENV !== "development"`), the `DROP` and seeds are skipped and `CREATE TABLE IF NOT EXISTS` runs as normal, so `positions` persists in prod exactly like `users`.
 
@@ -495,6 +497,8 @@ The error field is always named `message`. The frontend (`auth.js`) reads `data.
 | `PATCH` | `/positions/:ticker` | ✅ | `{ shares }` | Edit a holding's share count; recomputes `equity = price * shares` server-side (matches `usePositionsManager.updateShares`). Non-positive/absent `shares` → 400. Ownership-scoped (`WHERE user_id = $1 AND ticker = $2`); `rowCount` 0 → 404. Returns `{ success: true, position }`. |
 | `DELETE` | `/positions/:ticker` | ✅ | — | Ownership-scoped delete; `rowCount` 0 → 404. Returns `{ success: true, message: "Position removed" }`. |
 | `PUT` | `/settings/risk-tier` | ✅ | `{ risk_tier }` | Sets the authenticated user's `users.risk_tier` column. Accepts `"low"`/`"regular"`/`"high"`, or `null` to clear it (used by Settings "Clear Data"). Anything else → 400. User row not found → 401. Returns `{ success: true, risk_tier }`. The client reads the value back via `GET /me`. Lives in `routes/settings.ts`. |
+| `GET` | `/notifications` | ✅ | — | Returns `{ success: true, notifications: Notification[] }` for the authenticated user, **newest first** (`ORDER BY created_at DESC, id DESC` - `id` is the tiebreaker because `created_at` defaults to the transaction clock, so rows written in one transaction share it), capped at 50. Read **and** unread rows are returned together. Each row is `{ id, type, message, is_read, created_at }`, pinned by a `rowToNotification()` mapper (no type coercion needed, unlike positions' NUMERIC columns). Lives in `routes/notifications.ts`. |
+| `PATCH` | `/notifications/read` | ✅ | `{ ids?: number[] }` | **Bulk** mark-read, returning `{ success: true, updated: <rowCount> }`. Bulk rather than per-id because the UI marks a whole popover's worth at once and a per-id route would mean N requests against the 20/60s rate limit for one popover open. When `ids` is present it marks exactly those rows (the client sends the ids it displayed, so a notification arriving between the fetch and this call is never marked read unseen); a non-array `ids` → 400, an empty array → `updated: 0`. Omitting `ids` entirely marks **every** unread row, which backs a future "mark all read" control (nothing calls that yet). Always ownership-scoped on `user_id`, so another account's id silently matches nothing. |
 | `PUT` | `/settings` | ✅ | partial settings object | **Shallow-merges** the body into `users.settings` (JSONB) via Postgres `settings = settings \|\| $1::jsonb` - a top-level merge, so each key in the body **replaces** that whole key (the client sends nested blocks like `volatility` complete, never partial). Body must be a JSON object (not null/array) → else 400. User row not found → 401. Returns `{ success: true, settings }` (the full merged blob). Backs theme, date_format, dashboard layout, and the analyze tuning blocks (direction_thresholds/volatility/lens_signals/monte_carlo). Lives in `routes/settings.ts`. |
 
 There is **no** `/notes`, `/getnotes`, `/notes/:id` endpoint. Earlier docs referenced them; they have been removed.

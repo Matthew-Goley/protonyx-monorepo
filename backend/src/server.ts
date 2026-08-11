@@ -12,6 +12,7 @@ import stripeRoutes from "./routes/stripe";
 import subscriptionRoutes from "./routes/subscription";
 import positionsRoutes from "./routes/positions";
 import settingsRoutes from "./routes/settings";
+import notificationsRoutes from "./routes/notifications";
 
 const app = Fastify();
 
@@ -46,6 +47,7 @@ app.register(stripeRoutes);
 app.register(subscriptionRoutes);
 app.register(positionsRoutes);
 app.register(settingsRoutes);
+app.register(notificationsRoutes);
 
 // Start server
 const start = async () => {

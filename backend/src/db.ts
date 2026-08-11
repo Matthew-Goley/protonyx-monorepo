@@ -69,10 +69,9 @@ const setup = async () => {
     // it is dropped and recreated on every boot alongside users (see the drop
     // block above). Placed after users because of the FK.
     //
-    // Currently WRITE-ONLY: the only writer is grantWaitlistProTime() in
-    // waitlist.ts, and nothing reads it yet - the lens-app TopBar notification
-    // popover is still a hardcoded "No new notifications." placeholder. A
-    // GET /notifications route and the popover wiring are the follow-up.
+    // Written by grantWaitlistProTime() in waitlist.ts; read and marked read by
+    // routes/notifications.ts (GET /notifications, PATCH /notifications/read),
+    // which backs the lens-app TopBar notification popover.
     //
     // `type` is a free-text discriminator so the client can pick an icon later
     // ('waitlist_pro_grant' is the first and only value in use); `is_read`

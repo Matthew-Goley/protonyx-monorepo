@@ -70,6 +70,8 @@ LENS_APP_URL=http://localhost:5173  # frontend URL for Stripe redirect URLs
 | DELETE | `/positions/:ticker` | JWT | Remove a holding |
 | PUT | `/settings/risk-tier` | JWT | Set `users.risk_tier` (`low`/`regular`/`high`/`null`) |
 | PUT | `/settings` | JWT | Shallow-merge into `users.settings` JSONB (theme, date_format, layout, analyze tuning blocks) |
+| GET | `/notifications` | JWT | The user's notifications, newest first, capped at 50 (read and unread together) |
+| PATCH | `/notifications/read` | JWT | Bulk mark-read: `{ ids }` marks those rows, omitting `ids` marks all unread |
 
 Auth is resolved by `src/middleware/authenticate.ts`, which checks `Authorization: Bearer <token>` first, then falls back to the `session` httpOnly cookie. Both paths work — the static frontend and desktop app use bearer tokens; lens-app uses the cookie.
 
@@ -86,6 +88,7 @@ Auth is resolved by `src/middleware/authenticate.ts`, which checks `Authorizatio
 | `src/routes/beta.ts` | /beta/status |
 | `src/routes/positions.ts` | /positions CRUD (per-user portfolio; NUMERIC coerced to numbers via rowToPosition) |
 | `src/routes/settings.ts` | PUT /settings/risk-tier (users.risk_tier), PUT /settings (users.settings JSONB shallow-merge) |
+| `src/routes/notifications.ts` | GET /notifications (newest first, capped 50), PATCH /notifications/read (bulk mark-read) |
 | `src/routes/stripe.ts` | /stripe/create-checkout-session, /stripe/portal, /stripe/webhook (raw Buffer body in this plugin scope) |
 | `src/routes/subscription.ts` | /subscription/status |
 | `src/constants.ts` | CURRENT_TOS_VERSION, CURRENT_EULA_VERSION |
@@ -98,7 +101,7 @@ Auth is resolved by `src/middleware/authenticate.ts`, which checks `Authorizatio
 ## Critical behaviors to preserve
 
 - **Dev mode wipes the DB on every boot** (`NODE_ENV=development` triggers `DROP TABLE notifications CASCADE`, `DROP TABLE positions CASCADE`, then `DROP TABLE users CASCADE`, and reseeds `testuser` + sample positions). The child tables are dropped first because `DROP users CASCADE` only removes the FK, not the child rows. Never run dev against a database with real accounts.
-- **`notifications` is write-only right now.** `grantWaitlistProTime()` is its only writer; there is no `GET /notifications` route and the lens-app TopBar popover is still a hardcoded placeholder, so nothing surfaces these rows yet. Wiring the read path is the follow-up. The insert sits **after** the grant's COMMIT in its own try/catch on purpose: Postgres aborts a transaction on any statement error, so an in-transaction insert could not fail non-fatally and would cost the user real earned Pro time. Only the waitlist path notifies; the Stripe webhook branches do not.
+- **`notifications`**: written only by `grantWaitlistProTime()`, read by `routes/notifications.ts` (`GET /notifications`, `PATCH /notifications/read`) which backs the lens-app TopBar popover. The insert sits **after** the grant's COMMIT in its own try/catch on purpose: Postgres aborts a transaction on any statement error, so an in-transaction insert could not fail non-fatally and would cost the user real earned Pro time. Only the waitlist path notifies; the Stripe webhook branches do not. Mark-read is **bulk** (`PATCH /notifications/read` with the ids on screen, or no ids to clear all) rather than per-id, so one popover open costs one request against the 20/60s rate limit.
 - **`positions` table** is created with `CREATE TABLE IF NOT EXISTS` (persists in prod, dropped only in dev). One row per `(user_id, ticker)`. `NUMERIC` columns come back as strings from node-postgres, so `routes/positions.ts` coerces them to numbers via `rowToPosition()` before responding.
 - **Per-user prefs are in Postgres, not cookies.** `users.risk_tier` (onboarding profile, `null` until set) and `users.settings` (JSONB blob: theme, date_format, dashboard layout, and the four analyze tuning blocks) replaced the old lens-app cookies. `/me` returns both; `routes/settings.ts` writes them (`PUT /settings` is a top-level `settings || $1::jsonb` merge, so each key sent replaces that whole key).
 - **Stripe webhook needs the raw body.** `routes/stripe.ts` overrides the `application/json` parser in its plugin scope to receive a raw `Buffer` (required for signature verification); non-webhook routes in that scope `JSON.parse` the buffer manually. The webhook route sets `config: { rateLimit: false }` so Stripe can deliver events freely. It maps events to users via `metadata.userId` (checkout) or `stripe_customer_id` (subscription/invoice).

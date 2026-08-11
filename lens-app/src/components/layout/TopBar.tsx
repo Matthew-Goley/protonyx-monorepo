@@ -5,6 +5,7 @@ import { cn } from '@/lib/utils'
 import { useTheme } from '@/contexts/ThemeContext'
 import { useAuth } from '@/contexts/AuthContext'
 import { useTickerSearch } from '@/hooks/useTickerSearch'
+import { useNotifications, useMarkNotificationsRead } from '@/hooks/useNotifications'
 import { loadSearchHistory, recordSearch, clearSearchHistory } from '@/lib/searchHistory'
 
 /** A row rendered in the search dropdown - either a live search hit or a saved
@@ -212,20 +213,150 @@ function ThemeToggle() {
   )
 }
 
+/** Relative age for a notification row: "Just now", "4h ago", "3d ago", then an
+ *  absolute date past a week. Hardcodes en-US like the rest of the app's date
+ *  formatting (Profile, EquityChart); the `date_format` user setting is stored
+ *  but not yet consumed anywhere. */
+function timeAgo(iso: string): string {
+  const then = new Date(iso)
+  const seconds = Math.floor((Date.now() - then.getTime()) / 1000)
+  if (!Number.isFinite(seconds) || seconds < 60) return 'Just now'
+  const minutes = Math.floor(seconds / 60)
+  if (minutes < 60) return `${minutes}m ago`
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return `${hours}h ago`
+  const days = Math.floor(hours / 24)
+  if (days < 7) return `${days}d ago`
+  return then.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+}
+
+/** Bell + notification feed, read from the server via useNotifications.
+ *
+ *  This popover is click-open rather than hover-open (the pattern the sibling
+ *  SecurityLock still uses): a hover popover is `pointer-events-none`, so its
+ *  contents can be neither scrolled nor clicked, and "opening marks the shown
+ *  rows read" would fire on every incidental pointer pass. It reuses SearchBar's
+ *  open/outside-click model from this same file, and keeps the hover popovers'
+ *  exact surface styling so the three read as one family. */
 function Notifications() {
+  const [open, setOpen] = useState(false)
+  const containerRef = useRef<HTMLDivElement>(null)
+  const markedThisOpen = useRef(false)
+
+  const { data: notifications = [], isLoading } = useNotifications()
+  const markRead = useMarkNotificationsRead()
+
+  const unread = useMemo(() => notifications.filter((n) => !n.is_read), [notifications])
+
+  useEffect(() => {
+    if (!open) return
+    function onClick(e: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false)
+      }
+    }
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') setOpen(false)
+    }
+    document.addEventListener('mousedown', onClick)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('mousedown', onClick)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [open])
+
+  // Opening the popover marks exactly the unread rows it is showing. The ref
+  // guards it to one request per open (StrictMode's double-invoke included);
+  // depending on `unread.length` means an open that lands before the query
+  // resolves still marks the rows once they arrive, and the post-mark refetch
+  // drives the length to 0, so the effect settles instead of looping.
+  useEffect(() => {
+    if (!open) {
+      markedThisOpen.current = false
+      return
+    }
+    if (markedThisOpen.current || unread.length === 0) return
+    markedThisOpen.current = true
+    markRead.mutate(unread.map((n) => n.id))
+    // markRead is a stable react-query mutation object; re-running on it would
+    // just re-fire the request.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, unread])
+
   return (
-    <div className="group relative">
+    <div ref={containerRef} className="relative">
       <button
         type="button"
-        aria-label="Notifications"
-        className="flex h-9 w-9 items-center justify-center rounded-md text-secondary transition-colors duration-200 ease-out hover:bg-card hover:text-accent-teal"
+        onClick={() => setOpen((o) => !o)}
+        aria-label={
+          unread.length > 0 ? `Notifications (${unread.length} unread)` : 'Notifications'
+        }
+        aria-expanded={open}
+        className={cn(
+          'relative flex h-9 w-9 items-center justify-center rounded-md transition-colors duration-200 ease-out hover:bg-card hover:text-accent-teal',
+          open ? 'bg-card text-accent-teal' : 'text-secondary',
+        )}
       >
         <Bell size={18} />
+        {unread.length > 0 && (
+          <span
+            aria-hidden="true"
+            className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-accent-teal ring-2 ring-base"
+          />
+        )}
       </button>
 
-      <div className="pointer-events-none absolute right-0 top-[calc(100%+0.5rem)] z-50 w-64 rounded-xl border border-subtle bg-surface/80 p-6 text-center text-xs text-secondary opacity-0 shadow-lg shadow-black/40 backdrop-blur-md transition-opacity duration-200 ease-out group-hover:opacity-100">
-        No new notifications.
-      </div>
+      {open && (
+        <div className="absolute right-0 top-[calc(100%+0.5rem)] z-50 w-80 overflow-hidden rounded-xl border border-subtle bg-surface/80 shadow-lg shadow-black/40 backdrop-blur-md">
+          <div className="flex items-center justify-between border-b border-subtle px-4 py-2.5">
+            <span className="text-[11px] uppercase tracking-wider text-secondary">
+              Notifications
+            </span>
+            {unread.length > 0 && (
+              <span className="text-[11px] text-accent-teal">{unread.length} unread</span>
+            )}
+          </div>
+
+          {isLoading ? (
+            <p className="p-6 text-center text-xs text-secondary opacity-60">
+              Loading notifications...
+            </p>
+          ) : notifications.length === 0 ? (
+            <p className="p-6 text-center text-xs text-secondary">No new notifications.</p>
+          ) : (
+            <ul className="max-h-80 overflow-y-auto">
+              {notifications.map((n) => (
+                <li
+                  key={n.id}
+                  className="flex gap-2.5 border-b border-subtle px-4 py-3 last:border-b-0"
+                >
+                  <span
+                    aria-hidden="true"
+                    className={cn(
+                      'mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full',
+                      n.is_read ? 'bg-transparent' : 'bg-accent-teal',
+                    )}
+                  />
+                  <span className="min-w-0 flex-1">
+                    <span
+                      className={cn(
+                        'block text-xs leading-relaxed',
+                        n.is_read ? 'text-secondary' : 'text-primary',
+                      )}
+                    >
+                      {n.message}
+                    </span>
+                    <span className="mt-1 block text-[11px] text-secondary">
+                      {timeAgo(n.created_at)}
+                    </span>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
     </div>
   )
 }
