@@ -1,47 +1,42 @@
-import { useEffect, useMemo, useState } from "react";
+import { useState } from "react";
 import type { FormEvent } from "react";
 import { ArrowRight, Check } from "lucide-react";
 import {
+  APP_URL,
   BRAND,
   COPY,
   HERO,
   HERO_ACCENTS,
-  HOW_IT_WORKS,
-  LAUNCH_DATE,
-  LAUNCH_DATE_DISPLAY,
   LEGAL_PAGES,
   REFERRAL_MILESTONES,
 } from "../content";
-import { useAccountFlow, type AccountFlow } from "../hooks/useAccountFlow";
+import { type AccountFlow } from "../hooks/useAccountFlow";
+import { useAccount } from "../hooks/accountContext";
 import SignalReadout from "../readouts/SignalReadout";
 import lensArcDark from "../../assets/lens-arc/lens-arc-dark.png";
 import vectorDemo from "../../assets/video/1vector_demo.mp4";
-import discoveryEnter from "../../assets/video/discovery_enter.mp4";
-import discoveryRead from "../../assets/video/discovery_read.mp4";
-import discoveryAct from "../../assets/video/discovery_act.mp4";
-
-// Step videos, in HOW_IT_WORKS order (enter, read, act), same clips frontend/ uses.
-const STEP_VIDEOS = [discoveryEnter, discoveryRead, discoveryAct];
 
 const gradient = `linear-gradient(135deg, ${BRAND.gradientFrom}, ${BRAND.gradientTo})`;
 
-function useCountdown() {
-  const target = useMemo(() => new Date(LAUNCH_DATE + "T00:00:00").getTime(), []);
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    const t = window.setInterval(() => setNow(Date.now()), 1000);
-    return () => window.clearInterval(t);
-  }, []);
-  const diff = Math.max(0, target - now);
-  return [
-    Math.floor(diff / 86400000),
-    Math.floor(diff / 3600000) % 24,
-    Math.floor(diff / 60000) % 60,
-    Math.floor(diff / 1000) % 60,
-  ];
+// Shown under the VerifiedBox once signed in: how much Pro time this email
+// earned, and that it is being redeemed in the app right now. This is the
+// launched-product framing: the program's value is something you HAVE, not
+// something coming soon.
+function RedemptionNote({ flow }: { flow: AccountFlow }) {
+  const summary =
+    flow.currentReward === "Lifetime free"
+      ? COPY.rewardSummaryLifetime
+      : COPY.rewardSummary(flow.currentReward.replace(/ free$/i, "").toLowerCase());
+  return (
+    <div className="mt-3 rounded-xl border border-teal-200 bg-teal-50/70 p-3.5 text-left">
+      <p className="flex items-center gap-2 text-sm font-semibold text-teal-700">
+        <Check size={15} className="shrink-0" />
+        {summary}
+      </p>
+      <p className="mt-1 text-xs leading-relaxed text-slate-600">{COPY.redeemNote}</p>
+    </div>
+  );
 }
-
-const pad = (n: number) => String(n).padStart(2, "0");
 
 // Locked 3-line layout: "Actionable" / "Insight" / "for Everyone.", regardless
 // of viewport width, rather than letting the browser wrap it naturally.
@@ -129,8 +124,7 @@ function EmailCapture({
         <button
           type="submit"
           disabled={submitting}
-          className="flex shrink-0 items-center justify-center gap-1.5 rounded-xl px-5 py-3 text-sm font-semibold text-slate-950 transition hover:opacity-90 disabled:opacity-60"
-          style={{ backgroundImage: gradient }}
+          className="btn-primary flex shrink-0 items-center justify-center gap-1.5 rounded-[15px] px-5 py-3 text-sm font-medium disabled:pointer-events-none disabled:opacity-50"
         >
           {COPY.emailCta}
           <ArrowRight size={15} />
@@ -170,8 +164,7 @@ function VerifyDialog({ flow }: { flow: AccountFlow }) {
           <button
             type="button"
             onClick={flow.devSimulateVerify}
-            className="mt-6 w-full rounded-xl py-3 text-sm font-semibold text-slate-950 transition hover:opacity-90"
-            style={{ backgroundImage: gradient }}
+            className="btn-primary mt-6 w-full rounded-[15px] py-3 text-sm font-medium"
           >
             {COPY.magicSimulate}
           </button>
@@ -219,24 +212,12 @@ function VerifiedBox({ email, onLogout }: { email: string; onLogout: () => void 
 }
 
 export default function Layout4() {
-  const parts = useCountdown();
-  const flow = useAccountFlow();
+  const flow = useAccount();
 
   return (
     <div className="bg-[#f6f7f9] font-sans text-slate-900">
-      <header className="mx-auto flex max-w-7xl items-center justify-between px-6 py-5">
-        <img
-          src={lensArcDark}
-          alt="Lens Arc"
-          className="h-8 w-auto select-none"
-          draggable={false}
-        />
-        <span className="text-sm font-semibold tabular-nums text-slate-900">
-          {pad(parts[0])}:{pad(parts[1])}:{pad(parts[2])}:{pad(parts[3])}
-        </span>
-      </header>
-
-      <section className="mx-auto grid max-w-7xl items-center gap-12 px-6 pb-20 pt-10 lg:grid-cols-[1fr_1.15fr] lg:pb-28 lg:pt-16">
+      {/* The persistent NavBar (App.tsx) sits fixed above; hero pads past it. */}
+      <section className="mx-auto grid max-w-7xl items-center gap-12 px-6 pb-20 pt-28 lg:grid-cols-[1fr_1.15fr] lg:pb-28 lg:pt-32">
         <div>
           <h1 className="max-w-xl font-display text-4xl font-bold leading-tight tracking-tight sm:text-5xl xl:text-6xl">
             <Headline />
@@ -246,11 +227,23 @@ export default function Layout4() {
           </p>
           <div className="mt-8 max-w-lg">
             {flow.step === "account" ? (
-              <VerifiedBox email={flow.email} onLogout={flow.logout} />
+              <>
+                <VerifiedBox email={flow.email} onLogout={flow.logout} />
+                <RedemptionNote flow={flow} />
+              </>
             ) : (
               <EmailCapture flow={flow} />
             )}
           </div>
+          <p className="mt-3 text-sm text-slate-500">
+            {COPY.alreadyHaveAccount}{" "}
+            <a
+              href={APP_URL}
+              className="font-medium text-teal-600 underline-offset-4 transition hover:underline"
+            >
+              {COPY.openApp}
+            </a>
+          </p>
           <p className="mt-4 text-xs text-slate-500">{COPY.disclaimer}</p>
         </div>
 
@@ -273,39 +266,6 @@ export default function Layout4() {
             ) : (
               <DemoWindow src={vectorDemo} aspect="aspect-[16/9]" />
             )}
-          </div>
-        </div>
-      </section>
-
-      <section className="border-t border-slate-200 bg-white">
-        <div className="mx-auto max-w-7xl px-6 py-20">
-          <h2 className="font-display text-2xl font-bold tracking-tight sm:text-3xl">
-            {COPY.howHeading}
-          </h2>
-          <p className="mt-2 text-slate-600">{COPY.howSub}</p>
-          <div className="mx-auto mt-12 max-w-5xl space-y-14 sm:space-y-16">
-            {HOW_IT_WORKS.map((step, i) => (
-              <div
-                key={step.title}
-                className="grid items-center gap-6 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)] lg:gap-12"
-              >
-                <DemoWindow src={STEP_VIDEOS[i]} />
-                <div className="text-center lg:text-left">
-                  <div className="flex items-center justify-center gap-4 lg:justify-start">
-                    <span
-                      className="bg-clip-text font-display text-5xl font-semibold leading-none text-transparent sm:text-6xl"
-                      style={{ backgroundImage: gradient }}
-                    >
-                      {i + 1}
-                    </span>
-                    <h3 className="font-display text-2xl font-semibold tracking-tight sm:text-3xl">
-                      {step.title}
-                    </h3>
-                  </div>
-                  <p className="mx-auto mt-3 max-w-md text-slate-600 lg:mx-0">{step.detail}</p>
-                </div>
-              </div>
-            ))}
           </div>
         </div>
       </section>
@@ -380,45 +340,6 @@ export default function Layout4() {
                 </div>
               );
             })}
-          </div>
-        </div>
-      </section>
-
-      <section className="border-t border-slate-200 bg-white">
-        <div className="mx-auto max-w-3xl px-6 py-20 text-center">
-          <p className="font-display text-sm font-semibold uppercase tracking-wide text-slate-500">
-            {COPY.eyebrow}
-          </p>
-          <h2 className="mt-2 font-display text-2xl font-bold tracking-tight sm:text-3xl">
-            {LAUNCH_DATE_DISPLAY}
-          </h2>
-
-          <div className="mx-auto mt-8 flex max-w-md justify-center gap-3 sm:gap-4">
-            {parts.map((value, i) => (
-              <div
-                key={COPY.countdownUnits[i]}
-                className="flex flex-1 flex-col items-center rounded-2xl border border-slate-200 bg-[#f6f7f9] py-4"
-              >
-                <span className="font-display text-3xl font-bold tabular-nums text-slate-900 sm:text-4xl">
-                  {pad(value)}
-                </span>
-                <span className="mt-1 text-[11px] uppercase tracking-wide text-slate-500">
-                  {COPY.countdownUnits[i]}
-                </span>
-              </div>
-            ))}
-          </div>
-
-          <div className="mx-auto mt-10 max-w-md">
-            {flow.step === "account" ? (
-              <VerifiedBox email={flow.email} onLogout={flow.logout} />
-            ) : (
-              <EmailCapture
-                flow={flow}
-                className="mx-auto"
-                onSubmitted={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-              />
-            )}
           </div>
         </div>
       </section>
