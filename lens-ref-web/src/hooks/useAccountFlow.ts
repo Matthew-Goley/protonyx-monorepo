@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { BRAND, COPY, REFERRAL_MILESTONES } from "../content";
+import { BRAND, COPY, REFERRAL_MILESTONES, ROUTES } from "../content";
 import * as api from "../lib/api";
 
 export type Step = "signup" | "verifying" | "account";
@@ -16,10 +16,15 @@ const LS_EMAIL = "lens_ref_email";
 const MAX_REFERRALS =
   REFERRAL_MILESTONES[REFERRAL_MILESTONES.length - 1].referrals;
 
-// Pull a referral code out of the current URL: either the /r/<code> share-link
-// path or a ?ref=<code> query param. Returns null if neither is present.
+// Pull a referral code out of the current URL: the canonical
+// /referral/ref/<code> share-link path, either legacy form (/ref/<code>,
+// /r/<code>, both already shared publicly and normally rewritten to the
+// canonical path by App.tsx before this runs), or a ?ref=<code> query param.
+// Returns null if none is present.
 function referralCodeFromUrl(): string | null {
-  const path = window.location.pathname.match(/^\/r\/([a-z0-9]{1,16})/i);
+  const path = window.location.pathname.match(
+    /^\/(?:referral\/ref|ref|r)\/([a-z0-9]{1,16})/i
+  );
   if (path) return path[1].toLowerCase();
   const q = new URLSearchParams(window.location.search).get("ref");
   return q ? q.trim().toLowerCase() : null;
@@ -71,7 +76,7 @@ export function useAccountFlow() {
           // Invalid/expired link: drop the user on a clean signup page.
         })
         .finally(() => {
-          window.history.replaceState(null, "", "/");
+          window.history.replaceState(null, "", ROUTES.referral);
         });
       return () => {
         cancelled = true;
@@ -81,7 +86,7 @@ export function useAccountFlow() {
     const inbound = referralCodeFromUrl();
     if (inbound) {
       pendingReferral.current = inbound;
-      window.history.replaceState(null, "", "/");
+      window.history.replaceState(null, "", ROUTES.referral);
     }
 
     let storedCode: string | null = null;
