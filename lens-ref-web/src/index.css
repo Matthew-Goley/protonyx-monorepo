@@ -1,12 +1,167 @@
 @import "tailwindcss";
 
 @theme {
-  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  /* Sora is the ONE site face: it is both the default (font-sans) and the
+     display face, so font-display classes are redundant but harmless. The
+     only other family on the site is Times New Roman, reserved for the
+     actual legal document bodies (font-serif, see SimplePage's serif prop). */
+  --font-sans: "Sora", ui-sans-serif, system-ui, -apple-system, sans-serif;
   --font-display: "Sora", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-serif: "Times New Roman", Times, serif;
 }
 
 html {
   font-family: var(--font-sans);
+}
+
+/* ── Button mechanics, ported from lens-app (the "Mercury" block in
+   lens-app/src/index.css). Five semantic roles; flat and quiet by design:
+   primary reads as one solid fill, everything else stays neutral or
+   transparent until hover. No motion, no shadow. Color values are the
+   lens-app dark-theme tokens inlined (this project has no token set):
+   base #111318, subtle #2a2d35, primary text #f0f2f5, secondary #8b90a0,
+   card-hover #21242d, accent-teal #4cb1f9, accent-blue #38bdf8,
+   brand-blue #60a5fa, accent-red #f16b6b. Keep in lockstep with lens-app. */
+:root {
+  --btn-transition: background-color 160ms ease-out, border-color 160ms ease-out,
+    color 160ms ease-out;
+
+  --btn-primary-base: color-mix(in srgb, #38bdf8 60%, #60a5fa 40%);
+  --btn-primary-bg: var(--btn-primary-base);
+  --btn-primary-bg-hover: color-mix(in srgb, var(--btn-primary-base) 78%, black);
+  --btn-primary-text: #111318;
+
+  --btn-secondary-bg: #2a2d35;
+  --btn-secondary-bg-hover: color-mix(in srgb, #2a2d35 75%, white);
+  --btn-secondary-text: #f0f2f5;
+
+  --btn-ghost-bg-hover: #21242d;
+  --btn-ghost-text: #8b90a0;
+  --btn-ghost-text-hover: #f0f2f5;
+
+  --btn-accent-bg-hover: color-mix(in srgb, #4cb1f9 18%, transparent);
+  --btn-accent-text: #4cb1f9;
+
+  --btn-danger-bg-hover: #f16b6b;
+  --btn-danger-text: #f16b6b;
+}
+
+.btn-primary,
+.btn-secondary,
+.btn-ghost,
+.btn-accent,
+.btn-danger {
+  transition: var(--btn-transition);
+  border: 1px solid transparent;
+}
+.btn-primary {
+  background: var(--btn-primary-bg);
+  color: var(--btn-primary-text);
+}
+.btn-primary:hover:not(:disabled) {
+  background: var(--btn-primary-bg-hover);
+}
+.btn-secondary {
+  background: var(--btn-secondary-bg);
+  color: var(--btn-secondary-text);
+}
+.btn-secondary:hover:not(:disabled) {
+  background: var(--btn-secondary-bg-hover);
+}
+.btn-ghost {
+  background: transparent;
+  color: var(--btn-ghost-text);
+}
+.btn-ghost:hover:not(:disabled) {
+  background: var(--btn-ghost-bg-hover);
+  color: var(--btn-ghost-text-hover);
+}
+.btn-accent {
+  background: transparent;
+  color: var(--btn-accent-text);
+}
+.btn-accent:hover:not(:disabled) {
+  background: var(--btn-accent-bg-hover);
+}
+.btn-danger {
+  background: transparent;
+  color: var(--btn-danger-text);
+}
+.btn-danger:hover:not(:disabled) {
+  background: var(--btn-danger-bg-hover);
+  color: #ffffff;
+}
+
+/* ── Savings calculator slider (src/landing/SavingsSection.tsx) ──
+   The track's filled/unfilled split is painted by an inline gradient set by
+   the component (driven by the current value); this block only supplies the
+   chrome. */
+.savings-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 8px;
+  border-radius: 9999px;
+  outline: none;
+  cursor: pointer;
+}
+
+.savings-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 2px solid #2dd4bf;
+  box-shadow: 0 2px 8px rgba(31, 34, 48, 0.25);
+  transition: border-color 160ms ease-out;
+}
+
+.savings-slider::-webkit-slider-thumb:hover {
+  border-color: #38bdf8;
+}
+
+.savings-slider::-moz-range-thumb {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 2px solid #2dd4bf;
+  box-shadow: 0 2px 8px rgba(31, 34, 48, 0.25);
+  transition: border-color 160ms ease-out;
+}
+
+.savings-slider::-moz-range-thumb:hover {
+  border-color: #38bdf8;
+}
+
+.savings-slider:focus-visible {
+  box-shadow: 0 0 0 3px rgba(76, 177, 249, 0.4);
+}
+
+/* ── Landing page animation (src/landing/) ── */
+
+/* Pulsing radial hero glow, ported from frontend/landing.css. */
+.hero-pulse {
+  animation: hero-pulse 12s ease-in-out infinite;
+}
+
+@keyframes hero-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.15);
+    opacity: 0.7;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-pulse {
+    animation: none;
+  }
 }
 
 /* Account dial: celebratory glow for the maxed lifetime state */
