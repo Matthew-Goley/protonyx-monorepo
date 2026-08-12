@@ -56,13 +56,13 @@ export const NAV = {
 } as const;
 
 export const HERO = {
-  headline: "Actionable Insight for Everyone.",
+  headline: "Investing Answers You Can Trust.",
   subhead:
     "Lens Arc is live. If you joined the referral program, verify your email to see the free Pro time you earned and how it redeems.",
 };
 
 // Headline words that get the brand gradient, mirroring the frontend/ hero.
-export const HERO_ACCENTS = ["Actionable", "Insight", "Everyone."];
+export const HERO_ACCENTS = ["Trust."];
 
 // Earned Pro time. This mirrors the ONE formula that actually grants anything:
 // backend/src/waitlist.ts (BASE_MONTHS + one month per verified referral, capped

@@ -43,11 +43,12 @@ function RedemptionNote({ flow }: { flow: AccountFlow }) {
   );
 }
 
-// Locked 3-line layout: "Actionable" / "Insight" / "for Everyone.", regardless
-// of viewport width, rather than letting the browser wrap it naturally.
+// Locked 2-line layout: "Investing Answers" / "You Can Trust.", regardless of
+// viewport width, rather than letting the browser wrap it naturally. Matches
+// how the landing hero breaks the same headline.
 function Headline() {
   const words = HERO.headline.split(" ");
-  const lines = [[words[0]], [words[1]], words.slice(2)];
+  const lines = [words.slice(0, 2), words.slice(2)];
   return (
     <>
       {lines.map((line, li) => (

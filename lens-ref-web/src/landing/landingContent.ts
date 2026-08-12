@@ -20,12 +20,15 @@ export const VIDEOS = {
   read: discoveryRead,
   act: discoveryAct,
 } as const;
-
+// The hero headline is split into two locked lines (headlineTop over
+// headlineBottom) rather than left to wrap; accentWords names the words that
+// get the brand gradient. Keep it in step with HERO/HERO_ACCENTS in content.ts,
+// which carries the same headline for the /referral hero.
 export const CLASSIC = {
   eyebrow: "Lens Arc",
-  headlineTop: "Actionable Insight",
-  headlineBottom: "for Everyone.",
-  accentWords: ["Actionable", "Insight", "Everyone."],
+  headlineTop: "Investing Answers",
+  headlineBottom: "You Can Trust.",
+  accentWords: ["Trust."],
   subtitle:
     "An investment tool that makes choosing stocks simple. Lens Arc reads your portfolio, ranks what matters most, and explains it in plain language.",
   ctaPrimary: "Enter Lens Arc",

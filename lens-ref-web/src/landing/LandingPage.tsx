@@ -32,6 +32,22 @@ function Accent({ children }: { children: string }) {
   );
 }
 
+// One hero headline line, gradient-accenting the words CLASSIC.accentWords
+// names so the copy (and which words glow) stays in landingContent.ts.
+function HeadlineLine({ text }: { text: string }) {
+  const words = text.split(" ");
+  return (
+    <>
+      {words.map((word, i) => (
+        <span key={i}>
+          {CLASSIC.accentWords.includes(word) ? <Accent>{word}</Accent> : word}
+          {i < words.length - 1 ? " " : ""}
+        </span>
+      ))}
+    </>
+  );
+}
+
 // The frontend/ .demo-window, faithfully: traffic-light chrome bar + clip.
 function DemoWindow({ src }: { src: string }) {
   return (
@@ -75,9 +91,9 @@ export default function LandingPage() {
               {CLASSIC.eyebrow}
             </p>
             <h1 className="text-[clamp(2.6rem,4.8vw,5.75rem)] font-semibold leading-[1.05] tracking-tight text-white">
-              <Accent>Actionable</Accent> <Accent>Insight</Accent>
+              <HeadlineLine text={CLASSIC.headlineTop} />
               <br />
-              for <Accent>Everyone.</Accent>
+              <HeadlineLine text={CLASSIC.headlineBottom} />
             </h1>
             <p className="max-w-[640px] text-[clamp(1.05rem,1.2vw,1.4rem)] leading-relaxed text-white/60">
               {CLASSIC.subtitle}
