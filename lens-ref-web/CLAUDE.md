@@ -54,7 +54,7 @@ Run from `lens-ref-web/`:
 lens-ref-web/
 ├── index.html                     # Font links, favicon, Open Graph/Twitter meta (og:image -> /og-image.png), #root
 ├── vercel.json                    # Catch-all rewrite to /index.html (SPA fallback for every route)
-├── public/                        # lens-arc-icon.png (favicon), og-image.png (link preview)
+├── public/                        # lens-arc-icon.png (favicon), og-image.png (link preview, interim brand mark)
 ├── assets/
 │   ├── lens-arc/                  # Brand artwork, mirror of lens-app/assets/lens-arc (see §7)
 │   ├── video/                     # The four 2K 16:9 product recordings (see §7)
@@ -205,7 +205,8 @@ The `/verify` route must keep rendering the referral page in `App.tsx`; the hook
 | `lens-arc-white.png` | Wordmark on dark surfaces: Classic design nav, Noir design nav |
 | `arc-dark.png` / `arc-white.png` / `icon-nobg.png` / `icon-square.png` | Not currently used |
 | `icon-rounded.png` | Copied to `public/lens-arc-icon.png` (favicon) |
-| `link-ad.png` | Copied to `public/og-image.png` (link-preview image); recopy manually if replaced |
+| `icon-square.png` | Also copied to `public/og-image.png` (link-preview image), see §8 |
+| `link-ad.png` | The OLD referral link-preview ad ("Free Pro. Just Your Email."). **No longer served anywhere**; kept only as the design source if a real card gets made. Do not copy it back over `public/og-image.png` |
 
 `assets/video/` holds the four product recordings, re-exported at 2K (2560x1440, 16:9), copies of `frontend/assets/video/`:
 
@@ -232,4 +233,6 @@ The landing page imports them through the `VIDEOS` map in `src/landing/landingCo
 - **The published referral Terms still describe the OLD step schedule** (`legal-raw/lens-arc-referral-terms.md` → `src/pages/TermsPage.tsx`), including a "10+ → Lifetime" row. That legal text was deliberately left untouched when the code was reconciled and currently contradicts it. See the open item in the root `CLAUDE.md`.
 - **Query-carrying app links must target `/login` directly**, never bare `APP_URL`: lens-app's catch-all `<Navigate to="/login" replace />` does not preserve search params, so `${APP_URL}?email=...` arrives stripped. `content.ts` exposes two builders. `appSignupUrl(email)` → `/login?mode=signup&email=...` for CTAs that explicitly mean "create your account" (the claim CTA); it degrades to a bare `?mode=signup` rather than emitting a dangling `email=`. `appOpenUrl(email)` → `/login?email=...` for generic Enter/Open Lens Arc buttons: it carries the email so the sign-up form is prefilled if the visitor switches tabs, but deliberately does **not** force the sign-up tab (a member who already has an app account wants to sign in), and falls back to bare `APP_URL` with no verified email. Every generic CTA reads `flow.appHref` (from `useAccountFlow`), which picks between them.
 - **Open Graph meta in `index.html` hardcodes `https://lens-arc.com`** for `og:url`/`og:image`/`twitter:image`; update all three (and re-verify with a link-preview debugger) if the domain changes.
+- **Link-preview copy must never advertise free Pro again.** The `og:title`/`twitter:title` used to read "Get 1 month of Lens Arc Pro free.", which became false when the referral program closed; they now lead with what the tool does. Keep `description`, `og:description` and `twitter:description` identical to each other and keep every claim tied to real engine output (concentration, volatility, beta, caution score, no brokerage connection), same rule as the rest of the site's copy.
+- **`public/og-image.png` is an interim placeholder: a byte copy of `assets/lens-arc/icon-square.png`** (the flat 1025x1025 brand mark on dark navy). It replaced the old referral ad, which rendered "Free Pro. Just Your Email." as the largest text on the card and kept advertising the dead offer no matter what the meta tags said. Because the placeholder is **1:1**, `twitter:card` is `summary` (small square thumb), not `summary_large_image`, and `og:image:width`/`height` are declared. **When a real card is designed, export it at 1200x630, copy it over `public/og-image.png`, set `twitter:card` back to `summary_large_image`, and update the width/height.** `assets/lens-arc/link-ad.png` still holds the old ad as a design source only; never copy it back.
 - The app the nav's "Get started" button opens is `APP_URL` in `content.ts` (`https://app.lens-arc.com`), one place to change if the app domain moves.
