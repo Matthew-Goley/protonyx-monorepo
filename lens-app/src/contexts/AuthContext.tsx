@@ -86,11 +86,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // New session: wipe any prior account's cached queries before loading this one.
     resetCache()
 
+    // The password was right, but that alone does not mean we have a usable
+    // session: every authenticated call rides the httpOnly cookie, so if the
+    // cookie was not stored or is not sent back, /me fails here and every
+    // subsequent request fails too.
+    //
+    // Authentication is therefore gated on /me succeeding, NOT on /login. Setting
+    // isAuthenticated unconditionally used to admit the user with `user` still
+    // null, which renders a signed-in shell with no profile: isSubscribed(null)
+    // paywalls a paying customer, Profile falls back to the literal "User", and
+    // positions/notifications 401 into empty state. That reads as a revoked
+    // subscription rather than an error. Fail the login visibly instead - Login
+    // catches this and shows the message.
     const meRes = await fetch(`${BACKEND_URL}/me`, { credentials: 'include' })
-    if (meRes.ok) {
-      const meData = await meRes.json()
-      setUser(meData.user)
+    if (!meRes.ok) {
+      throw new Error(
+        meRes.status === 401
+          ? 'Signed in, but your browser did not keep the session. If you block third-party cookies, allow them for this site and try again.'
+          : 'Signed in, but your account could not be loaded. Please try again in a moment.',
+      )
     }
+
+    const meData = await meRes.json()
+    setUser(meData.user)
     setIsAuthenticated(true)
   }
 
