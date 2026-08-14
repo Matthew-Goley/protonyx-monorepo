@@ -69,9 +69,6 @@ export function Settings() {
                             : 'text-secondary hover:bg-card hover:text-primary',
                         )}
                       >
-                        {on && (
-                          <span className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-full bg-gradient-brand" />
-                        )}
                         <Icon size={16} className={cn(on ? 'text-accent-teal' : 'text-secondary')} />
                         <span className="truncate">{it.title}</span>
                         {it.id === 'positions' && (
