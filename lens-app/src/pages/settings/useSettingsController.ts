@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '@/contexts/AuthContext'
 import { useTheme } from '@/contexts/ThemeContext'
+import { useAnalysisCommit } from '@/contexts/AnalysisCommitContext'
 import { isSubscribed } from '@/lib/subscription'
 import { lensApi, type Position } from '@/api/lens'
 import { positionsApi } from '@/api/positions'
@@ -22,6 +23,7 @@ export function useSettingsController() {
   const navigate = useNavigate()
   const { user, refreshUser } = useAuth()
   const { theme, setTheme } = useTheme()
+  const { commit: commitAnalysis } = useAnalysisCommit()
   const pro = isSubscribed(user)
 
   const manager = usePositionsManager()
@@ -52,40 +54,41 @@ export function useSettingsController() {
     if (user?.risk_tier) setRisk(user.risk_tier)
   }, [user?.risk_tier])
 
+  // Writes the tier straight through; the analyze re-run is deferred to the
+  // PageHeader change bar (AnalysisCommitContext diffs risk_tier), so there is no
+  // ['lens-analysis'] invalidation here any more.
   async function changeRisk(tier: RiskTier) {
     setRisk(tier)
     await settingsApi.setRiskTier(tier)
     await refreshUser()
-    queryClient.invalidateQueries({ queryKey: ['lens-analysis'] })
   }
 
+  // Same for the four tuning blocks: each is part of the committed snapshot, so a
+  // change surfaces as pending and re-runs analyze only on commit.
   function setDirection(key: keyof typeof settings.direction_thresholds, value: number) {
-    update(
-      { direction_thresholds: { ...settings.direction_thresholds, [key]: value } },
-      { affectsAnalysis: true },
-    )
+    update({ direction_thresholds: { ...settings.direction_thresholds, [key]: value } })
   }
   function setVolatility(key: keyof typeof settings.volatility, value: string | number) {
-    update({ volatility: { ...settings.volatility, [key]: value } }, { affectsAnalysis: true })
+    update({ volatility: { ...settings.volatility, [key]: value } })
   }
   function setSignal(key: keyof typeof settings.lens_signals, value: number) {
-    update({ lens_signals: { ...settings.lens_signals, [key]: value } }, { affectsAnalysis: true })
+    update({ lens_signals: { ...settings.lens_signals, [key]: value } })
   }
   function setMonteCarlo(key: keyof typeof settings.monte_carlo, value: string | number) {
-    update({ monte_carlo: { ...settings.monte_carlo, [key]: value } }, { affectsAnalysis: true })
+    update({ monte_carlo: { ...settings.monte_carlo, [key]: value } })
   }
 
   function resetDirection() {
-    update({ direction_thresholds: DEFAULT_USER_SETTINGS.direction_thresholds }, { affectsAnalysis: true })
+    update({ direction_thresholds: DEFAULT_USER_SETTINGS.direction_thresholds })
   }
   function resetVolatility() {
-    update({ volatility: DEFAULT_USER_SETTINGS.volatility }, { affectsAnalysis: true })
+    update({ volatility: DEFAULT_USER_SETTINGS.volatility })
   }
   function resetSignals() {
-    update({ lens_signals: DEFAULT_USER_SETTINGS.lens_signals }, { affectsAnalysis: true })
+    update({ lens_signals: DEFAULT_USER_SETTINGS.lens_signals })
   }
   function resetMonteCarlo() {
-    update({ monte_carlo: DEFAULT_USER_SETTINGS.monte_carlo }, { affectsAnalysis: true })
+    update({ monte_carlo: DEFAULT_USER_SETTINGS.monte_carlo })
   }
 
   function addPosition(p: Position) {
@@ -118,7 +121,12 @@ export function useSettingsController() {
     ])
     await refreshUser()
     queryClient.removeQueries({ queryKey: ['lens-analysis'] })
-    queryClient.invalidateQueries({ queryKey: ['positions'] })
+    await queryClient.invalidateQueries({ queryKey: ['positions'] })
+    // Adopt the emptied state as the baseline. Without this the wipe itself would
+    // register as one pending change per deleted holding, and the user would land
+    // on onboarding with a change bar offering to "revert" the clear they just
+    // confirmed.
+    commitAnalysis()
     navigate('/onboard', { replace: true })
   }
 

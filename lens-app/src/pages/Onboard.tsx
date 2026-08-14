@@ -6,6 +6,7 @@ import { type Position } from '@/api/lens'
 import { positionsApi } from '@/api/positions'
 import { settingsApi, type RiskTier } from '@/api/settings'
 import { useAuth } from '@/contexts/AuthContext'
+import { useAnalysisCommit } from '@/contexts/AnalysisCommitContext'
 import { RiskProfileCards } from '@/components/common/RiskProfileCards'
 import { AddPositionModal } from '@/components/common/AddPositionModal'
 import { useHotkey } from '@/hooks/useHotkey'
@@ -30,6 +31,7 @@ export function Onboard() {
   const navigate = useNavigate()
   const qc = useQueryClient()
   const { refreshUser } = useAuth()
+  const { commit: commitAnalysis } = useAnalysisCommit()
   const [step, setStep] = useState<1 | 2>(1)
   const [risk, setRisk] = useState<RiskTier | null>(null)
   const [positions, setPositionsState] = useState<Position[]>([])
@@ -64,7 +66,11 @@ export function Onboard() {
       await refreshUser()
       const saved = await positionsApi.replacePositions(positions)
       qc.setQueryData(['positions'], saved)
-      qc.invalidateQueries({ queryKey: ['lens-analysis'] })
+      // Commit the freshly built portfolio as the analyze baseline. Onboarding IS
+      // the user's confirmation, so the dashboard should analyze on arrival rather
+      // than greet a brand-new user with a change bar asking them to re-run and
+      // offering to "revert" the portfolio they just created.
+      commitAnalysis()
       navigate('/dashboard', { replace: true })
     } catch {
       setLaunching(false)

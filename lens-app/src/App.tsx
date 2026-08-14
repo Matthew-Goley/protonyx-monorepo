@@ -5,6 +5,7 @@ import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client
 import { createSyncStoragePersister } from '@tanstack/query-sync-storage-persister'
 import { AuthProvider } from '@/contexts/AuthContext'
 import { ThemeProvider } from '@/contexts/ThemeContext'
+import { AnalysisCommitProvider } from '@/contexts/AnalysisCommitContext'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
 import { QUERY_CACHE_KEY } from '@/lib/persist'
 import { Login } from '@/pages/Login'
@@ -57,6 +58,11 @@ export default function App() {
     >
       <AuthProvider>
       <ThemeProvider>
+        {/* Owns the committed analyze snapshot, so it must sit above every route
+            that reads it: useLensAnalysis (Dashboard/Analysis/Profile) and the
+            PageHeader change bar. Inside AuthProvider because it reads the user's
+            risk tier and settings. */}
+        <AnalysisCommitProvider>
         <BrowserRouter>
           {/* Vercel Web Analytics. Mounted INSIDE BrowserRouter on purpose: it
               reads the router context to record client-side navigations, so
@@ -125,6 +131,7 @@ export default function App() {
             <Route path="*" element={<Navigate to="/login" replace />} />
           </Routes>
         </BrowserRouter>
+        </AnalysisCommitProvider>
       </ThemeProvider>
       </AuthProvider>
     </PersistQueryClientProvider>

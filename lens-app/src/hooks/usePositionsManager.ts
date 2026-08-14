@@ -14,10 +14,16 @@ export interface PositionsManager {
 /**
  * Add / edit / delete the portfolio, persisted to Postgres via the Fastify
  * /positions endpoints. Reads the current holdings from the shared ['positions']
- * query (usePositions), and after every mutation invalidates BOTH ['positions']
- * (so this list refetches) and ['lens-analysis'] (whose query key is the positions
- * array, so it must re-run /analyze). Keeps the same external interface the
+ * query (usePositions), and after every mutation invalidates ['positions'] so the
+ * holdings list refetches immediately. Keeps the same external interface the
  * PositionsManagerContext consumers expect.
+ *
+ * It deliberately does NOT touch ['lens-analysis'] any more. The analyze call is
+ * now gated behind an explicit commit (AnalysisCommitContext): the edit shows up
+ * instantly everywhere holdings are listed, then the PageHeader change bar offers
+ * "Run analysis". Re-adding an invalidation here would fire the slow analyze call
+ * on every keystroke-level edit again, which is exactly what the gate exists to
+ * prevent.
  */
 export function usePositionsManager(): PositionsManager {
   const qc = useQueryClient()
@@ -25,7 +31,6 @@ export function usePositionsManager(): PositionsManager {
 
   const invalidate = useCallback(() => {
     qc.invalidateQueries({ queryKey: ['positions'] })
-    qc.invalidateQueries({ queryKey: ['lens-analysis'] })
   }, [qc])
 
   const addPosition = useCallback(
