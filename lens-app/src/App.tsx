@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { Analytics } from '@vercel/analytics/react'
 import { QueryClient } from '@tanstack/react-query'
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client'
 import { createSyncStoragePersister } from '@tanstack/query-sync-storage-persister'
@@ -57,6 +58,12 @@ export default function App() {
       <AuthProvider>
       <ThemeProvider>
         <BrowserRouter>
+          {/* Vercel Web Analytics. Mounted INSIDE BrowserRouter on purpose: it
+              reads the router context to record client-side navigations, so
+              outside it only the first page load would ever be counted, which on
+              an SPA is nearly all of the traffic missed. Renders no DOM. Inert
+              off Vercel (local dev logs to the console instead of reporting). */}
+          <Analytics />
           <Routes>
             <Route path="/login" element={<Login />} />
             <Route
