@@ -78,6 +78,13 @@
   --text-metric: 28px;
   --text-score: 56px;
 
+  /* App-wide typeface. Changing it means editing THREE places in lockstep: this
+     token, the `body` font-family below, and the Google Fonts <link> in
+     index.html. Keep the requested weights at 400;500;600 (styling.md allows no
+     others; a family without a real 600 gets a synthesized fake bold).
+
+     Sora is the settled typeface (styling.md), not a default nobody revisited.
+     Inter and a Helvetica stand-in were both trialled app-wide and rejected. */
   --font-sans: "Sora", ui-sans-serif, system-ui, sans-serif;
 
   /* Corner radius: every boxy rounded-* utility (cards, buttons, modals,
