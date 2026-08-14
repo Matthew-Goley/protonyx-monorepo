@@ -86,9 +86,6 @@ export function AddPositionModal({
         onClick={(e) => e.stopPropagation()}
       >
         <h2 className="text-xl font-semibold text-primary">Add a Position</h2>
-        <p className="mt-1 text-sm text-secondary">
-          Lens validates the ticker before saving.
-        </p>
 
         <div className="mt-6 space-y-4">
           <div className="space-y-1.5">
