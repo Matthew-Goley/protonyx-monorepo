@@ -6,7 +6,7 @@ Reference for working in `lens-ref-web/`. Read this before changing anything her
 
 The full **lens-arc.com marketing site** for Lens Arc (the web product that lives in `lens-app/`, deployed separately at `app.lens-arc.com`). It grew out of the pre-launch referral landing page; the referral/waitlist flow still exists intact, relocated under `/referral`. The product is messaged as **launched and paid**: real payments, no "get started free" CTAs anywhere, and the referral program is framed as earned Pro time being redeemed (see §5 and §6).
 
-A **persistent NavBar** (`src/components/NavBar.tsx`, mounted app-wide in `App.tsx`) sits fixed on every page: wordmark, Engine link, Referral program link, the account slot (`AccountMenu`, sign in from any page via the referral-service magic link), and the "Enter Lens Arc" CTA to `APP_URL`. The design is **Hairline** (winner of a 3-variant comparison; Float/Ledger and the switcher are deleted) and the bar is **theme-adaptive**: dark glass over `data-nav-dark` sections, light glass with dark text over white content (see §5).
+A **persistent NavBar** (`src/components/NavBar.tsx`, mounted app-wide in `App.tsx`) sits fixed on every page: wordmark, Engine link, Referral program link, the account slot (`AccountMenu`, backed by the **real Fastify account system**), and the "Enter Lens Arc" CTA to `APP_URL`. The design is **Hairline** (winner of a 3-variant comparison; Float/Ledger and the switcher are deleted) and the bar is **theme-adaptive**: dark glass over `data-nav-dark` sections, light glass with dark text over white content (see §5).
 
 Routes (all matched by `src/App.tsx`, no router library):
 
@@ -14,6 +14,8 @@ Routes (all matched by `src/App.tsx`, no router library):
 |---|---|---|
 | `/` | `src/landing/LandingPage.tsx` | Landing page in the established house style (see §5) |
 | `/lens-arc` | `src/pages/EnginePage.tsx` | Plain-language technical dive into the Lens engine, trust-building for non-technical investors. Every claim grounded in `lens-api/CLAUDE.md` §11; do not invent capabilities |
+| `/login` | `src/pages/LoginPage.tsx` | The site's account page, Sign in tab (see §5 "The account") |
+| `/signup` | `src/pages/LoginPage.tsx` | Same page, opens on the Create account tab |
 | `/legal/terms` | `src/pages/TermsPage.tsx` | Referral-program Terms, verbatim from `legal-raw/lens-arc-referral-terms.md` |
 | `/legal/privacy` | `src/pages/PrivacyPage.tsx` | Referral-site Privacy Policy, verbatim from `legal-raw/lens-arc-referral-privacy-policy.md` |
 | `/referral` | `src/layouts/Layout4.tsx` | The original referral landing page (historical file name), copy updated to post-launch messaging |
@@ -22,8 +24,10 @@ Routes (all matched by `src/App.tsx`, no router library):
 
 **Legacy redirects (do not remove):** `/ref/:code` and `/r/:code` were shared publicly (DMs, LinkedIn) before the restructure. `App.tsx` rewrites them in place (`history.replaceState`, code preserved) to `/referral/ref/:code` before any page mounts. `/terms` and `/privacy` similarly rewrite to `/legal/terms` / `/legal/privacy`. Unknown paths fall through to the landing page.
 
-- **Wired to a real backend.** The signup flow (email -> magic-link verification -> post-verify hero readout) calls the **referral-service** (`referral-service/`, FastAPI on Railway) via `src/lib/api.ts`. Base URL from `VITE_REFERRAL_API_URL` (defaults to `http://localhost:8000`). The restructure did not touch `api.ts` or the flow's API logic, only where the flow lives and which paths it reads.
-- Standalone project on the frontend side: shares no code or build with `backend/`, `lens-api/`, `lens-app/`, or `referral-service/`. Its only runtime dependency is the referral-service HTTP API.
+- **Wired to two real backends.**
+  - **Fastify** (`backend/`) via `src/lib/authApi.ts`, base URL `VITE_API_URL` (defaults to `http://localhost:3000`). This is the **account system**: `/login`, `/signup`, `/me`, `/logout` against the `users` table, the same accounts `lens-app` uses. Auth is the httpOnly `session` cookie.
+  - **referral-service** (`referral-service/`, FastAPI on Railway) via `src/lib/api.ts`, base URL `VITE_REFERRAL_API_URL` (defaults to `http://localhost:8000`). This now serves **only the `/referral` page**: the `waitlist` table's verify/status calls, i.e. how much Pro time a pre-launch member earned. It is no longer a login.
+- Standalone project on the frontend side: shares no code or build with `backend/`, `lens-api/`, `lens-app/`, or `referral-service/`. Its only runtime dependencies are those two HTTP APIs.
 
 History, so the file names make sense: the site started as five alternate pre-launch layouts switched with arrow keys; the product-preview layout won and kept its `Layout4.tsx` name (now the `/referral` page). The `/` landing page went through the same process during the restructure: four complete designs (Classic, Noir, Brutalist, Swiss) behind an arrow-key crossfade switcher, compared live; **Classic won** and the other three plus the switcher were deleted outright (git history only, not a reference to build from).
 
@@ -62,21 +66,27 @@ lens-ref-web/
 ├── src/
 │   ├── main.tsx                   # ReactDOM bootstrap + Vercel <Analytics /> mount
 │   ├── App.tsx                    # Path router + legacy redirects (see §1 route table), wrapped in
-│   │                              # AccountProvider with the persistent NavBar above the routed page
-│   ├── content.ts                 # Copy/config source of truth: APP_URL, appSignupUrl(email), ROUTES, NAV, REFERRAL_REF_BASE,
+│   │                              # AuthProvider > AccountProvider with the persistent NavBar above the routed page
+│   ├── content.ts                 # Copy/config source of truth: APP_URL, appSignupUrl(email), appOpenUrl(email),
+│   │                              # authUrl(mode, next), ROUTES, NAV, REFERRAL_REF_BASE,
 │   │                              # LEGACY_LEGAL_PATHS, HERO, REFERRAL_MILESTONES, BRAND,
-│   │                              # LEGAL_PAGES (/legal/* paths), COPY (paid-product microcopy + account strings)
+│   │                              # LEGAL_PAGES (/legal/* paths), COPY (paid-product microcopy + account strings),
+│   │                              # AUTH (login/signup page + account menu strings)
 │   ├── index.css                  # Tailwind v4 @theme tokens + landing animations + the Mercury button
 │   │                              # mechanics ported from lens-app + the .fluid-btn hero-CTA sim (see §5 Buttons)
-│   ├── lib/api.ts                 # Typed referral-service client (join, verify, status) - UNCHANGED by restructure
+│   ├── lib/
+│   │   ├── api.ts                 # Typed referral-service client (join, verify, status). /referral page ONLY now
+│   │   └── authApi.ts             # Typed Fastify client (login, signup, me, logout) over the `users` table;
+│   │                              # httpOnly session cookie, credentials: "include" (see §5 The account)
 │   ├── hooks/
-│   │   ├── useAccountFlow.ts      # Signup state machine. Routing-facing bits: captures /referral/ref/<code>
+│   │   ├── authContext.tsx        # AuthProvider + useAuth(): the site's REAL session (see §5 The account)
+│   │   ├── useAccountFlow.ts      # Referral state machine. Routing-facing bits: captures /referral/ref/<code>
 │   │   │                          # (plus legacy /ref/<code>, /r/<code>, ?ref=), cleans URLs to /referral
 │   │   └── accountContext.tsx     # AccountProvider + useAccount(): the ONE shared flow instance (see §5)
 │   ├── components/
 │   │   ├── NavBar.tsx             # Persistent site nav (Hairline, comparison winner), theme-adaptive via
 │   │   │                          # the data-nav-dark section markers (see §5)
-│   │   ├── AccountMenu.tsx        # The nav's account slot: magic-link sign-in popover / earned-Pro summary
+│   │   ├── AccountMenu.tsx        # The nav's account slot: Sign in link (out) / account popover (in)
 │   │   ├── buttons.tsx            # Btn/BtnLink (lens-app Mercury roles) + HeroButton (static gradient hero CTA)
 │   │   └── SimplePage.tsx         # THE shared content-page template: title block, content slot, basic footer
 │   │                              # (no header of its own; the app-wide NavBar covers it). Used by /lens-arc
@@ -90,6 +100,7 @@ lens-ref-web/
 │   ├── readouts/                  # Post-verify hero readout (SignalReadout + shared.tsx), unchanged, still mid-rework
 │   ├── layouts/Layout4.tsx        # The /referral page (historical name). Post-launch copy; countdown replaced by LiveBadge
 │   └── pages/
+│       ├── LoginPage.tsx          # /login + /signup: the account page (tabs, ?next=, ?email=), see §5
 │       ├── EnginePage.tsx         # /lens-arc content (SimplePage shell)
 │       ├── legalContent.tsx       # Legal typography primitives (LegalSection/List/Table/Contact)
 │       ├── TermsPage.tsx          # SimplePage + Terms body (verbatim from legal-raw/)
@@ -122,9 +133,27 @@ Mounted once in `App.tsx`, fixed on every page. The design is **Hairline**, winn
 
 **The bar is theme-adaptive.** Over a dark section it is dark glass (`bg-[#0c0f16]/70`, white links, white wordmark); over light content it flips to light glass (`bg-white/80`, slate links, dark wordmark), with all colors crossfading 300 ms and the two wordmark images crossfading in place, so it never reads as a murky gray strip on white. Detection: dark sections opt in with a **`data-nav-dark` attribute** (today: the landing hero + discovery sections); on every scroll/resize the bar probes whether a marked section covers its midline (y=24) and picks the theme. **Any new dark-background section must set `data-nav-dark`** or the bar will render its light theme on top of it.
 
-### The account (hooks/accountContext.tsx + components/AccountMenu.tsx)
+### The account (hooks/authContext.tsx + lib/authApi.ts + pages/LoginPage.tsx + components/AccountMenu.tsx)
 
-`AccountProvider` (App root) calls `useAccountFlow()` **once** and shares it via `useAccount()`. This is load-bearing: the flow consumes the single-use `/verify?token=` magic link on mount, so exactly one instance may exist — **never call `useAccountFlow()` directly from a component**; `Layout4` and `AccountMenu` both read the context. Because the verified code/email live in `localStorage`, the account shows on every page. `AccountMenu` is the nav's account slot: signed out it opens a popover with the magic-link email form (sign in from any page, including the landing page — submitting runs the same `flow.submitEmail()` the referral page uses, then shows the check-your-email state); signed in it shows the email, verified-referral count, the earned-Pro summary + redemption note, links to the app and `/referral`, and Log out.
+**The site's login is the real one: the Fastify `users` table, the same accounts `lens-app` authenticates against.** An account created on this site signs straight into `app.lens-arc.com`, and (if the email matches a verified waitlist row) the backend grants the earned Pro time during that very signup, via `grantWaitlistProTime()`. There is no separate marketing-site identity.
+
+- **`src/lib/authApi.ts`** is the typed client: `login(usernameOrEmail, password)` (the backend resolves either), `signup(username, email, password)`, `me()`, `logout()`. Every call sets `credentials: "include"` because auth rides the **httpOnly `session` cookie**; no token is ever read or stored in JS. Errors read the backend's `message` field.
+- **`AuthProvider` / `useAuth()`** (`hooks/authContext.tsx`, mounted at the App root **above** `AccountProvider`) exposes `{ user, isAuthenticated, loading, login, signup, logout }`. It **mirrors lens-app's `AuthContext` deliberately**, including the rule that **authentication is gated on `GET /me` succeeding, not on `POST /login`**: a correct password does not prove a usable session, since every later call rides the cookie. Do not relax that to an unconditional `setUser`.
+- **`pages/LoginPage.tsx`** is `/login` (Sign in tab) and `/signup` (Create account tab), one component, tab state local so the user can switch without a navigation. Sign in takes username-or-email + password; sign up takes username + email + password (min 8 chars, checked client-side only) plus the Terms notice that makes the backend's silent TOS stamping at signup meaningful. It reads `?email=` to prefill and `?next=` to decide where to land afterwards. **`?next=` is deliberately restricted to same-origin absolute paths** (`safeNext()` rejects anything not starting with `/`, plus protocol-relative `//host`), or the page becomes an open redirect.
+- **`AccountMenu`** is the nav's account slot: signed out it is a plain link to `/login` carrying the current path as `?next=`; signed in it opens a popover with the username, email, plan, "Open Lens Arc", "View referral status", and Log out. It renders an empty slot while `loading` so the nav never flashes "Sign in" at someone who is signed in.
+
+**The session is cached in `sessionStorage` under `lens_account`.** This site has no router: every nav click is a **full page load**, so without the cache the account slot would blank and re-resolve on every page, and each view would spend one request against the backend's **20 requests / 60s per IP** limit before anything rendered. Two rules keep that safe:
+
+- It is a **display** cache, never an authorization one. The httpOnly cookie still authenticates every call, and `/me` revalidates on each load.
+- **`authApi.me()` returns `null` only for a 401 and throws for anything else** (429, 5xx, offline). `AuthProvider` clears the cached account on `null` and **keeps** it on a throw. Collapsing a 429 into "signed out" would log a visitor out of the nav for browsing quickly.
+
+### The referral flow is no longer a login (hooks/accountContext.tsx)
+
+`AccountProvider` still calls `useAccountFlow()` **once** and shares it via `useAccount()`, and that is still load-bearing: the flow consumes the single-use `/verify?token=` magic link on mount, so exactly one instance may exist — **never call `useAccountFlow()` directly from a component**. What changed is its reach: **only `Layout4` (`/referral`) reads it now.** The nav, the landing page, and the engine page all moved to `useAuth()`.
+
+**The magic-link sign-in was removed from the nav.** It authenticated against the referral-service `waitlist` table, which is a pre-launch mailing list, not an account store, and a real account needs a username/email/password (more than a popover can carry). `flow.submitEmail` / `resendEmail` / `emailError` / `dismissVerify` are now **dormant**, and `Layout4`'s `VerifyDialog` is unreachable in practice (nothing sets `step` to `"verifying"` any more); they are kept so restoring the flow is putting a caller back, not rebuilding it.
+
+**Known consequence, accepted as temporary:** a waitlist member who clears browser storage can no longer restore the `/referral` verified view, because nothing sends magic links from the site. Their earned Pro time is unaffected: it is granted by email match at signup (`backend/src/waitlist.ts`), which never depended on this site. `COPY.programClosedMember` was rewritten to say exactly that instead of pointing at the removed popover.
 
 ### Buttons (components/buttons.tsx + the Mercury block in index.css)
 
@@ -167,7 +196,7 @@ Deliberately minimal now: **hero + milestone timeline + footer, nothing else.** 
 
 **`RedemptionNote`** (local to Layout4) renders under the `VerifiedBox`: the earned amount (`COPY.rewardSummary`/`rewardSummaryLifetime` from `flow.currentReward`) plus `COPY.redeemNote` (the time applies automatically when signing in to the app with the same email — matching the Terms §3 redemption language). It then carries **the claim CTA**, the exit from this page: `COPY.claimNote` (earned time is claimed by creating an app account with this same email; a different address will not carry it) above a full-width primary `BtnLink` labelled `COPY.claimCta`, linking to `appSignupUrl(flow.email)` from `content.ts` (`APP_URL + /login?mode=signup&email=<encodeURIComponent(email)>`). **The app's Login page reads both params** (opens on its Sign Up tab with the email prefilled, see `lens-app/CLAUDE.md` §7), so the param names are a contract between the two projects: renaming either one silently breaks the prefill. The summary + `redeemNote` also appear in the nav's `AccountMenu`, so earned time is visible from any page; the claim CTA is deliberately **only** on this page, not duplicated into the menu. The flow comes from `useAccount()` (the shared context), not a local hook call; the email submit button uses `.btn-primary` (Mercury).
 
-### The signup flow (hooks/useAccountFlow.ts)
+### The referral state machine (hooks/useAccountFlow.ts)
 
 Unchanged in its API logic (`/join`, `/verify`, `/status` via `src/lib/api.ts`; magic-link only; server-issued referral code; localStorage persistence under `lens_ref_code` / `lens_ref_email`; DEV-only `devSimulateVerify`). What the restructure touched, deliberately confined to routing:
 
@@ -221,7 +250,9 @@ The landing page imports them through the `VIDEOS` map in `src/landing/landingCo
 
 ## 8. Gotchas
 
-- **Dev server port**: Vite defaults to 5173 and auto-increments if taken. The referral-service CORS allowlist covers `localhost:5173`/`5174`; other ports fail CORS (free the port or add it to `allow_origins` in `referral-service/main.py`).
+- **Dev server port**: Vite defaults to 5173 and auto-increments if taken. **`lens-app` also dev-serves on 5173**, so whichever starts second lands on 5174. Both ports are allowlisted by **both** backends: `allow_origins` in `referral-service/main.py`, and the `cors` origin list in `backend/src/server.ts` (5174 was added there for exactly this reason). Any other port fails CORS on the auth calls.
+- **`VITE_API_URL` must be `https://api.lens-arc.com` in production**, never the raw `*.up.railway.app` host. The `session` cookie is the only browser auth path, and only the `api.lens-arc.com` form is **same-site** with `lens-arc.com`, which keeps that cookie first-party. On the Railway host it is a third-party cookie that Safari and any third-party-cookie-blocking browser drops: `POST /login` still succeeds, then `/me` 401s and the visitor silently appears signed out. Same constraint as lens-app's; see the root `CLAUDE.md` §4 "API domain".
+- **Signup is beta-gated server-side.** `POST /signup` returns **403** when `BETA_ACTIVE=false` or the user count has reached `MAX_BETA_USERS` (`backend/src/betaConfig.ts`). That surfaces on the page as "The open beta is currently closed/full", which is a server state, not a bug in the form. The site does **not** poll `GET /beta/status` to pre-empt it.
 - **`tsc --noEmit` is part of `npm run build`**; `noUnusedLocals` means dead imports break the build.
 - **SPA fallback is required for every route**: `/lens-arc`, `/legal/*`, `/referral`, `/referral/ref/<code>`, `/verify`, and the legacy `/ref/<code>`, `/r/<code>`, `/terms`, `/privacy`. None are real files; `vercel.json`'s catch-all rewrite serves `index.html` for all of them on Vercel, and Vite's dev server does history-API fallback automatically.
 - **The legacy redirects in `App.tsx` are load-bearing**: `/ref/<code>` and `/r/<code>` were distributed publicly pre-restructure. Removing them breaks real shared links. They rewrite via `history.replaceState` before any page mounts, which is what lets `useAccountFlow` capture the code from the canonical path.

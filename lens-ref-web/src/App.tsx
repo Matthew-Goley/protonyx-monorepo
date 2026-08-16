@@ -3,8 +3,10 @@ import ReferralPage from "./layouts/Layout4";
 import EnginePage from "./pages/EnginePage";
 import TermsPage from "./pages/TermsPage";
 import PrivacyPage from "./pages/PrivacyPage";
+import LoginPage from "./pages/LoginPage";
 import NavBar from "./components/NavBar";
 import { AccountProvider } from "./hooks/accountContext";
+import { AuthProvider } from "./hooks/authContext";
 import {
   LEGACY_LEGAL_PATHS,
   LEGAL_PAGES,
@@ -36,9 +38,14 @@ function routePage(path: string) {
   if (path === LEGAL_PAGES.terms.path) return <TermsPage />;
   if (path === LEGAL_PAGES.privacy.path) return <PrivacyPage />;
 
-  // The referral page owns the whole signup flow: the /referral landing, the
+  // One page, two entry paths: /signup just opens on the Create account tab.
+  if (path === ROUTES.login || path === ROUTES.signup) return <LoginPage />;
+
+  // The referral page owns the whole waitlist flow: the /referral landing, the
   // /referral/ref/<code> share links, and the /verify?token=... magic-link
-  // return path (all consumed by the shared account flow on mount).
+  // return path (all consumed by the shared account flow on mount). This is
+  // redemption state for the pre-launch program, NOT the site's login, which
+  // lives on /login above.
   if (
     path === ROUTES.referral ||
     path.startsWith(REFERRAL_REF_BASE) ||
@@ -62,13 +69,17 @@ export default function App() {
   }
   const path = redirected ?? rawPath;
 
-  // AccountProvider mounts the ONE shared account-flow instance (see
-  // hooks/accountContext.tsx); NavBar is the persistent site nav, rendered
-  // on every page above the routed content.
+  // AuthProvider holds the real account session (Fastify `users`, shared with
+  // lens-app) and wraps everything, because the NavBar's account slot reads it
+  // on every page. AccountProvider mounts the ONE shared referral-flow instance
+  // (see hooks/accountContext.tsx), which now serves only the /referral page.
+  // NavBar is the persistent site nav, rendered above the routed content.
   return (
-    <AccountProvider>
-      <NavBar />
-      {routePage(path)}
-    </AccountProvider>
+    <AuthProvider>
+      <AccountProvider>
+        <NavBar />
+        {routePage(path)}
+      </AccountProvider>
+    </AuthProvider>
   );
 }

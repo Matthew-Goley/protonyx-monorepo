@@ -1,8 +1,8 @@
 import { useLayoutEffect, useState } from "react";
-import { NAV, ROUTES } from "../content";
+import { appOpenUrl, NAV, ROUTES } from "../content";
 import { BtnLink } from "./buttons";
 import AccountMenu from "./AccountMenu";
-import { useAccount } from "../hooks/accountContext";
+import { useAuth } from "../hooks/authContext";
 import lensArcWhite from "../../assets/lens-arc/lens-arc-white.png";
 import lensArcDark from "../../assets/lens-arc/lens-arc-dark.png";
 
@@ -49,9 +49,9 @@ function useNavTheme(): "dark" | "light" {
 
 export default function NavBar() {
   const dark = useNavTheme() === "dark";
-  // Reads the shared flow (never instantiates one, see accountContext) purely so
-  // the app CTA can carry a verified member's email into the sign-up form.
-  const flow = useAccount();
+  // Read purely so the app CTA can carry a signed-in visitor's email into the
+  // app's sign-up form (appOpenUrl does not force the sign-up tab).
+  const { user } = useAuth();
 
   const linkClass = `group relative py-1 transition-colors duration-300 ${
     dark ? "text-white/60 hover:text-white" : "text-slate-500 hover:text-slate-900"
@@ -100,7 +100,7 @@ export default function NavBar() {
             {underline}
           </a>
           <AccountMenu light={!dark} />
-          <BtnLink href={flow.appHref} role="primary" size="sm">
+          <BtnLink href={appOpenUrl(user?.email)} role="primary" size="sm">
             {NAV.app.label}
           </BtnLink>
         </nav>

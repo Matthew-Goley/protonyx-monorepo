@@ -147,26 +147,32 @@ _monorepo/
 │                                  # (no "free" CTAs; referral page reframed as earned-Pro-time redemption). A
 │                                  # persistent theme-adaptive NavBar on every page (the "Hairline" design; flips
 │                                  # dark/light glass via data-nav-dark section markers) carries Engine/Referral
-│                                  # links, an Enter Lens Arc CTA, and an account menu (magic-link sign-in via
-│                                  # the referral-service, visible site-wide). Buttons replicate lens-app's
+│                                  # links, an Enter Lens Arc CTA, and an account menu backed by the REAL Fastify
+│                                  # `users` table (see the /login note below). Buttons replicate lens-app's
 │                                  # Mercury mechanics; hero CTAs are static gradient HeroButtons. The landing
 │                                  # page's headline sections include a savings calculator (slider: 1% AUM
 │                                  # advisor fee vs $120/yr Lens Arc). Routes
 │                                  # (plain path router in src/App.tsx, no router lib): / (landing page in the
 │                                  # established frontend/ house style, src/landing/LandingPage.tsx; picked from a
 │                                  # four-design comparison whose losers were deleted),
-│                                  # /lens-arc (plain-language engine trust page), /legal/terms +
+│                                  # /lens-arc (plain-language engine trust page), /login + /signup (the site's
+│                                  # account page, src/pages/LoginPage.tsx), /legal/terms +
 │                                  # /legal/privacy (verbatim from legal-raw/, on the shared SimplePage template), and
 │                                  # /referral (the original referral page, src/layouts/Layout4.tsx, post-launch copy)
 │                                  # with /referral/ref/:code share links. Legacy /ref/:code, /r/:code, /terms,
-│                                  # /privacy redirect in place (publicly shared links; do not remove). The signup flow
-│                                  # (email -> magic-link verification -> post-verify hero readout) is wired to the
-│                                  # referral-service (src/lib/api.ts + src/hooks/useAccountFlow.ts): POST /join sends
-│                                  # the link, /verify?token= is read on load, the share-path code is captured for
-│                                  # attribution, and the verified code persists in localStorage (refreshed via
-│                                  # /status). Set VITE_REFERRAL_API_URL (defaults to localhost:8000). Once verified,
-│                                  # the hero's demo-video slot swaps to src/readouts/SignalReadout.tsx (still
-│                                  # mid-rework). Brand images in assets/lens-arc (mirror of lens-app's); the four 2K
+│                                  # /privacy redirect in place (publicly shared links; do not remove).
+│                                  # LOGIN: the site authenticates against the Fastify `users` table, the same
+│                                  # accounts lens-app uses (src/lib/authApi.ts + src/hooks/authContext.tsx ->
+│                                  # /login, /signup, /me, /logout over the httpOnly session cookie). Set
+│                                  # VITE_API_URL (defaults to localhost:3000; MUST be https://api.lens-arc.com in
+│                                  # prod so the cookie stays same-site). The old magic-link login against the
+│                                  # referral `waitlist` table was REMOVED from the nav.
+│                                  # REFERRAL: the waitlist flow (src/lib/api.ts + src/hooks/useAccountFlow.ts) now
+│                                  # serves only /referral: /verify?token= is read on load, the share-path code is
+│                                  # captured for attribution, and the verified code persists in localStorage
+│                                  # (refreshed via /status). Set VITE_REFERRAL_API_URL (defaults to localhost:8000).
+│                                  # Once verified, the hero's demo-video slot swaps to src/readouts/SignalReadout.tsx
+│                                  # (still mid-rework). Brand images in assets/lens-arc (mirror of lens-app's); the four 2K
 │                                  # demo videos in assets/video feed the /referral walkthrough and all four landing
 │                                  # designs. Nav links to the app at https://app.lens-arc.com (APP_URL in content.ts).
 │                                  # Standalone project: npm install && npm run dev (Vite, port 5173). Not deployed yet.
@@ -308,10 +314,11 @@ If `RESEND_API_KEY` is missing, signup still succeeds — `sendWelcomeEmail` is 
 2. **`@fastify/cors`** — allowlists these origins:
    - `http://127.0.0.1:5500` / `http://localhost:5500`
    - `http://127.0.0.1:5501` / `http://localhost:5501` (static frontend Live Server)
-   - `http://localhost:5173` / `http://127.0.0.1:5173` (lens-app Vite dev server)
+   - `http://localhost:5173` / `http://127.0.0.1:5173` (Vite dev server)
+   - `http://localhost:5174` / `http://127.0.0.1:5174` (the second Vite dev server: **lens-app and lens-ref-web both authenticate against this API and both default to 5173**, so whichever starts second auto-increments to 5174 and would otherwise fail every auth call on CORS)
    - `https://protonyxdata.com`
    - `https://app.lens-arc.com` (the live lens-app)
-   - `https://lens-arc.com` (the marketing site)
+   - `https://lens-arc.com` (the marketing site, which now has its own login/signup page against `users`)
    Methods: `GET, POST, PUT, DELETE, PATCH` (`PUT` was added for `PUT /positions` bulk-replace - a JSON `PUT` triggers a CORS preflight, so the method must be allowlisted). `credentials: true` is set so the lens-app can send the httpOnly session cookie. Adding any new origin (staging URL, another deployed frontend) requires editing this list in `server.ts`. Note these are the **frontend** origins that may call the API; they are unrelated to the API's own hostname (see "API domain" below).
 
 **API domain: the backend must stay same-site with the app.** In production the backend is served at **`https://api.lens-arc.com`** (a Railway custom domain on the same service; the generated `protonyx-monorepo-production.up.railway.app` host still resolves and is kept as a fallback). `lens-app` reaches it through `VITE_API_URL`, which **must** point at the `api.lens-arc.com` form.
@@ -903,7 +910,8 @@ Anything more specific than the map above — exact widget struct, accordion mea
 
 - **Dev mode wipes the users table on every boot.** Do not run `npm run dev` against a database that holds real accounts. The seeded test user is `testuser` / `password123`.
 - **Rate limit is 20 / 60 s per IP, global.** Expect `429`s during frontend testing. This is a deliberate brake during early dev — don't loosen it casually.
-- **CORS allowlist is strict, and `credentials: true` is required.** The current allowlist covers ports 5500/5501 (static frontend), 5173 (lens-app Vite), `protonyxdata.com`, `app.lens-arc.com`, and `lens-arc.com`. Adding any new origin means editing `server.ts`.
+- **CORS allowlist is strict, and `credentials: true` is required.** The current allowlist covers ports 5500/5501 (static frontend), 5173 and 5174 (the two Vite dev servers, lens-app and lens-ref-web), `protonyxdata.com`, `app.lens-arc.com`, and `lens-arc.com`. Adding any new origin means editing `server.ts`.
+- **Two frontends authenticate against this backend now.** `lens-app` and `lens-ref-web` both call `/login`, `/signup`, `/me`, `/logout` over the same `session` cookie and the same `users` table. An auth-route change affects both; `lens-ref-web`'s client is `src/lib/authApi.ts` + `src/hooks/authContext.tsx`, deliberately mirroring lens-app's `AuthContext`.
 - **The API is served at `api.lens-arc.com` so the session cookie stays same-site.** See §4 "API domain". Repointing the frontend at the raw `*.up.railway.app` host silently breaks auth on any browser that blocks third-party cookies, while still letting login itself succeed. Every preflight failure during testing is almost always a wrong port or a missing origin. `credentials: true` must stay set — without it the browser will not send the session cookie.
 - **Passwords are bcrypt cost 10.** Do not lower it. Do not log `user.password` anywhere — `/me` deliberately omits it from its `SELECT`.
 - **JWT expiry is 7 days.** No refresh-token flow. For the static frontend (bearer-token path), an expired token surfaces as a failed `/me` call and the user is bounced to `/auth/index.html`. For lens-app (cookie path), an expired cookie causes `GET /me` on mount to return 401, leaving `isAuthenticated: false` and redirecting to `/login`.

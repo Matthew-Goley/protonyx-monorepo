@@ -35,13 +35,30 @@ export const appOpenUrl = (email?: string | null) => {
 // Route paths, single source of truth for App.tsx's matcher and every internal
 // link. The referral signup flow lives under /referral; the legacy /ref/<code>
 // and /r/<code> share paths (already distributed publicly) are redirected to
-// REFERRAL_REF_BASE + code by App.tsx, never removed.
+// REFERRAL_REF_BASE + code by App.tsx, never removed. /login and /signup are
+// the same page (LoginPage), differing only in which tab opens first.
 export const ROUTES = {
   home: "/",
   engine: "/lens-arc",
   referral: "/referral",
   verify: "/verify",
+  login: "/login",
+  signup: "/signup",
 } as const;
+
+// Href for the site's own account page. `next` is the path to come back to
+// after a successful sign in; only same-origin paths are carried (the page
+// re-checks this before redirecting, so a crafted ?next= cannot bounce a user
+// off-site). Callers usually pass window.location.pathname.
+export const authUrl = (
+  mode: "signin" | "signup" = "signin",
+  next?: string | null
+) => {
+  const path = mode === "signup" ? ROUTES.signup : ROUTES.login;
+  const clean = next?.trim() ?? "";
+  const safe = clean.startsWith("/") && !clean.startsWith("//") && clean !== path;
+  return safe ? `${path}?next=${encodeURIComponent(clean)}` : path;
+};
 
 // Base path for the canonical referral share route: /referral/ref/<code>.
 export const REFERRAL_REF_BASE = "/referral/ref/";
@@ -167,18 +184,53 @@ export const COPY = {
   programClosedHeading: "The referral program has closed",
   programClosedBody:
     "Lens Arc is live, and the referral program is no longer accepting new participants.",
+  // The magic-link sign-in that used to recover this state was removed with the
+  // waitlist login, so this no longer points at a popover. It points at the real
+  // redemption path instead, which never depended on this site: the backend
+  // grants the earned time at signup by matching the email against the waitlist
+  // row (backend/src/waitlist.ts).
   programClosedMember:
-    "Already joined and verified your email? Your earned Pro time is safe. Use Sign in above to get a link and claim it.",
+    "Already joined and verified your email? Your earned Pro time is safe. Create your Lens Arc account with that same email address and it applies automatically.",
   accountSignIn: "Sign in",
   accountTitle: "Your account",
-  accountSignInHint:
-    "Enter the email you used for the referral program and we'll send you a sign-in link.",
-  accountSendLink: "Send link",
-  accountReferralsLine: (n: number) =>
-    `${n} verified ${n === 1 ? "referral" : "referrals"}`,
   accountViewStatus: "View referral status",
-  accountLoggedOut: "Not signed in",
   disclaimer:
     "Educational tool only. Not investment advice. See full disclaimer in our Terms of Service.",
   legal: "© 2026 Protonyx LLC",
+};
+
+// Copy for the account page (src/pages/LoginPage.tsx) and the nav's account
+// slot. This is the REAL account system (Fastify `users`), so the wording is
+// about a Lens Arc account, never about the referral waitlist.
+export const AUTH = {
+  signInTab: "Sign in",
+  signUpTab: "Create account",
+  signInTitle: "Sign in to Lens Arc",
+  signUpTitle: "Create your Lens Arc account",
+  signInSub: "Use the same account you sign in to the app with.",
+  signUpSub: "One account for the app and this site.",
+  identifierLabel: "Username or email",
+  identifierPlaceholder: "you@example.com",
+  usernameLabel: "Username",
+  usernamePlaceholder: "yourname",
+  emailLabel: "Email",
+  passwordLabel: "Password",
+  passwordPlaceholder: "••••••••",
+  signInCta: "Sign in",
+  signUpCta: "Create account",
+  working: "One moment...",
+  // Signup records acceptance of the current Terms server-side (the /signup
+  // route stamps tos_version_accepted), so the form has to say so. There is no
+  // checkbox, same as the rest of the platform.
+  termsNote: "By creating an account, you agree to our",
+  termsLink: "Terms of Service",
+  missingFields: "Fill in every field to continue.",
+  passwordTooShort: "Use at least 8 characters.",
+  switchToSignUp: "No account yet?",
+  switchToSignUpCta: "Create one",
+  switchToSignIn: "Already have an account?",
+  switchToSignInCta: "Sign in",
+  signedInAs: (name: string) => `Signed in as ${name}`,
+  planLine: (plan: string) => `${plan.charAt(0).toUpperCase()}${plan.slice(1)} plan`,
+  backHome: "Back to lens-arc.com",
 };
