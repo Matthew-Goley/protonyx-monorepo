@@ -131,6 +131,36 @@ export const LEGACY_LEGAL_PATHS = {
   "/privacy": LEGAL_PAGES.privacy.path,
 } as const;
 
+// The hamburger menu (components/MenuOverlay.tsx). The nav bar itself carries
+// only three controls now (account slot, app CTA, menu button), so this is the
+// ONE place every page on lens-arc.com is linked from: add a route here in the
+// same change that adds it to App.tsx, or it becomes unreachable from the nav.
+//
+// /login and /signup are deliberately absent from the columns: the account slot
+// and the menu's own auth action already lead there, and listing them as
+// destinations alongside content pages reads oddly.
+export const MENU = {
+  openLabel: "Open menu",
+  closeLabel: "Close menu",
+  columns: [
+    {
+      label: "Navigation",
+      links: [
+        { label: "Home", href: ROUTES.home },
+        { label: NAV.engine.label, href: NAV.engine.href },
+        { label: NAV.referral.label, href: NAV.referral.href },
+      ],
+    },
+    {
+      label: "Legal",
+      links: [
+        { label: LEGAL_PAGES.terms.title, href: LEGAL_PAGES.terms.path },
+        { label: LEGAL_PAGES.privacy.title, href: LEGAL_PAGES.privacy.path },
+      ],
+    },
+  ],
+} as const;
+
 // Shared microcopy. Every page pulls strings from here, never inline.
 export const COPY = {
   emailPlaceholder: "you@example.com",

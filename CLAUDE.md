@@ -146,9 +146,11 @@ _monorepo/
 │                                  # pre-launch referral landing page; the product is now messaged as launched and PAID
 │                                  # (no "free" CTAs; referral page reframed as earned-Pro-time redemption). A
 │                                  # persistent theme-adaptive NavBar on every page (the "Hairline" design; flips
-│                                  # dark/light glass via data-nav-dark section markers) carries Engine/Referral
-│                                  # links, an Enter Lens Arc CTA, and an account menu backed by the REAL Fastify
-│                                  # `users` table (see the /login note below). Buttons replicate lens-app's
+│                                  # dark/light glass via data-nav-dark section markers) carries exactly two
+│                                  # controls: an account menu backed by the REAL Fastify `users` table (see the
+│                                  # /login note below), and a two-bar hamburger (crossing into an X) that opens a
+│                                  # full-screen menu styled after frontend/'s. EVERY link lives in that menu,
+│                                  # including the Enter Lens Arc CTA. Buttons replicate lens-app's
 │                                  # Mercury mechanics; hero CTAs are static gradient HeroButtons. The landing
 │                                  # page's headline sections include a savings calculator (slider: 1% AUM
 │                                  # advisor fee vs $120/yr Lens Arc). Routes
