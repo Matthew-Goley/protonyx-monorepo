@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
-import { ArrowUpRight, Loader2 } from "lucide-react";
+import { ArrowUpRight } from "lucide-react";
 import { APP_URL, AUTH, COPY, LEGAL_PAGES, NAV, ROUTES } from "../content";
 import { useAuth } from "../hooks/authContext";
 import { Btn, BtnLink } from "../components/buttons";
@@ -66,7 +66,7 @@ function Field({
 }
 
 export default function LoginPage() {
-  const { user, loading, login, signup, logout } = useAuth();
+  const { user, login, signup, logout } = useAuth();
 
   // The path decides the initial tab; after that it is plain local state, so the
   // user can switch without a navigation.
@@ -150,23 +150,28 @@ export default function LoginPage() {
         }}
       />
 
-      <main className="relative flex flex-1 items-center justify-center px-6 pb-16 pt-28">
+      {/* No NavBar on this route (see App.tsx), so the wordmark is the only way
+          back out and has to be a link. */}
+      <main className="relative flex flex-1 items-center justify-center px-6 py-16">
         <div className="w-full max-w-md">
           <div className="mb-8 text-center">
-            <img
-              src={lensArcWhite}
-              alt="Lens Arc"
-              className="mx-auto h-7 w-auto select-none"
-              draggable={false}
-            />
+            <a href={ROUTES.home} aria-label="Lens Arc home" className="inline-block">
+              <img
+                src={lensArcWhite}
+                alt="Lens Arc"
+                className="mx-auto h-7 w-auto select-none"
+                draggable={false}
+              />
+            </a>
           </div>
 
+          {/* The form renders immediately and never waits on the session check.
+              Blocking it behind a spinner meant a slow or unreachable API left
+              the page with nothing on it; a visitor who turns out to already be
+              signed in is redirected by the effect above the moment /me lands
+              (or instantly, from the cached account). */}
           <div className="rounded-[20px] border border-white/10 bg-white/[0.04] p-7 backdrop-blur-sm">
-            {loading ? (
-              <div className="flex items-center justify-center py-10 text-white/50">
-                <Loader2 size={20} className="animate-spin" aria-label="Loading" />
-              </div>
-            ) : user ? (
+            {user ? (
               // Already signed in and the redirect is in flight (or ?next= sent
               // them straight back here). Show the account rather than an empty
               // form so the state is never ambiguous.
@@ -287,7 +292,7 @@ export default function LoginPage() {
             )}
           </div>
 
-          {!loading && !user && (
+          {!user && (
             <p className="mt-5 text-center text-xs text-white/45">
               {signIn ? AUTH.switchToSignUp : AUTH.switchToSignIn}{" "}
               <button

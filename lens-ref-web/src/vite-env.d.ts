@@ -6,10 +6,11 @@ interface ImportMetaEnv {
   readonly VITE_REFERRAL_API_URL?: string;
 
   // Base URL of the Fastify backend (backend/), which owns the `users` table
-  // this site's login/signup authenticates against. Falls back to
-  // http://localhost:3000 when unset. In production it MUST be
-  // https://api.lens-arc.com so the session cookie stays same-site with
-  // lens-arc.com. See src/lib/authApi.ts.
+  // this site's login/signup authenticates against. Optional: falls back to
+  // http://localhost:3000 in a dev build and https://api.lens-arc.com in a
+  // production build. Any override for production must stay on
+  // api.lens-arc.com so the session cookie stays same-site with lens-arc.com.
+  // See src/lib/authApi.ts.
   readonly VITE_API_URL?: string;
 }
 

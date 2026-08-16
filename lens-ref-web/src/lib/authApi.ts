@@ -12,8 +12,22 @@
 // production the API must be served from api.lens-arc.com so the cookie stays
 // same-site with lens-arc.com (see the root CLAUDE.md §4 "API domain").
 
+// The production API host. Hardcoded as the non-DEV fallback on purpose, the
+// same way content.ts hardcodes APP_URL: Vite inlines VITE_* at BUILD time, so
+// a missing var on the deploy host silently bakes the dev default into the
+// shipped bundle. When that default was plain "http://localhost:3000", the live
+// site tried to POST to the visitor's own machine over http from an https page
+// and every call died as "Failed to fetch". A wrong-but-reachable production
+// default is recoverable; an unreachable one is not.
+//
+// It MUST stay on api.lens-arc.com rather than the raw *.up.railway.app host:
+// only this form is same-site with lens-arc.com, which is what keeps the
+// session cookie first-party (see the root CLAUDE.md §4 "API domain").
+const PROD_API_URL = "https://api.lens-arc.com";
+
 const API_BASE = (
-  import.meta.env.VITE_API_URL ?? "http://localhost:3000"
+  import.meta.env.VITE_API_URL ??
+  (import.meta.env.DEV ? "http://localhost:3000" : PROD_API_URL)
 ).replace(/\/$/, "");
 
 // The subset of GET /me this site actually renders. The endpoint returns more
@@ -48,14 +62,32 @@ async function toError(res: Response): Promise<Error> {
   return new Error(detail);
 }
 
+// Every call goes through here so a transport failure surfaces as something
+// actionable. fetch() rejects with a bare "Failed to fetch" TypeError for
+// connection refused, DNS failure, a blocked mixed-content request, and a
+// rejected CORS preflight alike, with no detail whatsoever. Printing that
+// verbatim is what made a missing VITE_API_URL look like a broken login form.
+//
+// A throw from here means the request never reached the server, which is NOT
+// proof of being signed out; AuthProvider keeps its cached session on any throw
+// and clears it only on an explicit 401.
+async function request(path: string, init?: RequestInit): Promise<Response> {
+  try {
+    return await fetch(`${API_BASE}${path}`, { credentials: "include", ...init });
+  } catch {
+    throw new Error(
+      `Could not reach the Lens Arc API at ${API_BASE}. Check your connection and try again.`
+    );
+  }
+}
+
 // POST /login. The `username` field accepts a username OR an email; the backend
 // resolves both (WHERE username = $1 OR email = $1). On success the response
 // sets the httpOnly session cookie.
 export async function login(usernameOrEmail: string, password: string): Promise<void> {
-  const res = await fetch(`${API_BASE}/login`, {
+  const res = await request("/login", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    credentials: "include",
     body: JSON.stringify({ username: usernameOrEmail, password }),
   });
   if (!res.ok) throw await toError(res);
@@ -69,10 +101,9 @@ export async function signup(
   email: string,
   password: string
 ): Promise<void> {
-  const res = await fetch(`${API_BASE}/signup`, {
+  const res = await request("/signup", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    credentials: "include",
     body: JSON.stringify({ username, email, password }),
   });
   if (!res.ok) throw await toError(res);
@@ -87,7 +118,7 @@ export async function signup(
 // into "signed out" would log a visitor out of the nav for browsing quickly.
 // The caller keeps its cached session on a throw and clears it only on null.
 export async function me(): Promise<AuthUser | null> {
-  const res = await fetch(`${API_BASE}/me`, { credentials: "include" });
+  const res = await request("/me");
   if (res.status === 401) return null;
   if (!res.ok) throw await toError(res);
   const body = (await res.json()) as { user?: AuthUser };
@@ -96,10 +127,7 @@ export async function me(): Promise<AuthUser | null> {
 
 // POST /logout. Clears the session cookie server-side.
 export async function logout(): Promise<void> {
-  await fetch(`${API_BASE}/logout`, {
-    method: "POST",
-    credentials: "include",
-  }).catch(() => {
+  await request("/logout", { method: "POST" }).catch(() => {
     // A failed logout call still ends the session locally; nothing to surface.
   });
 }

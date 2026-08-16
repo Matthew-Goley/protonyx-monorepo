@@ -33,13 +33,20 @@ function legacyRedirect(path: string): string | null {
   return null;
 }
 
+// The auth page is the ONE route that does not get the persistent NavBar: it is
+// a standalone, single-purpose screen, and the nav's own account slot on top of
+// a sign-in form is both redundant and a way to navigate out mid-flow.
+function isAuthRoute(path: string) {
+  return path === ROUTES.login || path === ROUTES.signup;
+}
+
 function routePage(path: string) {
   if (path === ROUTES.engine) return <EnginePage />;
   if (path === LEGAL_PAGES.terms.path) return <TermsPage />;
   if (path === LEGAL_PAGES.privacy.path) return <PrivacyPage />;
 
   // One page, two entry paths: /signup just opens on the Create account tab.
-  if (path === ROUTES.login || path === ROUTES.signup) return <LoginPage />;
+  if (isAuthRoute(path)) return <LoginPage />;
 
   // The referral page owns the whole waitlist flow: the /referral landing, the
   // /referral/ref/<code> share links, and the /verify?token=... magic-link
@@ -77,7 +84,7 @@ export default function App() {
   return (
     <AuthProvider>
       <AccountProvider>
-        <NavBar />
+        {!isAuthRoute(path) && <NavBar />}
         {routePage(path)}
       </AccountProvider>
     </AuthProvider>

@@ -17,7 +17,7 @@ import { useAuth } from "../hooks/authContext";
 // `light` matches the NavBar's adaptive theme (dark trigger text over light
 // backgrounds); the popover itself stays dark glass on both.
 export default function AccountMenu({ light = false }: { light?: boolean }) {
-  const { user, loading, logout } = useAuth();
+  const { user, logout } = useAuth();
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
 
@@ -43,12 +43,17 @@ export default function AccountMenu({ light = false }: { light?: boolean }) {
     light ? "text-slate-500 hover:text-slate-900" : "text-white/60 hover:text-white"
   }`;
 
-  // Hold the slot while the session check settles, so the nav does not flash
-  // "Sign in" at someone who is already signed in.
-  if (loading) {
-    return <span className={triggerClass} aria-hidden="true" />;
-  }
-
+  // Render "Sign in" immediately while the session check is still in flight,
+  // rather than holding an empty slot. The slot used to stay blank until GET
+  // /me resolved, which meant the nav looked broken for as long as that call
+  // took, and indefinitely whenever the API was slow or unreachable.
+  //
+  // Nothing is lost by guessing "signed out" here: a returning signed-in
+  // visitor is painted from the sessionStorage cache (see authContext), so for
+  // them `user` is already set on the very first render and this branch never
+  // runs. The only case that can briefly show the wrong control is a first-ever
+  // page load in a new tab with a live cookie, which corrects itself the moment
+  // /me lands.
   if (!user) {
     // Carries the current path so signing in returns the visitor to the page
     // they were reading, not to the home page.
