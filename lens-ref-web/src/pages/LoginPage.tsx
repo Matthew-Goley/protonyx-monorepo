@@ -49,9 +49,11 @@ function Field({
   autoComplete?: string;
   autoFocus?: boolean;
 }) {
+  // Label above a flat bordered input, lens-app's Field shape. The input's 1px
+  // border is the ONLY box on this page; nothing wraps it.
   return (
-    <label className="block">
-      <span className="mb-1.5 block text-xs font-medium text-white/60">{label}</span>
+    <label className="block space-y-1.5">
+      <span className="block text-sm font-medium text-white/55">{label}</span>
       <input
         type={type}
         value={value}
@@ -59,7 +61,7 @@ function Field({
         placeholder={placeholder}
         autoComplete={autoComplete}
         autoFocus={autoFocus}
-        className="w-full rounded-[15px] border border-white/15 bg-white/5 px-3.5 py-2.5 text-sm text-white placeholder:text-white/25 transition-colors duration-200 focus:border-teal-400/60 focus:outline-none"
+        className="h-10 w-full rounded-[15px] border border-white/12 bg-transparent px-4 text-sm text-white placeholder:text-white/25 transition-colors duration-200 focus:border-teal-400/70 focus:outline-none"
       />
     </label>
   );
@@ -135,165 +137,156 @@ export default function LoginPage() {
   const signIn = mode === "signin";
 
   return (
-    <div
-      data-nav-dark
-      className="relative flex min-h-screen flex-col overflow-hidden bg-[#0c0f16] text-white"
-    >
-      {/* Same pulsing radial glow as the landing hero, so the page reads as part
-          of the site rather than a bolted-on form. */}
-      <div
-        aria-hidden="true"
-        className="hero-pulse pointer-events-none absolute left-1/2 top-0 h-[42rem] w-[42rem] -translate-x-1/2 -translate-y-1/3 rounded-full opacity-25 blur-3xl"
-        style={{
-          background:
-            "radial-gradient(circle, rgba(45,212,191,0.5) 0%, rgba(56,189,248,0.25) 45%, transparent 70%)",
-        }}
-      />
-
+    // Flat surface, nothing layered on it: no radial glow, no card, no tab pill.
+    // The page borrows lens-app's sign-in shape (top-anchored column, wordmark,
+    // underline tabs, labelled fields, full-width primary) in the site's own
+    // palette, so the only bordered element left is the inputs themselves.
+    //
+    // No data-nav-dark marker: that attribute exists for the NavBar's adaptive
+    // theme probe, and the NavBar is not mounted on this route at all.
+    //
+    // The top offset is PADDING on this wrapper, never a margin on the child.
+    // With no top padding or border here, a child's margin-top collapses out of
+    // this element and shifts it down instead, which left a white strip of bare
+    // body above the dark background.
+    <div className="min-h-screen bg-[#0c0f16] px-6 pb-16 pt-24 text-white">
       {/* No NavBar on this route (see App.tsx), so the wordmark is the only way
           back out and has to be a link. */}
-      <main className="relative flex flex-1 items-center justify-center px-6 py-16">
-        <div className="w-full max-w-md">
-          <div className="mb-8 text-center">
-            <a href={ROUTES.home} aria-label="Lens Arc home" className="inline-block">
-              <img
-                src={lensArcWhite}
-                alt="Lens Arc"
-                className="mx-auto h-7 w-auto select-none"
-                draggable={false}
-              />
-            </a>
+      <main className="mx-auto w-full max-w-md">
+        <div className="text-center">
+          <a href={ROUTES.home} aria-label="Lens Arc home" className="inline-block">
+            <img
+              src={lensArcWhite}
+              alt="Lens Arc"
+              className="h-9 w-auto select-none"
+              draggable={false}
+            />
+          </a>
+        </div>
+
+        {/* The form renders immediately and never waits on the session check.
+            Blocking it behind a spinner meant a slow or unreachable API left
+            the page with nothing on it; a visitor who turns out to already be
+            signed in is redirected by the effect above the moment /me lands
+            (or instantly, from the cached account). */}
+        {user ? (
+          // Already signed in and the redirect is in flight (or ?next= sent them
+          // straight back here). Show the account rather than an empty form so
+          // the state is never ambiguous.
+          <div className="mt-10 space-y-4 text-center">
+            <p className="text-sm font-semibold text-white">
+              {AUTH.signedInAs(user.username)}
+            </p>
+            <p className="text-xs text-white/45">{AUTH.planLine(user.plan)}</p>
+            <BtnLink role="primary" href={APP_URL} className="w-full">
+              {NAV.app.label}
+              <ArrowUpRight size={15} />
+            </BtnLink>
+            <Btn role="danger" onClick={() => void logout()} className="w-full">
+              {COPY.logout}
+            </Btn>
           </div>
+        ) : (
+          <>
+            {/* Underline tabs rather than a segmented pill: a pill is a box, and
+                boxing the tabs inside a card inside the page was the stacking
+                this page is deliberately free of. */}
+            <div className="mt-10 flex border-b border-white/10">
+              {(["signin", "signup"] as const).map((m) => (
+                <button
+                  key={m}
+                  type="button"
+                  onClick={() => switchMode(m)}
+                  className={`flex-1 border-b-2 pb-3 text-sm font-medium transition-colors duration-200 ${
+                    mode === m
+                      ? "border-teal-400 text-white"
+                      : "border-transparent text-white/35 hover:text-white/70"
+                  }`}
+                >
+                  {m === "signin" ? AUTH.signInTab : AUTH.signUpTab}
+                </button>
+              ))}
+            </div>
 
-          {/* The form renders immediately and never waits on the session check.
-              Blocking it behind a spinner meant a slow or unreachable API left
-              the page with nothing on it; a visitor who turns out to already be
-              signed in is redirected by the effect above the moment /me lands
-              (or instantly, from the cached account). */}
-          <div className="rounded-[20px] border border-white/10 bg-white/[0.04] p-7 backdrop-blur-sm">
-            {user ? (
-              // Already signed in and the redirect is in flight (or ?next= sent
-              // them straight back here). Show the account rather than an empty
-              // form so the state is never ambiguous.
-              <div className="space-y-4 text-center">
-                <p className="text-sm font-semibold text-white">
-                  {AUTH.signedInAs(user.username)}
-                </p>
-                <p className="text-xs text-white/50">{AUTH.planLine(user.plan)}</p>
-                <BtnLink role="primary" href={APP_URL} className="w-full">
-                  {NAV.app.label}
-                  <ArrowUpRight size={15} />
-                </BtnLink>
-                <Btn role="danger" onClick={() => void logout()} className="w-full">
-                  {COPY.logout}
-                </Btn>
-              </div>
-            ) : (
-              <>
-                <div className="mb-6 grid grid-cols-2 gap-1 rounded-[15px] border border-white/10 bg-white/5 p-1">
-                  {(["signin", "signup"] as const).map((m) => (
-                    <button
-                      key={m}
-                      type="button"
-                      onClick={() => switchMode(m)}
-                      className={`rounded-[12px] py-2 text-sm font-medium transition-colors duration-200 ${
-                        mode === m
-                          ? "bg-white/10 text-white"
-                          : "text-white/50 hover:text-white/80"
-                      }`}
-                    >
-                      {m === "signin" ? AUTH.signInTab : AUTH.signUpTab}
-                    </button>
-                  ))}
-                </div>
+            <h1 className="mt-8 text-lg font-semibold tracking-tight">
+              {signIn ? AUTH.signInTitle : AUTH.signUpTitle}
+            </h1>
+            <p className="mt-1 text-sm leading-relaxed text-white/45">
+              {signIn ? AUTH.signInSub : AUTH.signUpSub}
+            </p>
 
-                <h1 className="text-lg font-semibold tracking-tight">
-                  {signIn ? AUTH.signInTitle : AUTH.signUpTitle}
-                </h1>
-                <p className="mt-1 text-xs leading-relaxed text-white/50">
-                  {signIn ? AUTH.signInSub : AUTH.signUpSub}
-                </p>
-
-                <form onSubmit={submit} noValidate className="mt-6 space-y-4">
-                  {signIn ? (
-                    <Field
-                      label={AUTH.identifierLabel}
-                      type="text"
-                      value={identifier}
-                      onChange={setIdentifier}
-                      placeholder={AUTH.identifierPlaceholder}
-                      autoComplete="username"
-                      autoFocus
-                    />
-                  ) : (
-                    <>
-                      <Field
-                        label={AUTH.usernameLabel}
-                        type="text"
-                        value={username}
-                        onChange={setUsername}
-                        placeholder={AUTH.usernamePlaceholder}
-                        autoComplete="username"
-                        autoFocus
-                      />
-                      <Field
-                        label={AUTH.emailLabel}
-                        type="email"
-                        value={email}
-                        onChange={setEmail}
-                        placeholder={COPY.emailPlaceholder}
-                        autoComplete="email"
-                      />
-                    </>
-                  )}
-
+            <form onSubmit={submit} noValidate className="mt-8 space-y-5">
+              {signIn ? (
+                <Field
+                  label={AUTH.identifierLabel}
+                  type="text"
+                  value={identifier}
+                  onChange={setIdentifier}
+                  placeholder={AUTH.identifierPlaceholder}
+                  autoComplete="username"
+                  autoFocus
+                />
+              ) : (
+                <>
                   <Field
-                    label={AUTH.passwordLabel}
-                    type="password"
-                    value={password}
-                    onChange={setPassword}
-                    placeholder={AUTH.passwordPlaceholder}
-                    autoComplete={signIn ? "current-password" : "new-password"}
+                    label={AUTH.usernameLabel}
+                    type="text"
+                    value={username}
+                    onChange={setUsername}
+                    placeholder={AUTH.usernamePlaceholder}
+                    autoComplete="username"
+                    autoFocus
                   />
+                  <Field
+                    label={AUTH.emailLabel}
+                    type="email"
+                    value={email}
+                    onChange={setEmail}
+                    placeholder={COPY.emailPlaceholder}
+                    autoComplete="email"
+                  />
+                </>
+              )}
 
-                  {error && (
-                    <p role="alert" className="text-xs leading-relaxed text-rose-400">
-                      {error}
-                    </p>
-                  )}
+              <Field
+                label={AUTH.passwordLabel}
+                type="password"
+                value={password}
+                onChange={setPassword}
+                placeholder={AUTH.passwordPlaceholder}
+                autoComplete={signIn ? "current-password" : "new-password"}
+              />
 
-                  <Btn
-                    type="submit"
-                    role="primary"
-                    disabled={busy}
-                    className="w-full"
+              {error && (
+                // Tinted block rather than a bare red line, matching lens-app's
+                // error treatment. It is a fill, not an outlined box.
+                <p
+                  role="alert"
+                  className="rounded-[15px] bg-rose-500/10 px-4 py-3 text-sm leading-relaxed text-rose-300"
+                >
+                  {error}
+                </p>
+              )}
+
+              <Btn type="submit" role="primary" disabled={busy} className="w-full">
+                {busy ? AUTH.working : signIn ? AUTH.signInCta : AUTH.signUpCta}
+              </Btn>
+
+              {!signIn && (
+                <p className="text-xs leading-relaxed text-white/40">
+                  {AUTH.termsNote}{" "}
+                  <a
+                    href={LEGAL_PAGES.terms.path}
+                    className="text-teal-300 underline-offset-4 transition-colors duration-200 hover:underline"
                   >
-                    {busy
-                      ? AUTH.working
-                      : signIn
-                        ? AUTH.signInCta
-                        : AUTH.signUpCta}
-                  </Btn>
+                    {AUTH.termsLink}
+                  </a>
+                  .
+                </p>
+              )}
+            </form>
 
-                  {!signIn && (
-                    <p className="text-center text-[11px] leading-relaxed text-white/40">
-                      {AUTH.termsNote}{" "}
-                      <a
-                        href={LEGAL_PAGES.terms.path}
-                        className="underline underline-offset-2 transition-colors duration-200 hover:text-white/70"
-                      >
-                        {AUTH.termsLink}
-                      </a>
-                      .
-                    </p>
-                  )}
-                </form>
-              </>
-            )}
-          </div>
-
-          {!user && (
-            <p className="mt-5 text-center text-xs text-white/45">
+            <p className="mt-8 text-center text-sm text-white/40">
               {signIn ? AUTH.switchToSignUp : AUTH.switchToSignIn}{" "}
               <button
                 type="button"
@@ -303,17 +296,17 @@ export default function LoginPage() {
                 {signIn ? AUTH.switchToSignUpCta : AUTH.switchToSignInCta}
               </button>
             </p>
-          )}
+          </>
+        )}
 
-          <p className="mt-8 text-center text-xs text-white/30">
-            <a
-              href={ROUTES.home}
-              className="transition-colors duration-200 hover:text-white/60"
-            >
-              {AUTH.backHome}
-            </a>
-          </p>
-        </div>
+        <p className="mt-10 text-center text-xs text-white/25">
+          <a
+            href={ROUTES.home}
+            className="transition-colors duration-200 hover:text-white/60"
+          >
+            {AUTH.backHome}
+          </a>
+        </p>
       </main>
     </div>
   );
