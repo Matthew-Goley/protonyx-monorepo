@@ -21,6 +21,11 @@ app.register(rateLimit, {
     timeWindow: 60000  // per 60 seconds (in milliseconds)
 });
 
+// Frontend origins allowed to call the API. Two Vite dev servers now
+// authenticate against this backend (lens-app and lens-ref-web), and Vite
+// auto-increments its port when 5173 is taken, so 5174 is allowlisted too:
+// whichever app starts second lands there and would otherwise fail every
+// auth call on CORS.
 app.register(cors, {
     origin: [
         "http://127.0.0.1:5500",
@@ -30,6 +35,8 @@ app.register(cors, {
         "https://protonyxdata.com",
         "http://localhost:5173",
         "http://127.0.0.1:5173",
+        "http://localhost:5174",
+        "http://127.0.0.1:5174",
         "https://app.lens-arc.com",
         "https://lens-arc.com"
     ],
