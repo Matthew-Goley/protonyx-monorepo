@@ -4,6 +4,8 @@ import EnginePage from "./pages/EnginePage";
 import TermsPage from "./pages/TermsPage";
 import PrivacyPage from "./pages/PrivacyPage";
 import LoginPage from "./pages/LoginPage";
+import AccountPage from "./pages/AccountPage";
+import VerifyEmailPage from "./pages/VerifyEmailPage";
 import NavBar from "./components/NavBar";
 import { AccountProvider } from "./hooks/accountContext";
 import { AuthProvider } from "./hooks/authContext";
@@ -47,6 +49,15 @@ function routePage(path: string) {
 
   // One page, two entry paths: /signup just opens on the Create account tab.
   if (isAuthRoute(path)) return <LoginPage />;
+
+  if (path === ROUTES.account) return <AccountPage />;
+
+  // Both forms: the bare route, and the /index.html the emailed link carries
+  // (backend/src/email.ts builds it that way, and links already in inboxes
+  // cannot be rewritten).
+  if (path === ROUTES.verifyEmail || path === ROUTES.verifyEmail + "/index.html") {
+    return <VerifyEmailPage />;
+  }
 
   // The referral page owns the whole waitlist flow: the /referral landing, the
   // /referral/ref/<code> share links, and the /verify?token=... magic-link

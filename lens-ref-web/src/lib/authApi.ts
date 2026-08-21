@@ -131,3 +131,41 @@ export async function logout(): Promise<void> {
     // A failed logout call still ends the session locally; nothing to surface.
   });
 }
+
+// POST /change-password. The signed-IN password change: requires the current
+// password, so a valid session alone cannot rotate it. Distinct from the
+// signed-out /forgot-password + /reset-password token flow.
+export async function changePassword(
+  currentPassword: string,
+  newPassword: string
+): Promise<void> {
+  const res = await request("/change-password", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ currentPassword, newPassword }),
+  });
+  if (!res.ok) throw await toError(res);
+}
+
+// POST /resend-verification. Issues a fresh token and re-sends the email.
+// 400 when the address is already verified.
+export async function resendVerification(): Promise<void> {
+  const res = await request("/resend-verification", { method: "POST" });
+  if (!res.ok) throw await toError(res);
+}
+
+// GET /verify-email?token=. Consumes the single-use token from the emailed
+// link. Unauthenticated on purpose: the link is opened from an inbox, in
+// whatever browser, with no session necessarily present.
+export async function verifyEmail(token: string): Promise<void> {
+  const res = await request(`/verify-email?token=${encodeURIComponent(token)}`);
+  if (!res.ok) throw await toError(res);
+}
+
+// DELETE /account. Permanent, and cascades: the FK on positions/notifications
+// is ON DELETE CASCADE, so the user's rows go with it. The caller is
+// responsible for confirming intent first.
+export async function deleteAccount(): Promise<void> {
+  const res = await request("/account", { method: "DELETE" });
+  if (!res.ok) throw await toError(res);
+}

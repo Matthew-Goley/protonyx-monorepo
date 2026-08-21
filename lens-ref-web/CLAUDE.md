@@ -16,6 +16,8 @@ Routes (all matched by `src/App.tsx`, no router library):
 | `/lens-arc` | `src/pages/EnginePage.tsx` | Plain-language technical dive into the Lens engine, trust-building for non-technical investors. Every claim grounded in `lens-api/CLAUDE.md` §11; do not invent capabilities |
 | `/login` | `src/pages/LoginPage.tsx` | The site's account page, Sign in tab. **The one route with NO NavBar** (see §5 "The account") |
 | `/signup` | `src/pages/LoginPage.tsx` | Same page, opens on the Create account tab. Also no NavBar |
+| `/account` | `src/pages/AccountPage.tsx` | The signed-in profile page: details, email verification, password change, account deletion (see §5) |
+| `/verify-email?token=...` | `src/pages/VerifyEmailPage.tsx` | Landing for the emailed verification link; consumes the token. Also matches `/verify-email/index.html` |
 | `/legal/terms` | `src/pages/TermsPage.tsx` | Referral-program Terms, verbatim from `legal-raw/lens-arc-referral-terms.md` |
 | `/legal/privacy` | `src/pages/PrivacyPage.tsx` | Referral-site Privacy Policy, verbatim from `legal-raw/lens-arc-referral-privacy-policy.md` |
 | `/referral` | `src/layouts/Layout4.tsx` | The original referral landing page (historical file name), copy updated to post-launch messaging |
@@ -71,12 +73,14 @@ lens-ref-web/
 │   │                              # authUrl(mode, next), ROUTES, NAV, REFERRAL_REF_BASE,
 │   │                              # LEGACY_LEGAL_PATHS, HERO, REFERRAL_MILESTONES, BRAND,
 │   │                              # LEGAL_PAGES (/legal/* paths), COPY (paid-product microcopy + account strings),
-│   │                              # AUTH (login/signup page + account menu strings)
+│   │                              # AUTH (login/signup page + account menu strings),
+│   │                              # ACCOUNT (profile page + verification landing strings)
 │   ├── index.css                  # Tailwind v4 @theme tokens + landing animations + the Mercury button
 │   │                              # mechanics ported from lens-app + the .fluid-btn hero-CTA sim (see §5 Buttons)
 │   ├── lib/
 │   │   ├── api.ts                 # Typed referral-service client (join, verify, status). /referral page ONLY now
-│   │   └── authApi.ts             # Typed Fastify client (login, signup, me, logout) over the `users` table;
+│   │   └── authApi.ts             # Typed Fastify client (login, signup, me, logout, changePassword,
+│   │                              # resendVerification, verifyEmail, deleteAccount) over `users`;
 │   │                              # httpOnly session cookie, credentials: "include" (see §5 The account)
 │   ├── hooks/
 │   │   ├── authContext.tsx        # AuthProvider + useAuth(): the site's REAL session (see §5 The account)
@@ -102,7 +106,9 @@ lens-ref-web/
 │   ├── readouts/                  # Post-verify hero readout (SignalReadout + shared.tsx), unchanged, still mid-rework
 │   ├── layouts/Layout4.tsx        # The /referral page (historical name). Post-launch copy; countdown replaced by LiveBadge
 │   └── pages/
-│       ├── LoginPage.tsx          # /login + /signup: the account page (tabs, ?next=, ?email=), see §5
+│       ├── LoginPage.tsx          # /login + /signup: the sign-in page (tabs, ?next=, ?email=), see §5
+│       ├── AccountPage.tsx        # /account: the signed-in profile page (see §5 The account page)
+│       ├── VerifyEmailPage.tsx    # /verify-email: consumes the emailed token
 │       ├── EnginePage.tsx         # /lens-arc content (SimplePage shell)
 │       ├── legalContent.tsx       # Legal typography primitives (LegalSection/List/Table/Contact)
 │       ├── TermsPage.tsx          # SimplePage + Terms body (verbatim from legal-raw/)
@@ -167,7 +173,7 @@ A full-bleed dark panel ported in style from `frontend/chrome.css`: columns of o
 - **`pages/LoginPage.tsx`** is `/login` (Sign in tab) and `/signup` (Create account tab), one component, tab state local so the user can switch without a navigation. Sign in takes username-or-email + password; sign up takes username + email + password (min 8 chars, checked client-side only) plus the Terms notice that makes the backend's silent TOS stamping at signup meaningful. It reads `?email=` to prefill and `?next=` to decide where to land afterwards. **`?next=` is deliberately restricted to same-origin absolute paths** (`safeNext()` rejects anything not starting with `/`, plus protocol-relative `//host`), or the page becomes an open redirect.
 - **The auth route is the one page with no NavBar.** `App.tsx` gates the bar on `isAuthRoute(path)`: it is a standalone single-purpose screen, and the nav's own account slot on top of a sign-in form is both redundant and a way to wander off mid-flow. The page's wordmark is therefore a link home (plus a "Back to lens-arc.com" line), since it is the only way out. It carries **no `data-nav-dark`** marker either, because that attribute only exists for the NavBar's theme probe and the NavBar never mounts here.
 - **Its styling is deliberately flat, and echoes lens-app's sign-in rather than the marketing pages.** Top-anchored `max-w-md` column on a plain `#0c0f16` surface: wordmark, **underline tabs** (`border-b-2`, teal when active), heading + sub, labelled fields, full-width Mercury primary. **No radial glow, no card, no segmented tab pill** - the page was first built with all three, and a card holding a pill holding inputs read as boxes inside boxes inside outlines. The **only** bordered element is the inputs; the error state is a tinted fill (`bg-rose-500/10`), not another outline. Keep it that way when adding to this page.
-- **`AccountMenu`** is the nav's account slot: signed out it is a plain link to `/login` carrying the current path as `?next=`; signed in it opens a popover with the username, email, plan, "Open Lens Arc", "View referral status", and Log out.
+- **`AccountMenu`** is the nav's account slot, and it is now **two links, no popover**: signed out it links to `/login` carrying the current path as `?next=`; signed in the gradient avatar links to `/account`. The popover it used to open (account summary, app link, log out) was removed when the account page landed - a popover duplicating a page is a second surface to keep in sync for no gain.
 
 **Neither the nav slot nor the login form waits on the session check, and that is deliberate.** Both used to render a placeholder until `GET /me` resolved, which left the nav with a blank gap and `/login` with an empty card for as long as the call took, and *indefinitely* when the API was slow or unreachable. Both now render their signed-out state immediately: `AccountMenu` shows "Sign in", `LoginPage` shows the form. Nothing is lost by that guess, because a returning signed-in visitor is painted from the cached account below on the very first render, and a first-load-with-live-cookie corrects itself the moment `/me` lands (on `/login`, by redirecting).
 
@@ -175,6 +181,28 @@ A full-bleed dark panel ported in style from `frontend/chrome.css`: columns of o
 
 - It is a **display** cache, never an authorization one. The httpOnly cookie still authenticates every call, and `/me` revalidates on each load.
 - **`authApi.me()` returns `null` only for a 401 and throws for anything else** (429, 5xx, offline). `AuthProvider` clears the cached account on `null` and **keeps** it on a throw. Collapsing a 429 into "signed out" would log a visitor out of the nav for browsing quickly.
+
+### The account page (pages/AccountPage.tsx)
+
+`/account` is the signed-in profile page and the only place a user manages their own account. It renders inside `SimplePage`, so it inherits the plain light document shell the other content pages use.
+
+**Field styling is lifted from `frontend/`'s account page**, which did it well: a two-column `<dl>` (`sm:grid-cols-[200px_1fr]`) with uppercase wide-tracked labels, a hairline between rows, and the tinted verified/unverified email pill in the same greens and reds (`#2f7d5b` / `#b3463f`). `InfoRow` puts the rule on the `<dt>` at all widths but on the `<dd>` only from `sm` up, because stacked into one column a `<dd>` border would draw a line between a label and its own value rather than between rows.
+
+Four things it does, all against the real `users` table:
+
+- **Profile** - username, email + verification pill, plan (`Pro until <date>` when `plan_expires_at` is set, else Pro/Free), member since.
+- **Email verification** - `POST /resend-verification`. Hidden entirely once `email_verified` is true.
+- **Change password** - current + new + confirm, through `POST /change-password`. Client-side it checks all three fields, an 8-char minimum, and that the two new entries match; the server independently re-checks the current password, which is the check that actually matters.
+- **Delete account** - `DELETE /account`, behind an **arm-then-confirm button** rather than a modal (the `frontend/` pattern). The armed state self-disarms after 5s so it cannot sit primed and catch a stray click. On success it logs out locally too, so the nav is not left showing an account that no longer exists.
+
+Every action reports through one shared `StatusLine`, so a success and a failure read identically whichever control produced them. The page waits for `loading` to settle before redirecting a signed-out visitor to `/login?next=/account`; redirecting on `!user` alone would bounce a signed-in user whose `/me` was merely slow.
+
+### The verification landing (pages/VerifyEmailPage.tsx)
+
+`/verify-email?token=...` consumes the single-use token via `GET /verify-email?token=`. It is **unauthenticated on purpose**: the link is opened from an inbox, possibly in another browser or on a phone, where no session exists. The token is the proof, which is why the backend route takes no auth either.
+
+- **The path is a contract with `backend/src/email.ts`**, which builds the URL as `${SITE_URL}/verify-email?token=`. Before this page existed the emailed link resolved to `lens-arc.com` and hit the SPA catch-all, so it rendered the landing page and dropped the token in silence - verification could never complete, and nothing logged an error. It also matches `/verify-email/index.html`, the older form still sitting in already-sent inboxes.
+- A `useRef` guard spends the token exactly once. StrictMode double-invokes effects in dev, and the second call would consume nothing and report failure over a success that already happened.
 
 ### The referral flow is no longer a login (hooks/accountContext.tsx)
 

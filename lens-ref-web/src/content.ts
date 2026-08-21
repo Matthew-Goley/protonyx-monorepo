@@ -44,6 +44,12 @@ export const ROUTES = {
   verify: "/verify",
   login: "/login",
   signup: "/signup",
+  account: "/account",
+  // Landing path for the emailed verification link. The email is sent by the
+  // Fastify backend and its URL is built there (backend/src/email.ts), so this
+  // string and that one are a contract: change one and the link 404s into the
+  // SPA catch-all, which renders the landing page and silently drops the token.
+  verifyEmail: "/verify-email",
 } as const;
 
 // Href for the site's own account page. `next` is the path to come back to
@@ -132,9 +138,10 @@ export const LEGACY_LEGAL_PATHS = {
 } as const;
 
 // The hamburger menu (components/MenuOverlay.tsx). The nav bar itself carries
-// only three controls now (account slot, app CTA, menu button), so this is the
-// ONE place every page on lens-arc.com is linked from: add a route here in the
-// same change that adds it to App.tsx, or it becomes unreachable from the nav.
+// only two controls (account slot, menu button) and no links at all, so this is
+// the ONE place every page on lens-arc.com is linked from: add a route here in
+// the same change that adds it to App.tsx, or it becomes unreachable from the
+// nav.
 //
 // /login and /signup are deliberately absent from the columns: the account slot
 // and the menu's own auth action already lead there, and listing them as
@@ -149,6 +156,7 @@ export const MENU = {
         { label: "Home", href: ROUTES.home },
         { label: NAV.engine.label, href: NAV.engine.href },
         { label: NAV.referral.label, href: NAV.referral.href },
+        { label: "Account", href: ROUTES.account },
       ],
     },
     {
@@ -263,4 +271,69 @@ export const AUTH = {
   signedInAs: (name: string) => `Signed in as ${name}`,
   planLine: (plan: string) => `${plan.charAt(0).toUpperCase()}${plan.slice(1)} plan`,
   backHome: "Back to lens-arc.com",
+};
+
+// The account page (src/pages/AccountPage.tsx) and the verification landing.
+// Everything a signed-in user can do to their own account lives behind these
+// strings; the page itself hardcodes none of them.
+export const ACCOUNT = {
+  title: "Your account",
+  subtitle:
+    "Your Lens Arc account details, and everything you can change about them. This is the same account you sign in to the app with.",
+
+  // Profile table
+  usernameLabel: "Username",
+  emailLabel: "Email",
+  planLabel: "Plan",
+  memberSinceLabel: "Member since",
+  verifiedBadge: "Verified",
+  unverifiedBadge: "Not verified",
+  planFree: "Free",
+  planPro: "Pro",
+  proUntil: (date: string) => `Pro until ${date}`,
+
+  // Email verification
+  verifyHeading: "Email verification",
+  verifyBody:
+    "Verifying your email lets us reach you about your account and your earned Pro time.",
+  verifyDone: "Your email address is verified. Nothing to do here.",
+  verifyCta: "Send verification email",
+  verifySending: "Sending...",
+  verifySent: "Verification email sent. Check your inbox for the link.",
+
+  // Change password
+  passwordHeading: "Change password",
+  passwordBody:
+    "You will need your current password. Changing it does not sign you out of other devices.",
+  currentPasswordLabel: "Current password",
+  newPasswordLabel: "New password",
+  confirmPasswordLabel: "Confirm new password",
+  passwordCta: "Change password",
+  passwordSaving: "Saving...",
+  passwordChanged: "Password changed.",
+  passwordMismatch: "The new passwords do not match.",
+  passwordTooShort: "Use at least 8 characters.",
+  passwordMissing: "Fill in every field to continue.",
+
+  // Danger zone
+  dangerHeading: "Delete account",
+  dangerBody:
+    "This permanently deletes your account and everything attached to it, including your portfolio and any earned Pro time. It cannot be undone.",
+  deleteCta: "Delete account",
+  deleteConfirmCta: "Click again to permanently delete",
+  deleteDeleting: "Deleting...",
+
+  signOut: "Sign out",
+  signedOutRedirect: "You need to sign in to view this page.",
+
+  // Verification landing (src/pages/VerifyEmailPage.tsx)
+  verifyPageTitle: "Email verification",
+  verifyPageChecking: "Verifying your email...",
+  verifyPageSuccess: "Your email address is verified.",
+  verifyPageSuccessBody: "You can close this page, or head back to your account.",
+  verifyPageFailed: "That verification link did not work.",
+  verifyPageFailedBody:
+    "The link may have already been used or expired. Send yourself a new one from your account page.",
+  verifyPageMissing: "This link is missing its verification token.",
+  backToAccount: "Go to your account",
 };

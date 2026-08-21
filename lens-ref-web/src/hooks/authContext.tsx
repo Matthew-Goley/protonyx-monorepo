@@ -21,6 +21,10 @@ interface AuthContextValue {
   login: (usernameOrEmail: string, password: string) => Promise<void>;
   signup: (username: string, email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
+  /** Re-read GET /me and update `user`. The account page calls it after any
+   *  change the profile reflects (email verification, a password change), so
+   *  the rendered profile never lags the server. */
+  refresh: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -118,9 +122,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   }
 
+  // Unlike the mount revalidation, a null here is adopted directly: this only
+  // runs from a page that already knows it has a session, so a 401 means the
+  // session really did end and the caller should fall back to signed out.
+  async function refresh() {
+    const me = await authApi.me();
+    setUser(me);
+  }
+
   return (
     <AuthContext.Provider
-      value={{ user, isAuthenticated: user !== null, loading, login, signup, logout }}
+      value={{
+        user,
+        isAuthenticated: user !== null,
+        loading,
+        login,
+        signup,
+        logout,
+        refresh,
+      }}
     >
       {children}
     </AuthContext.Provider>
