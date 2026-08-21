@@ -7,6 +7,15 @@ import {
 
 const FROM_ADDRESS = "noreply@protonyxdata.com";
 
+// Base URL for links in transactional emails. These land on lens-ref-web
+// (lens-arc.com), which owns the pages that consume the tokens.
+//
+// It was previously hardcoded to protonyxdata.com, which only worked at all
+// because that domain 301s to lens-arc.com. Do not point it back at a domain
+// that merely redirects: the verification token rides a query string, and every
+// extra hop is a chance to lose it.
+const SITE_URL = (process.env.SITE_URL || "https://lens-arc.com").replace(/\/$/, "");
+
 export async function sendWelcomeEmail(to: string, username: string): Promise<void> {
     const resend = new Resend(process.env.RESEND_API_KEY);
     console.log('Resend key inside function:', !!process.env.RESEND_API_KEY);
@@ -28,8 +37,11 @@ export async function sendWelcomeEmail(to: string, username: string): Promise<vo
 export async function sendVerificationEmail(to: string, username: string, token: string): Promise<void> {
     const resend = new Resend(process.env.RESEND_API_KEY);
 
-    // TODO: replace localhost with production domain
-    const verifyUrl = `https://protonyxdata.com/verify-email/index.html?token=${token}`;
+    // Must match ROUTES.verifyEmail in lens-ref-web/src/content.ts. That page is
+    // what actually calls GET /verify-email?token=; any other path falls through
+    // the SPA catch-all to the landing page, which renders fine and silently
+    // drops the token, so verification fails with no error anywhere.
+    const verifyUrl = `${SITE_URL}/verify-email?token=${token}`;
 
     try {
         await resend.emails.send({
@@ -46,8 +58,13 @@ export async function sendVerificationEmail(to: string, username: string, token:
 export async function sendPasswordResetEmail(to: string, username: string, token: string): Promise<void> {
     const resend = new Resend(process.env.RESEND_API_KEY);
 
-    // TODO: replace localhost with production domain
-    const resetUrl = `https://protonyxdata.com/reset-password/index.html?token=${token}`;
+    // NOTE: lens-ref-web does not have a /reset-password page yet, so this link
+    // currently falls through the SPA catch-all to the landing page and the
+    // token cannot be spent. The signed-IN path (POST /change-password, used by
+    // the account page) works; this signed-OUT recovery flow needs that page
+    // built before it can. Kept pointed at the right domain so building the page
+    // is the only remaining step.
+    const resetUrl = `${SITE_URL}/reset-password?token=${token}`;
 
     try {
         await resend.emails.send({

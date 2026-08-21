@@ -37,6 +37,7 @@ MAX_BETA_USERS=50                   # hard cap on total user count
 STRIPE_SECRET_KEY=sk_test_...       # Stripe secret key (test mode)
 STRIPE_WEBHOOK_SECRET=whsec_...     # Stripe webhook signing secret
 LENS_APP_URL=http://localhost:5173  # frontend URL for Stripe redirect URLs
+SITE_URL=https://lens-arc.com       # base URL for links in transactional emails
 ```
 
 `.env.example` documents all of these with placeholders.
@@ -51,7 +52,9 @@ LENS_APP_URL=http://localhost:5173  # frontend URL for Stripe redirect URLs
 | GET | `/verify-email?token=` | - | Verify email address |
 | POST | `/resend-verification` | JWT | Re-send verification email |
 | POST | `/forgot-password` | - | Request password reset link |
-| POST | `/reset-password` | - | Set new password via reset token |
+| POST | `/reset-password` | - | Set new password via reset token (signed-OUT recovery) |
+| POST | `/change-password` | JWT | Change password for the signed-in user; requires `currentPassword` |
+| DELETE | `/account` | JWT | Permanently delete the authenticated user (cascades to positions/notifications) |
 | GET | `/me` | JWT | Full user profile; lazily expires a lapsed free-Pro trial before responding |
 | GET | `/protected` | JWT | Smoke test |
 | POST | `/download` | JWT | Increment download counter |
@@ -118,5 +121,8 @@ Auth is resolved by `src/middleware/authenticate.ts`, which checks `Authorizatio
 - **Error field on the wire is `message`**, not `error`. Keep it consistent.
 - **TOS version** is bumped in `src/constants.ts` to re-prompt all users. EULA same pattern.
 - **Passwords are bcrypt cost 10.** Do not lower it. Do not log them.
+- **Two password paths, and they are not interchangeable.** `POST /change-password` (JWT) is the signed-IN path: it re-checks `currentPassword` with bcrypt before rotating, because a live session alone must not be enough to take over an account left open on a shared machine. It also nulls `reset_token`/`reset_token_expires_at`, retiring any outstanding emailed link. `POST /forgot-password` + `POST /reset-password` remain the signed-OUT recovery path.
+- **Transactional email links point at `SITE_URL` (default `https://lens-arc.com`), which is lens-ref-web.** `verifyUrl` must match `ROUTES.verifyEmail` in `lens-ref-web/src/content.ts`; that page is what calls `GET /verify-email?token=`. Any other path falls through the SPA catch-all onto the landing page, which renders normally and **silently drops the token**, so verification just never completes and nothing logs an error. The URLs were previously hardcoded to `protonyxdata.com` and only worked because that domain 301s to `lens-arc.com`.
+- **`sendPasswordResetEmail` currently links to a page that does not exist.** `lens-ref-web` has no `/reset-password` route yet, so the signed-out reset flow is broken end to end even though the backend side of it works. The signed-in `/change-password` path is unaffected. Building that page is the remaining step.
 
 For full architectural detail (DB schema, request lifecycle, email templates, route-by-route behavior), see `_monorepo/CLAUDE.md` §4.

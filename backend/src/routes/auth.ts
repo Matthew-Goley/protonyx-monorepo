@@ -271,6 +271,70 @@ export default async function authRoutes(app: FastifyInstance) {
         });
     });
 
+    // Change-password POST (protected): the signed-IN path to a new password,
+    // used by the account page. Deliberately separate from /forgot-password +
+    // /reset-password, which is the signed-OUT recovery flow and rides an
+    // emailed single-use token. A user who knows their current password should
+    // never have to go through their inbox to change it.
+    app.post("/change-password", { preHandler: authenticate }, async (request: any, reply: any) => {
+        const { currentPassword, newPassword } = request.body as {
+            currentPassword?: string;
+            newPassword?: string;
+        };
+
+        if (!currentPassword || !newPassword) {
+            return reply.status(400).send({
+                success: false,
+                message: "Current and new password are required"
+            });
+        }
+
+        if (newPassword.length < 8) {
+            return reply.status(400).send({
+                success: false,
+                message: "New password must be at least 8 characters"
+            });
+        }
+
+        const result = await pool.query(
+            "SELECT id, password FROM users WHERE id = $1",
+            [request.user.id]
+        );
+        const user = result.rows[0] as { id: number; password: string } | undefined;
+
+        if (!user) {
+            return reply.status(401).send({
+                success: false,
+                message: "User not found"
+            });
+        }
+
+        // Re-authenticate before rotating: a valid session alone is not enough,
+        // or an unattended logged-in browser is a full account takeover.
+        const match = await bcrypt.compare(currentPassword, user.password);
+        if (!match) {
+            return reply.status(401).send({
+                success: false,
+                message: "Current password is incorrect"
+            });
+        }
+
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+        // Any outstanding reset link is invalidated in the same statement:
+        // deliberately changing the password should retire a token someone may
+        // have requested earlier (or that an attacker requested).
+        await pool.query(
+            "UPDATE users SET password = $1, reset_token = NULL, reset_token_expires_at = NULL WHERE id = $2",
+            [hashedPassword, user.id]
+        );
+
+        return reply.status(200).send({
+            success: true,
+            message: "Password changed successfully"
+        });
+    });
+
     // Login POST: accepts either username or email in the `username` field.
     // Sets an httpOnly session cookie for browser clients and also returns the
     // token in the body for non-browser clients (desktop app, static frontend).
