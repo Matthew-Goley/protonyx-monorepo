@@ -58,12 +58,11 @@ export async function sendVerificationEmail(to: string, username: string, token:
 export async function sendPasswordResetEmail(to: string, username: string, token: string): Promise<void> {
     const resend = new Resend(process.env.RESEND_API_KEY);
 
-    // NOTE: lens-ref-web does not have a /reset-password page yet, so this link
-    // currently falls through the SPA catch-all to the landing page and the
-    // token cannot be spent. The signed-IN path (POST /change-password, used by
-    // the account page) works; this signed-OUT recovery flow needs that page
-    // built before it can. Kept pointed at the right domain so building the page
-    // is the only remaining step.
+    // Must match ROUTES.resetPassword in lens-ref-web/src/content.ts, the page
+    // that spends this token via POST /reset-password. Same failure mode as the
+    // verification link if it drifts: any other path falls through the SPA
+    // catch-all to the landing page, which renders fine and drops the token, so
+    // recovery fails silently.
     const resetUrl = `${SITE_URL}/reset-password?token=${token}`;
 
     try {
