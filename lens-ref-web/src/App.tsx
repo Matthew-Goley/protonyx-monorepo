@@ -6,6 +6,8 @@ import PrivacyPage from "./pages/PrivacyPage";
 import LoginPage from "./pages/LoginPage";
 import AccountPage from "./pages/AccountPage";
 import VerifyEmailPage from "./pages/VerifyEmailPage";
+import ForgotPasswordPage from "./pages/ForgotPasswordPage";
+import ResetPasswordPage from "./pages/ResetPasswordPage";
 import NavBar from "./components/NavBar";
 import { AccountProvider } from "./hooks/accountContext";
 import { AuthProvider } from "./hooks/authContext";
@@ -39,7 +41,12 @@ function legacyRedirect(path: string): string | null {
 // a standalone, single-purpose screen, and the nav's own account slot on top of
 // a sign-in form is both redundant and a way to navigate out mid-flow.
 function isAuthRoute(path: string) {
-  return path === ROUTES.login || path === ROUTES.signup;
+  return (
+    path === ROUTES.login ||
+    path === ROUTES.signup ||
+    path === ROUTES.forgotPassword ||
+    path === ROUTES.resetPassword
+  );
 }
 
 function routePage(path: string) {
@@ -48,7 +55,11 @@ function routePage(path: string) {
   if (path === LEGAL_PAGES.privacy.path) return <PrivacyPage />;
 
   // One page, two entry paths: /signup just opens on the Create account tab.
-  if (isAuthRoute(path)) return <LoginPage />;
+  if (path === ROUTES.login || path === ROUTES.signup) return <LoginPage />;
+
+  // Signed-out password recovery: request a link, then spend it.
+  if (path === ROUTES.forgotPassword) return <ForgotPasswordPage />;
+  if (path === ROUTES.resetPassword) return <ResetPasswordPage />;
 
   if (path === ROUTES.account) return <AccountPage />;
 

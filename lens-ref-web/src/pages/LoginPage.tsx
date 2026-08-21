@@ -257,6 +257,19 @@ export default function LoginPage() {
                 autoComplete={signIn ? "current-password" : "new-password"}
               />
 
+              {/* Recovery entry point, sign-in only: on the sign-up tab there is
+                  no account to recover yet. */}
+              {signIn && (
+                <p className="text-right text-xs">
+                  <a
+                    href={ROUTES.forgotPassword}
+                    className="text-white/40 underline-offset-4 transition-colors duration-200 hover:text-white/70 hover:underline"
+                  >
+                    {AUTH.forgotLink}
+                  </a>
+                </p>
+              )}
+
               {error && (
                 // Tinted block rather than a bare red line, matching lens-app's
                 // error treatment. It is a fill, not an outlined box.

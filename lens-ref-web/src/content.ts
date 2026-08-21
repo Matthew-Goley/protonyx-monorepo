@@ -50,6 +50,11 @@ export const ROUTES = {
   // string and that one are a contract: change one and the link 404s into the
   // SPA catch-all, which renders the landing page and silently drops the token.
   verifyEmail: "/verify-email",
+  // The signed-OUT password recovery pair. /reset-password is the landing for
+  // the emailed link, so like verifyEmail it is a contract with the URL built
+  // in backend/src/email.ts.
+  forgotPassword: "/forgot-password",
+  resetPassword: "/reset-password",
 } as const;
 
 // Href for the site's own account page. `next` is the path to come back to
@@ -266,11 +271,39 @@ export const AUTH = {
   passwordTooShort: "Use at least 8 characters.",
   switchToSignUp: "No account yet?",
   switchToSignUpCta: "Create one",
+  forgotLink: "Forgot your password?",
   switchToSignIn: "Already have an account?",
   switchToSignInCta: "Sign in",
   signedInAs: (name: string) => `Signed in as ${name}`,
   planLine: (plan: string) => `${plan.charAt(0).toUpperCase()}${plan.slice(1)} plan`,
   backHome: "Back to lens-arc.com",
+
+  // Forgot-password request page (/forgot-password)
+  forgotTitle: "Reset your password",
+  forgotSub:
+    "Enter the email on your account and we will send you a link to set a new password.",
+  forgotCta: "Send reset link",
+  forgotSending: "Sending...",
+  // Shown on ANY 200, whether or not the address is registered. The backend
+  // returns the same envelope either way on purpose (account-enumeration
+  // defense), so the UI must not imply the address was found.
+  forgotSent:
+    "If that email is registered, a reset link is on its way. The link is valid for one hour.",
+  forgotInvalid: "Enter a valid email address.",
+  backToSignIn: "Back to sign in",
+
+  // Reset page (/reset-password?token=)
+  resetTitle: "Set a new password",
+  resetSub: "Choose a new password for your Lens Arc account.",
+  resetCta: "Set new password",
+  resetSaving: "Saving...",
+  resetDone: "Password updated. You can sign in with it now.",
+  resetNoToken:
+    "This link is missing its reset token. Request a new one from the sign-in page.",
+  resetExpired:
+    "That reset link is invalid or has expired. Reset links last one hour; request a new one.",
+  signInNow: "Go to sign in",
+  requestNewLink: "Request a new link",
 };
 
 // The account page (src/pages/AccountPage.tsx) and the verification landing.
@@ -279,10 +312,15 @@ export const AUTH = {
 export const ACCOUNT = {
   title: "Your account",
   subtitle:
-    "Your Lens Arc account details, and everything you can change about them. This is the same account you sign in to the app with.",
+    "The same account you sign in to the app with. Deleting it removes your portfolio and any earned Pro time.",
 
   // Profile table
+  profileLabel: "Profile",
   usernameLabel: "Username",
+  passwordLabel: "Password",
+  // The password is never returned by /me, so the row shows a fixed mask.
+  passwordMask: "••••••••••",
+  cancel: "Cancel",
   emailLabel: "Email",
   planLabel: "Plan",
   memberSinceLabel: "Member since",
@@ -293,32 +331,23 @@ export const ACCOUNT = {
   proUntil: (date: string) => `Pro until ${date}`,
 
   // Email verification
-  verifyHeading: "Email verification",
-  verifyBody:
-    "Verifying your email lets us reach you about your account and your earned Pro time.",
-  verifyDone: "Your email address is verified. Nothing to do here.",
   verifyCta: "Send verification email",
   verifySending: "Sending...",
   verifySent: "Verification email sent. Check your inbox for the link.",
 
   // Change password
-  passwordHeading: "Change password",
-  passwordBody:
-    "You will need your current password. Changing it does not sign you out of other devices.",
+  passwordCta: "Change password",
+  passwordSave: "Save new password",
   currentPasswordLabel: "Current password",
   newPasswordLabel: "New password",
   confirmPasswordLabel: "Confirm new password",
-  passwordCta: "Change password",
   passwordSaving: "Saving...",
   passwordChanged: "Password changed.",
   passwordMismatch: "The new passwords do not match.",
   passwordTooShort: "Use at least 8 characters.",
   passwordMissing: "Fill in every field to continue.",
 
-  // Danger zone
-  dangerHeading: "Delete account",
-  dangerBody:
-    "This permanently deletes your account and everything attached to it, including your portfolio and any earned Pro time. It cannot be undone.",
+  // Account-level actions
   deleteCta: "Delete account",
   deleteConfirmCta: "Click again to permanently delete",
   deleteDeleting: "Deleting...",

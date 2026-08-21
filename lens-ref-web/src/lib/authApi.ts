@@ -169,3 +169,29 @@ export async function deleteAccount(): Promise<void> {
   const res = await request("/account", { method: "DELETE" });
   if (!res.ok) throw await toError(res);
 }
+
+// POST /forgot-password. Issues a 1-hour reset token and emails the link.
+// ALWAYS resolves on a 200, including for an unknown address: the backend
+// deliberately returns the same envelope either way so the endpoint cannot be
+// used to enumerate accounts. The caller must show the same message regardless.
+export async function forgotPassword(email: string): Promise<void> {
+  const res = await request("/forgot-password", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email }),
+  });
+  if (!res.ok) throw await toError(res);
+}
+
+// POST /reset-password. Spends the single-use token from the emailed link.
+// Unauthenticated: whoever holds the token is, by construction, the person who
+// controls the mailbox. 400 covers both an invalid and an expired token, since
+// the backend checks `reset_token_expires_at > NOW()` in the same query.
+export async function resetPassword(token: string, newPassword: string): Promise<void> {
+  const res = await request("/reset-password", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ token, newPassword }),
+  });
+  if (!res.ok) throw await toError(res);
+}

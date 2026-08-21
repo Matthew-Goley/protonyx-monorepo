@@ -6,53 +6,86 @@ import * as authApi from "../lib/authApi";
 import SimplePage from "../components/SimplePage";
 import { Btn } from "../components/buttons";
 
-// The signed-in account page: everything a user can do to their own account in
-// one place. Backed by the Fastify `users` table, so a change here is a change
-// to the same account they sign in to the app with.
+// The signed-in account page: everything a user can do to their own account.
+// Backed by the Fastify `users` table, so a change here is a change to the same
+// account they sign in to the app with.
 //
-// Field styling follows the frontend/ account page, which did it well: a
-// two-column definition list with uppercase wide-tracked labels and a hairline
-// between rows, the tinted verified/unverified email pill in the same greens and
-// reds, and an arm-then-confirm delete button rather than a modal.
+// The layout follows frontend/'s account page closely, because that page got the
+// density right: ONE definition list carries the whole account, and each row's
+// action sits inline on the right of its own value rather than in a separate
+// stacked section. Email verification lives on the email row, the password
+// change opens from the password row. Only the two account-level actions
+// (delete, sign out) sit outside the list, in a single row beneath it.
+//
+// Field styling is lifted from the same place: uppercase wide-tracked labels, a
+// hairline between rows, the tinted verified/unverified pill in the same greens
+// and reds, and a small quiet button per row.
 
 type Status = { kind: "idle" | "working" | "ok" | "error"; message?: string };
 
 const IDLE: Status = { kind: "idle" };
 
-// One row of the profile table. Renders a dt/dd pair straight into the parent
+// One row of the account list. Renders a dt/dd pair straight into the parent
 // grid so labels and values keep their own columns and share a baseline.
 //
-// The rule sits on the dt at every width but on the dd only from `sm` up:
-// stacked into one column, a border on the dd would draw a line between a label
-// and its own value instead of between rows.
-function InfoRow({ label, children }: { label: string; children: ReactNode }) {
+// `action` is the row's own control, pushed to the right edge of the value cell
+// (frontend/'s dd.email-cell / dd.password-cell space-between). The rule sits on
+// the dt at every width but on the dd only from `sm` up: stacked into one
+// column, a border on the dd would draw a line between a label and its own value
+// instead of between rows.
+function Row({
+  label,
+  action,
+  children,
+}: {
+  label: string;
+  action?: ReactNode;
+  children: ReactNode;
+}) {
   return (
     <>
-      <dt className="flex items-center border-t border-slate-200 pb-1 pr-6 pt-4 text-xs uppercase tracking-[0.12em] text-slate-500 sm:py-4">
+      <dt className="flex items-center border-t border-slate-200 pb-1 pr-6 pt-3 text-xs uppercase tracking-[0.12em] text-slate-500 sm:py-3">
         {label}
       </dt>
-      <dd className="flex flex-wrap items-center gap-3 border-slate-200 pb-4 text-base text-slate-900 sm:border-t sm:py-4">
-        {children}
+      <dd className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-slate-200 pb-3 text-[15px] text-slate-900 sm:border-t sm:py-3">
+        <span className="flex flex-wrap items-center gap-2.5">{children}</span>
+        {action}
       </dd>
     </>
   );
 }
 
-function Section({
-  title,
-  body,
+// Small, non-dominant row button (frontend/'s .btn-verify sizing).
+function RowBtn({
+  onClick,
+  disabled,
   children,
 }: {
-  title: string;
-  body: string;
+  onClick: () => void;
+  disabled?: boolean;
   children: ReactNode;
 }) {
   return (
-    <section className="border-t border-slate-200 pt-8">
-      <h2 className="text-lg font-semibold tracking-tight text-slate-900">{title}</h2>
-      <p className="mt-1.5 max-w-xl text-sm leading-relaxed text-slate-600">{body}</p>
-      <div className="mt-5">{children}</div>
-    </section>
+    <Btn role="secondary" size="sm" onClick={onClick} disabled={disabled}>
+      {children}
+    </Btn>
+  );
+}
+
+// Inline row status, 0.8rem, green on success and red on failure, matching
+// frontend/'s .verify-message.
+function StatusText({ status }: { status: Status }) {
+  if (status.kind === "idle" || !status.message) return null;
+  return (
+    <span
+      role="status"
+      aria-live="polite"
+      className={`text-[13px] ${
+        status.kind === "error" ? "text-[#b3463f]" : "text-[#2f7d5b]"
+      }`}
+    >
+      {status.message}
+    </span>
   );
 }
 
@@ -77,26 +110,9 @@ function PasswordField({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         autoComplete={autoComplete}
-        className="h-10 w-full rounded-[15px] border border-slate-300 bg-white px-4 text-sm text-slate-900 transition-colors duration-200 focus:border-teal-500 focus:outline-none"
+        className="h-9 w-full rounded-[15px] border border-slate-300 bg-white px-3.5 text-sm text-slate-900 transition-colors duration-200 focus:border-teal-500 focus:outline-none"
       />
     </label>
-  );
-}
-
-// Inline status line shared by every action on the page, so a success and a
-// failure always read the same way whichever control produced them.
-function StatusLine({ status }: { status: Status }) {
-  if (status.kind === "idle" || !status.message) return null;
-  return (
-    <p
-      role="status"
-      aria-live="polite"
-      className={`mt-3 text-sm ${
-        status.kind === "error" ? "text-[#b3463f]" : "text-[#2f7d5b]"
-      }`}
-    >
-      {status.message}
-    </p>
   );
 }
 
@@ -115,6 +131,7 @@ export default function AccountPage() {
   const [pwStatus, setPwStatus] = useState<Status>(IDLE);
   const [deleteStatus, setDeleteStatus] = useState<Status>(IDLE);
 
+  const [pwOpen, setPwOpen] = useState(false);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -185,6 +202,7 @@ export default function AccountPage() {
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
+      setPwOpen(false);
     } catch (err) {
       setPwStatus({
         kind: "error",
@@ -223,93 +241,130 @@ export default function AccountPage() {
 
   return (
     <SimplePage title={ACCOUNT.title} subtitle={ACCOUNT.subtitle}>
-      <div className="space-y-10">
-        <dl className="grid grid-cols-1 sm:grid-cols-[200px_1fr]">
-          <InfoRow label={ACCOUNT.usernameLabel}>{user.username}</InfoRow>
-          <InfoRow label={ACCOUNT.emailLabel}>
-            <span className="break-all">{user.email}</span>
-            <span
-              className={`rounded-lg border px-2.5 py-1 text-xs font-medium ${
-                verified
-                  ? "border-[rgba(58,140,110,0.4)] bg-[rgba(58,140,110,0.1)] text-[#2f7d5b]"
-                  : "border-[rgba(179,70,63,0.4)] bg-[rgba(179,70,63,0.1)] text-[#b3463f]"
-              }`}
-            >
-              {verified ? ACCOUNT.verifiedBadge : ACCOUNT.unverifiedBadge}
-            </span>
-          </InfoRow>
-          <InfoRow label={ACCOUNT.planLabel}>{planLabel}</InfoRow>
-          <InfoRow label={ACCOUNT.memberSinceLabel}>
-            {formatDate(user.member_since)}
-          </InfoRow>
-        </dl>
+      <p className="text-xs uppercase tracking-[0.12em] text-slate-400">
+        {ACCOUNT.profileLabel}
+      </p>
 
-        <Section title={ACCOUNT.verifyHeading} body={ACCOUNT.verifyBody}>
-          {verified ? (
-            <p className="text-sm text-slate-600">{ACCOUNT.verifyDone}</p>
-          ) : (
-            <>
-              <Btn
-                role="secondary"
-                onClick={() => void sendVerification()}
-                disabled={verifyStatus.kind === "working" || verifyStatus.kind === "ok"}
+      <dl className="mt-3 grid grid-cols-1 sm:grid-cols-[180px_1fr]">
+        <Row label={ACCOUNT.usernameLabel}>{user.username}</Row>
+
+        <Row
+          label={ACCOUNT.emailLabel}
+          action={
+            verified ? undefined : (
+              <span className="flex flex-wrap items-center gap-3">
+                <StatusText status={verifyStatus} />
+                <RowBtn
+                  onClick={() => void sendVerification()}
+                  disabled={
+                    verifyStatus.kind === "working" || verifyStatus.kind === "ok"
+                  }
+                >
+                  {ACCOUNT.verifyCta}
+                </RowBtn>
+              </span>
+            )
+          }
+        >
+          <span className="break-all">{user.email}</span>
+          <span
+            className={`rounded-lg border px-2 py-0.5 text-xs font-medium ${
+              verified
+                ? "border-[rgba(58,140,110,0.4)] bg-[rgba(58,140,110,0.1)] text-[#2f7d5b]"
+                : "border-[rgba(179,70,63,0.4)] bg-[rgba(179,70,63,0.1)] text-[#b3463f]"
+            }`}
+          >
+            {verified ? ACCOUNT.verifiedBadge : ACCOUNT.unverifiedBadge}
+          </span>
+        </Row>
+
+        {/* The password is never returned by /me, so the value is a static mask
+            and the row's job is purely to open the change form. */}
+        <Row
+          label={ACCOUNT.passwordLabel}
+          action={
+            <span className="flex flex-wrap items-center gap-3">
+              {!pwOpen && <StatusText status={pwStatus} />}
+              <RowBtn
+                onClick={() => {
+                  setPwOpen((o) => !o);
+                  setPwStatus(IDLE);
+                }}
               >
-                {ACCOUNT.verifyCta}
-              </Btn>
-              <StatusLine status={verifyStatus} />
-            </>
-          )}
-        </Section>
+                {pwOpen ? ACCOUNT.cancel : ACCOUNT.passwordCta}
+              </RowBtn>
+            </span>
+          }
+        >
+          <span className="tracking-[0.15em] text-slate-900">{ACCOUNT.passwordMask}</span>
+        </Row>
 
-        <Section title={ACCOUNT.passwordHeading} body={ACCOUNT.passwordBody}>
-          <form onSubmit={submitPassword} noValidate className="max-w-sm space-y-4">
-            <PasswordField
-              label={ACCOUNT.currentPasswordLabel}
-              value={currentPassword}
-              onChange={setCurrentPassword}
-              autoComplete="current-password"
-            />
-            <PasswordField
-              label={ACCOUNT.newPasswordLabel}
-              value={newPassword}
-              onChange={setNewPassword}
-              autoComplete="new-password"
-            />
-            <PasswordField
-              label={ACCOUNT.confirmPasswordLabel}
-              value={confirmPassword}
-              onChange={setConfirmPassword}
-              autoComplete="new-password"
-            />
-            <Btn type="submit" role="primary" disabled={pwStatus.kind === "working"}>
-              {ACCOUNT.passwordCta}
-            </Btn>
-          </form>
-          <StatusLine status={pwStatus} />
-        </Section>
+        {/* Spans both columns so the form sits directly under the password row
+            rather than being squeezed into the value column. */}
+        {pwOpen && (
+          <div className="border-t border-slate-200 py-4 sm:col-span-2">
+            <form onSubmit={submitPassword} noValidate className="max-w-sm space-y-3">
+              <PasswordField
+                label={ACCOUNT.currentPasswordLabel}
+                value={currentPassword}
+                onChange={setCurrentPassword}
+                autoComplete="current-password"
+              />
+              <PasswordField
+                label={ACCOUNT.newPasswordLabel}
+                value={newPassword}
+                onChange={setNewPassword}
+                autoComplete="new-password"
+              />
+              <PasswordField
+                label={ACCOUNT.confirmPasswordLabel}
+                value={confirmPassword}
+                onChange={setConfirmPassword}
+                autoComplete="new-password"
+              />
+              <div className="flex items-center gap-3 pt-1">
+                <Btn
+                  type="submit"
+                  role="primary"
+                  size="sm"
+                  disabled={pwStatus.kind === "working"}
+                >
+                  {ACCOUNT.passwordSave}
+                </Btn>
+                <StatusText status={pwStatus} />
+              </div>
+            </form>
+          </div>
+        )}
 
-        <Section title={ACCOUNT.dangerHeading} body={ACCOUNT.dangerBody}>
+        <Row label={ACCOUNT.planLabel}>{planLabel}</Row>
+        <Row label={ACCOUNT.memberSinceLabel}>{formatDate(user.member_since)}</Row>
+      </dl>
+
+      {/* The only actions that are not about a single field: destructive on the
+          left, ordinary on the right (frontend/'s .account-actions-row). */}
+      <div className="mt-6 flex flex-wrap items-center justify-between gap-4 border-t border-slate-200 pt-5">
+        <span className="flex flex-wrap items-center gap-3">
           <Btn
             role="danger"
+            size="sm"
             onClick={() => void removeAccount()}
             disabled={deleteStatus.kind === "working"}
             className={armed ? "bg-[#f16b6b] text-white" : ""}
           >
             {armed ? ACCOUNT.deleteConfirmCta : ACCOUNT.deleteCta}
           </Btn>
-          <StatusLine status={deleteStatus} />
-        </Section>
-
-        <div className="flex justify-end border-t border-slate-200 pt-8">
-          <Btn
-            role="secondary"
-            onClick={() => {
-              void logout().then(() => window.location.assign(ROUTES.home));
-            }}
-          >
-            {ACCOUNT.signOut}
-          </Btn>
-        </div>
+          <StatusText status={deleteStatus} />
+        </span>
+        <Btn
+          role="secondary"
+          size="sm"
+          onClick={() => {
+            void logout().then(() => window.location.assign(ROUTES.home));
+          }}
+        >
+          {ACCOUNT.signOut}
+        </Btn>
       </div>
     </SimplePage>
   );

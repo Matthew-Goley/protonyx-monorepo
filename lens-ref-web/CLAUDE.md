@@ -18,6 +18,8 @@ Routes (all matched by `src/App.tsx`, no router library):
 | `/signup` | `src/pages/LoginPage.tsx` | Same page, opens on the Create account tab. Also no NavBar |
 | `/account` | `src/pages/AccountPage.tsx` | The signed-in profile page: details, email verification, password change, account deletion (see §5) |
 | `/verify-email?token=...` | `src/pages/VerifyEmailPage.tsx` | Landing for the emailed verification link; consumes the token. Also matches `/verify-email/index.html` |
+| `/forgot-password` | `src/pages/ForgotPasswordPage.tsx` | Request a password reset link. No NavBar |
+| `/reset-password?token=...` | `src/pages/ResetPasswordPage.tsx` | Landing for the emailed reset link; spends the token. No NavBar |
 | `/legal/terms` | `src/pages/TermsPage.tsx` | Referral-program Terms, verbatim from `legal-raw/lens-arc-referral-terms.md` |
 | `/legal/privacy` | `src/pages/PrivacyPage.tsx` | Referral-site Privacy Policy, verbatim from `legal-raw/lens-arc-referral-privacy-policy.md` |
 | `/referral` | `src/layouts/Layout4.tsx` | The original referral landing page (historical file name), copy updated to post-launch messaging |
@@ -90,6 +92,8 @@ lens-ref-web/
 │   ├── components/
 │   │   ├── NavBar.tsx             # Persistent site nav (Hairline, comparison winner), theme-adaptive via
 │   │   │                          # the data-nav-dark section markers (see §5)
+│   │   ├── AuthShell.tsx          # Shared chrome + field/error/notice primitives for the four
+│   │   │                          # standalone auth screens (see §5 The account)
 │   │   ├── MenuOverlay.tsx        # The hamburger menu: full-bleed dark panel, every page linked
 │   │   │                          # from here. Styled after frontend/'s .menu-overlay (see §5)
 │   │   ├── AccountMenu.tsx        # The nav's account slot: Sign in link (out) / account popover (in)
@@ -109,6 +113,8 @@ lens-ref-web/
 │       ├── LoginPage.tsx          # /login + /signup: the sign-in page (tabs, ?next=, ?email=), see §5
 │       ├── AccountPage.tsx        # /account: the signed-in profile page (see §5 The account page)
 │       ├── VerifyEmailPage.tsx    # /verify-email: consumes the emailed token
+│       ├── ForgotPasswordPage.tsx # /forgot-password: request a reset link
+│       ├── ResetPasswordPage.tsx  # /reset-password: spend the emailed reset token
 │       ├── EnginePage.tsx         # /lens-arc content (SimplePage shell)
 │       ├── legalContent.tsx       # Legal typography primitives (LegalSection/List/Table/Contact)
 │       ├── TermsPage.tsx          # SimplePage + Terms body (verbatim from legal-raw/)
@@ -171,7 +177,7 @@ A full-bleed dark panel ported in style from `frontend/chrome.css`: columns of o
 - **`src/lib/authApi.ts`** is the typed client: `login(usernameOrEmail, password)` (the backend resolves either), `signup(username, email, password)`, `me()`, `logout()`. Every call sets `credentials: "include"` because auth rides the **httpOnly `session` cookie**; no token is ever read or stored in JS. Errors read the backend's `message` field, and every call goes through a `request()` wrapper that converts fetch's bare `TypeError: Failed to fetch` into a named, actionable message (see the API-base gotcha in §8).
 - **`AuthProvider` / `useAuth()`** (`hooks/authContext.tsx`, mounted at the App root **above** `AccountProvider`) exposes `{ user, isAuthenticated, loading, login, signup, logout }`. It **mirrors lens-app's `AuthContext` deliberately**, including the rule that **authentication is gated on `GET /me` succeeding, not on `POST /login`**: a correct password does not prove a usable session, since every later call rides the cookie. Do not relax that to an unconditional `setUser`.
 - **`pages/LoginPage.tsx`** is `/login` (Sign in tab) and `/signup` (Create account tab), one component, tab state local so the user can switch without a navigation. Sign in takes username-or-email + password; sign up takes username + email + password (min 8 chars, checked client-side only) plus the Terms notice that makes the backend's silent TOS stamping at signup meaningful. It reads `?email=` to prefill and `?next=` to decide where to land afterwards. **`?next=` is deliberately restricted to same-origin absolute paths** (`safeNext()` rejects anything not starting with `/`, plus protocol-relative `//host`), or the page becomes an open redirect.
-- **The auth route is the one page with no NavBar.** `App.tsx` gates the bar on `isAuthRoute(path)`: it is a standalone single-purpose screen, and the nav's own account slot on top of a sign-in form is both redundant and a way to wander off mid-flow. The page's wordmark is therefore a link home (plus a "Back to lens-arc.com" line), since it is the only way out. It carries **no `data-nav-dark`** marker either, because that attribute only exists for the NavBar's theme probe and the NavBar never mounts here.
+- **The four auth routes are the only pages with no NavBar** (`/login`, `/signup`, `/forgot-password`, `/reset-password`). `App.tsx` gates the bar on `isAuthRoute(path)`: they are standalone single-purpose screens, and the nav account slot sitting on top of a sign-in form is both redundant and a way to wander off mid-flow. They share their chrome and field primitives through **`components/AuthShell.tsx`** (`AuthShell`, `AuthField`, `AuthError`, `AuthNotice`), so the four cannot drift apart. The page's wordmark is therefore a link home (plus a "Back to lens-arc.com" line), since it is the only way out. It carries **no `data-nav-dark`** marker either, because that attribute only exists for the NavBar's theme probe and the NavBar never mounts here.
 - **Its styling is deliberately flat, and echoes lens-app's sign-in rather than the marketing pages.** Top-anchored `max-w-md` column on a plain `#0c0f16` surface: wordmark, **underline tabs** (`border-b-2`, teal when active), heading + sub, labelled fields, full-width Mercury primary. **No radial glow, no card, no segmented tab pill** - the page was first built with all three, and a card holding a pill holding inputs read as boxes inside boxes inside outlines. The **only** bordered element is the inputs; the error state is a tinted fill (`bg-rose-500/10`), not another outline. Keep it that way when adding to this page.
 - **`AccountMenu`** is the nav's account slot, and it is now **two links, no popover**: signed out it links to `/login` carrying the current path as `?next=`; signed in the gradient avatar links to `/account`. The popover it used to open (account summary, app link, log out) was removed when the account page landed - a popover duplicating a page is a second surface to keep in sync for no gain.
 
@@ -186,16 +192,18 @@ A full-bleed dark panel ported in style from `frontend/chrome.css`: columns of o
 
 `/account` is the signed-in profile page and the only place a user manages their own account. It renders inside `SimplePage`, so it inherits the plain light document shell the other content pages use.
 
-**Field styling is lifted from `frontend/`'s account page**, which did it well: a two-column `<dl>` (`sm:grid-cols-[200px_1fr]`) with uppercase wide-tracked labels, a hairline between rows, and the tinted verified/unverified email pill in the same greens and reds (`#2f7d5b` / `#b3463f`). `InfoRow` puts the rule on the `<dt>` at all widths but on the `<dd>` only from `sm` up, because stacked into one column a `<dd>` border would draw a line between a label and its own value rather than between rows.
+**The layout follows the `frontend/` account page closely, because that page got the density right.** It is **one `<dl>`** carrying the whole account, and **each row action sits inline to the right of its own value** rather than in a separate stacked section: verification lives on the email row, the change-password form opens from the password row. Only the two account-level actions (delete, sign out) sit outside the list, in a single row beneath it. It was first built as four stacked `Section` blocks and read far too airy; do not expand it back out.
+
+Field styling comes from the same place: a two-column grid (`sm:grid-cols-[180px_1fr]`) with uppercase wide-tracked labels, a hairline between rows, the tinted verified/unverified pill in the same greens and reds (`#2f7d5b` / `#b3463f`), and a small quiet `size="sm"` button per row. `Row` puts the rule on the `<dt>` at all widths but on the `<dd>` only from `sm` up, because stacked into one column a `<dd>` border would draw a line between a label and its own value rather than between rows.
 
 Four things it does, all against the real `users` table:
 
-- **Profile** - username, email + verification pill, plan (`Pro until <date>` when `plan_expires_at` is set, else Pro/Free), member since.
-- **Email verification** - `POST /resend-verification`. Hidden entirely once `email_verified` is true.
-- **Change password** - current + new + confirm, through `POST /change-password`. Client-side it checks all three fields, an 8-char minimum, and that the two new entries match; the server independently re-checks the current password, which is the check that actually matters.
+- **Profile** - username, email + verification pill, a masked password row, plan (`Pro until <date>` when `plan_expires_at` is set, else Pro/Free), member since. The password is never returned by `/me`, so that row value is a fixed mask (`ACCOUNT.passwordMask`) and its only job is opening the form.
+- **Email verification** - `POST /resend-verification`, inline on the email row. The action disappears entirely once `email_verified` is true.
+- **Change password** - the row button toggles a form that spans **both grid columns** (`sm:col-span-2`) so it sits directly under its row instead of being squeezed into the value column. Current + new + confirm through `POST /change-password`. Client-side it checks all three fields, an 8-char minimum, and that the two new entries match; the server independently re-checks the current password, which is the check that actually matters.
 - **Delete account** - `DELETE /account`, behind an **arm-then-confirm button** rather than a modal (the `frontend/` pattern). The armed state self-disarms after 5s so it cannot sit primed and catch a stray click. On success it logs out locally too, so the nav is not left showing an account that no longer exists.
 
-Every action reports through one shared `StatusLine`, so a success and a failure read identically whichever control produced them. The page waits for `loading` to settle before redirecting a signed-out visitor to `/login?next=/account`; redirecting on `!user` alone would bounce a signed-in user whose `/me` was merely slow.
+Every action reports through one shared inline `StatusText`, so a success and a failure read identically whichever control produced them. The page waits for `loading` to settle before redirecting a signed-out visitor to `/login?next=/account`; redirecting on `!user` alone would bounce a signed-in user whose `/me` was merely slow.
 
 ### The verification landing (pages/VerifyEmailPage.tsx)
 
@@ -203,6 +211,15 @@ Every action reports through one shared `StatusLine`, so a success and a failure
 
 - **The path is a contract with `backend/src/email.ts`**, which builds the URL as `${SITE_URL}/verify-email?token=`. Before this page existed the emailed link resolved to `lens-arc.com` and hit the SPA catch-all, so it rendered the landing page and dropped the token in silence - verification could never complete, and nothing logged an error. It also matches `/verify-email/index.html`, the older form still sitting in already-sent inboxes.
 - A `useRef` guard spends the token exactly once. StrictMode double-invokes effects in dev, and the second call would consume nothing and report failure over a success that already happened.
+
+### Signed-out password recovery (pages/ForgotPasswordPage.tsx + ResetPasswordPage.tsx)
+
+The pair that covers a user who cannot sign in at all. Distinct from the account page `POST /change-password`, which is for a user who IS signed in and knows their current password.
+
+- **`/forgot-password`** posts the address to `POST /forgot-password`. **It must show the same message whether or not the address is registered**, because the backend deliberately returns an identical 200 envelope either way; reporting "no account with that email" would turn the form into an account-enumeration oracle and undo that. The copy is conditional ("if that email is registered") for exactly this reason. Only a transport or server failure shows an error.
+- **`/reset-password?token=`** spends the token via `POST /reset-password`. Unauthenticated, like the verification landing: the link is opened from an inbox, possibly in another browser or on a phone. With no token present it never posts at all and points the visitor back to request a fresh link. A 400 covers both an invalid and an expired token, since the backend checks `reset_token_expires_at > NOW()` in the same query, so the server message is surfaced rather than guessed at.
+- **Both paths are contracts with `backend/src/email.ts`**, which builds the URLs from `SITE_URL`. Same silent failure as verification if either drifts: the SPA catch-all renders the landing page and the token is dropped with no error anywhere.
+- The sign-in tab links to `/forgot-password`; the sign-up tab does not, since there is no account to recover yet.
 
 ### The referral flow is no longer a login (hooks/accountContext.tsx)
 

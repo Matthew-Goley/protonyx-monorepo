@@ -594,7 +594,7 @@ Three exported functions in `email.ts`, all using the **Resend** SDK and all fir
 **`sendPasswordResetEmail(to, username, token)`**
 
 - Same sender, same dark/teal styling, same try/catch behavior.
-- Builds the link as `${SITE_URL}/reset-password?token={token}`. **This flow is currently broken end to end: `lens-ref-web` has no `/reset-password` page**, so the link lands on the SPA catch-all and the token cannot be spent. The backend half works; the page is the missing piece. The signed-IN path (`POST /change-password`, used by the account page) is unaffected and is what a logged-in user should use.
+- Builds the link as `${SITE_URL}/reset-password?token={token}`. **That path must stay in step with `ROUTES.resetPassword` in `lens-ref-web/src/content.ts`**, the page that spends the token via `POST /reset-password`; the same silent-drop failure applies if it drifts. The signed-OUT recovery flow (`/forgot-password` -> email -> `/reset-password`) is wired end to end; a signed-in user changing a password they already know should use `POST /change-password` instead.
 - Subject: `Reset your Protonyx password`. Heading: `Password reset requested, {username}.` Body explicitly mentions the **1-hour expiry** and tells the recipient to ignore the email if they didn't request a reset (anti-confusion + anti-phishing language).
 - Same caveat as the other transactional emails: real delivery requires a verified Resend domain; the `/forgot-password` route still functions against the DB without it (the token is written, the email send fails silently).
 
