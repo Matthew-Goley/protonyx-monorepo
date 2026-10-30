@@ -1,12 +1,13 @@
 import type { ComponentType } from 'react'
 import type { SceneId } from '../config'
 import { Placeholder } from '../components/Placeholder'
+import { Intro } from './Intro'
 
 const todo = (id: SceneId) => () => <Placeholder id={id} />
 
 // Scene id (config.ts) -> component.
 export const SCENES: Record<SceneId, ComponentType> = {
-  intro: todo('intro'),
+  intro: Intro,
   portfolio: todo('portfolio'),
   analyzers: todo('analyzers'),
   caution: todo('caution'),
