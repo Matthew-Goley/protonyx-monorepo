@@ -2,17 +2,17 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository. It is intentionally detailed so that someone with no prior exposure to the project can act on it without reading every source file. Update it when the things it claims become wrong.
 
-> **Keep this file current.** Whenever you change the codebase in a way that contradicts something written here — new endpoint, new column, new page, renamed file, removed feature, changed convention, version bump, new dependency, new env var — update the relevant section of `CLAUDE.md` *in the same change*. Treat the doc as part of the diff, not a follow-up. If the change touches the desktop app, update `app/CLAUDE.md` too. Drift is the single most expensive thing that can happen to this file: every stale claim costs the next session real time, so the rule is "if a future reader of this file would now be misled, fix it now."
+> **Keep this file current.** Whenever you change the codebase in a way that contradicts something written here - new endpoint, new column, new page, renamed file, removed feature, changed convention, version bump, new dependency, new env var - update the relevant section of `CLAUDE.md` *in the same change*. Treat the doc as part of the diff, not a follow-up. If the change touches the desktop app, update `app/CLAUDE.md` too. Drift is the single most expensive thing that can happen to this file: every stale claim costs the next session real time, so the rule is "if a future reader of this file would now be misled, fix it now."
 
 ---
 
 ## 1. What This Repo Is
 
-**Protonyx** is an early-stage fintech building institutional-grade portfolio analytics for retail investors. This is the monorepo for the entire platform — backend API, web frontend, and the desktop app — held together by a single Postgres user database.
+**Protonyx** is an early-stage fintech building institutional-grade portfolio analytics for retail investors. This is the monorepo for the entire platform - backend API, web frontend, and the desktop app - held together by a single Postgres user database.
 
 > **IGNORE `app/` and `frontend/`.** Two top-level folders are dead weight and should be treated as out of scope unless a task explicitly names them:
-> - **`app/`** — a very old copy of the Vector desktop app. There is **no desktop app anymore**; the product is web-only. Do not read it for reference, do not run it, do not update it.
-> - **`frontend/`** — a stale, **not-live** static marketing site. The live marketing/auth/account site is `../Protonyx Site/` (one level above this monorepo, with its own `CLAUDE.md` and a `CNAME`). Don't edit `frontend/` expecting it to ship; if the task is about the public site, work in `../Protonyx Site/` instead.
+> - **`app/`** - a very old copy of the Vector desktop app. There is **no desktop app anymore**; the product is web-only. Do not read it for reference, do not run it, do not update it.
+> - **`frontend/`** - a stale, **not-live** static marketing site. The live marketing/auth/account site is **`lens-ref-web/`** (lens-arc.com). The older protonyxdata.com site is a separate repo at `../../Protonyx Site/` (sibling of `_lens/` in the workspace, with its own `CLAUDE.md` and a `CNAME`); that domain now 301s to lens-arc.com. Don't edit `frontend/` expecting it to ship.
 >
 > The folders that matter: **`backend/`** (Fastify API), **`lens-api/`** (Python analytics service), **`lens-app/`** (the live React web app), **`lens-ref-web/`** (the lens-arc.com marketing site), and **`referral-service/`** (the waitlist/referral API). The §2 layout below still documents `app/` and `frontend/`, but only so you recognize them as the things to skip.
 
@@ -20,16 +20,16 @@ There are five deliverables:
 
 | Product | Stack | Purpose |
 |---|---|---|
-| **Vector** (`app/`) — **DEAD, see note above** | Python 3.12 + PyQt6, packaged with Nuitka | Old downloadable Windows desktop app. There is no desktop app in the product anymore. The `app/` folder is a stale, rarely-synced copy; the canonical historical source is `Vector-Main/` one level above the monorepo. Ignore unless explicitly asked. |
-| **Web frontend** (`frontend/`) — **DEAD/not live, see note above** | Plain static HTML/CSS/JS | Old static marketing/auth/account site. **Not deployed.** The live public site is `../Protonyx Site/`. Ignore `frontend/` unless explicitly asked. |
-| **Backend API** (`backend/`) | Fastify + TypeScript on Node, PostgreSQL | Authentication, account profile, download counter, and (eventually) the API the desktop app talks to. |
+| **Vector** (`app/`) - **DEAD, see note above** | Python 3.12 + PyQt6, packaged with Nuitka | Old downloadable Windows desktop app. There is no desktop app in the product anymore. The `app/` folder is a stale, rarely-synced copy; the canonical historical source is `../../Protonyx Vector/Vector-Main/` (a separate repo in the workspace). Ignore unless explicitly asked. |
+| **Web frontend** (`frontend/`) - **DEAD/not live, see note above** | Plain static HTML/CSS/JS | Old static marketing/auth/account site. **Not deployed.** The live public site is `lens-ref-web/`. Ignore `frontend/` unless explicitly asked. |
+| **Backend API** (`backend/`) | Fastify + TypeScript on Node, PostgreSQL | Served at `api.lens-arc.com` (Railway). Auth + account management, per-user positions/settings/notifications, Stripe billing, waitlist Pro grants. Shared by lens-app and lens-ref-web; the shipped desktop app still polls `/version` and `/beta-status`. |
 | **Lens API** (`lens-api/`) | Python FastAPI, deployed on Railway | Standalone analytics microservice. Live at `https://lens-api-production-b0ab.up.railway.app`. Accepts a portfolio over HTTP, runs the Lens engine, returns the full result dict. Currently called directly from `lens-app` in the browser (dev); intended to be proxied server-to-server via Fastify in production. |
-| **Lens App** (`lens-app/`) | Vite + React + TypeScript | Web app for Lens analytics at `app.use-lens.com`, branded **Lens Arc** (the product's full name; logo assets in `lens-app/assets/lens-arc/`). Calls lens-api directly (dev only) or via Fastify (prod). Stack: React Router, Tailwind CSS, shadcn/ui, Recharts, TanStack Query. |
+| **Lens App** (`lens-app/`) | Vite + React + TypeScript | Web app for Lens analytics at `app.lens-arc.com` (Vercel), branded **Lens Arc** (the product's full name; logo assets in `lens-app/assets/lens-arc/`). Calls lens-api directly (dev only) or via Fastify (prod). Stack: React Router, Tailwind CSS, shadcn/ui, Recharts, TanStack Query. |
 | **Referral Service** (`referral-service/`) | Python FastAPI, deployed on Railway | Standalone pre-launch waitlist + referral API for the Lens Arc marketing site (`lens-ref-web/`). Its own Railway service; shares only the Postgres DB. Owns exactly one table (`waitlist`); writes `users` only via the internal `POST /redeem` (launch-time Pro grant). Endpoints: `/join`, `/verify`, `/status`, `/redeem`, `/health`. Read `referral-service/CLAUDE.md` before working in it. |
 
-The components share **one Postgres database** but **no build system** — each subdirectory is developed independently. There is no root `package.json`, no monorepo tooling (Turbo/Nx/Lerna), no Docker, no CI pipeline. Treat each top-level folder as a self-contained project.
+The components share **one Postgres database** but **no build system** - each subdirectory is developed independently. There is no root `package.json`, no monorepo tooling (Turbo/Nx/Lerna), no Docker, no CI pipeline. Treat each top-level folder as a self-contained project.
 
-The codebase is one developer's project on Windows 11 with Git Bash. Conventions reflect that: forward slashes in paths, LF line endings, no formal linter, no test suite anywhere.
+The codebase is one developer's project on Windows 11 with Git Bash. Conventions reflect that: forward slashes in paths, LF line endings. Only two subprojects have tooling of this kind: `lens-api/` has a pytest suite plus offline parity/edge harnesses, and `lens-app/` lints with oxlint. Everything else has no tests and no linter.
 
 ---
 
@@ -44,11 +44,11 @@ _monorepo/
 │   │   ├── email.ts               # Resend send logic (welcome + verify + password reset)
 │   │   ├── emailTemplates.ts      # Inline HTML strings for the three transactional emails
 │   │   ├── version.json           # Single source of truth for the latest Vector version (served by GET /version)
-│   │   ├── constants.ts           # Current TOS + EULA versions (CURRENT_TOS_VERSION, CURRENT_EULA_VERSION). Also exports BETA_ACTIVE = false, but nothing imports it — the /beta-status route reads process.env.BETA_ACTIVE directly, and signup gating uses betaConfig.ts
+│   │   ├── constants.ts           # Current TOS + EULA versions (CURRENT_TOS_VERSION, CURRENT_EULA_VERSION). Also exports BETA_ACTIVE = false, but nothing imports it - the /beta-status route reads process.env.BETA_ACTIVE directly, and signup gating uses betaConfig.ts
 │   │   ├── betaConfig.ts          # BETA_ACTIVE kill switch + MAX_BETA_USERS cap, read from env (gates signup)
 │   │   ├── waitlist.ts            # grantWaitlistProTime() - converts a verified referral-waitlist entry into earned free Pro time at signup (never throws) + writes the grant notification
 │   │   ├── middleware/
-│   │   │   └── authenticate.ts    # JWT preHandler — checks Authorization: Bearer header first, falls back to session cookie
+│   │   │   └── authenticate.ts    # JWT preHandler - checks Authorization: Bearer header first, falls back to session cookie
 │   │   └── routes/
 │   │       ├── auth.ts            # /signup, /login (sets httpOnly cookie + returns token), /logout, /verify-email, /resend-verification, /forgot-password, /reset-password
 │   │       ├── debug.ts           # /version, /beta-status (legacy, still polled by shipped desktop app), /protected, /me, /download
@@ -62,27 +62,30 @@ _monorepo/
 │   ├── package.json
 │   ├── tsconfig.json
 │   ├── CLAUDE.md                  # Backend quick-start reference
-│   └── .env                       # JWT_SECRET, DATABASE_URL, RESEND_API_KEY — gitignored
+│   └── .env                       # JWT_SECRET, DATABASE_URL, RESEND_API_KEY - gitignored
 │
 ├── lens-api/                      # Python FastAPI analytics microservice (Railway)
-│   ├── main.py                    # FastAPI app — POST /analyze, GET /health
+│   ├── main.py                    # FastAPI app: POST /analyze, GET /health, /search, /ticker/{symbol}/{info,quote,history,compare}, /tickers/history (batched)
 │   ├── requirements.txt
+│   ├── requirements-dev.txt       # pytest (dev/test only)
+│   ├── tests/                     # pytest smoke test + tests/parity/ (offline byte-identical parity harness) + tests/edge/ (edge-case failure harness)
+│   ├── metrics/                   # Offline calibration / walk-forward evaluation scripts and charts
 │   ├── Procfile                   # uvicorn main:app --host 0.0.0.0 --port $PORT
 │   ├── .env.example               # LENS_API_KEY, LENS_DATA_DIR
 │   ├── parity_check.py            # Regression verification vs Vector-Main
 │   ├── parity_output.md           # Saved output of the last parity run
 │   ├── test.json                  # Sample /analyze request payload for manual testing
-│   ├── CLAUDE.md                  # Full service reference — read this before working in lens-api/
+│   ├── CLAUDE.md                  # Full service reference - read this before working in lens-api/
 │   └── engine/                    # Lens computation package (extracted from Vector-Main/vector/)
 │       ├── analytics.py / constants.py / lens_engine.py / monte_carlo.py
 │       ├── paths.py               # MODIFIED: reads LENS_DATA_DIR env var for writable path
-│       ├── store.py               # DataStore — yfinance wrapper with TTL JSON caching
+│       ├── store.py               # DataStore - yfinance wrapper with TTL JSON caching
 │       └── lens/                  # 8 analyzers, CTA engine, sentence composers, assembler
 │           └── templates/sentences.json
 │
-├── frontend/                      # IGNORE — stale, NOT live. Old static site; live public site is ../Protonyx Site/. One index.html per route
+├── frontend/                      # IGNORE - stale, NOT live. Old static site; live public site is lens-ref-web/. One index.html per route
 │   ├── index.html                 # Landing page (hero 2-col + discovery 3-video strip + trust strip + pricing section)
-│   ├── style.css                  # Entry stylesheet — @imports the four files below in cascade order
+│   ├── style.css                  # Entry stylesheet - @imports the four files below in cascade order
 │   ├── base.css                   # Resets, :root tokens, typography, button primitives
 │   ├── chrome.css                 # Navbar, menu overlay, footer, auth-state toggles
 │   ├── pages.css                  # Landing-section legacy + account page (+ dormant products listing & Vector product page CSS)
@@ -109,27 +112,29 @@ _monorepo/
 │   │   └── downloads/             # Vector-Setup.exe (placeholder installer served by the site Download buttons)
 │   └── .vscode/settings.json      # Live Server pinned to port 5501
 │
-├── lens-app/                      # Vite + React + TS web app for Lens at app.use-lens.com
+├── lens-app/                      # Vite + React + TS web app for Lens at app.lens-arc.com (Vercel; vercel.json SPA rewrite is required)
 │   ├── src/
 │   │   ├── api/lens.ts            # Typed lens-api client (lensApi.analyze, getTickerInfo, getTickersHistory [batched], getTickerHistory [unused], health)
 │   │   ├── api/positions.ts       # Typed Fastify positions client (getPositions, replacePositions, addPosition, updatePosition, deletePosition)
-│   │   ├── contexts/            # AuthContext (real Fastify auth, httpOnly session cookie), ThemeContext (light/dark, localStorage), DashboardEditContext (dashboard edit-mode + gridActions), PositionsManagerContext (shared holdings manager)
-│   │   ├── hooks/                # useLensAnalysis.ts (react-query POST /analyze, shared cache), usePositions.ts (react-query GET /positions, server-backed portfolio), usePortfolioHistory.ts (real equity curve from batched /tickers/history), useGridMetrics.ts (ResizeObserver → square cell size), usePositionsManager.ts (holdings CRUD → server + query invalidate), useHotkey.ts (global single-key shortcut: a=add position, m=manage holdings)
+│   │   ├── api/settings.ts, api/notifications.ts  # Fastify clients for PUT /settings(/risk-tier) and GET/PATCH /notifications
+│   │   ├── contexts/            # AuthContext (real Fastify auth, httpOnly session cookie), ThemeContext (light/dark, localStorage), AnalysisCommitContext (deferred analysis: holds a committed snapshot; edits stage until the PendingChangesBar commits or reverts them), DashboardEditContext (dashboard edit-mode + gridActions), PositionsManagerContext (shared holdings manager)
+│   │   ├── hooks/                # useLensAnalysis.ts (react-query POST /analyze, shared cache), usePositions.ts (react-query GET /positions, server-backed portfolio), usePortfolioHistory.ts (real equity curve from batched /tickers/history), useGridMetrics.ts (ResizeObserver → square cell size), usePositionsManager.ts (holdings CRUD → server + query invalidate), useHotkey.ts (global single-key shortcut: a=add position, m=manage holdings), useUserSettings.ts (merged users.settings + update), useLayoutStore.ts (dashboard layout persistence), useNotifications.ts, useTickerSearch.ts
 │   │   ├── components/
 │   │   │   ├── ProtectedRoute.tsx # Redirects to /login if not authenticated
 │   │   │   ├── layout/           # Sidebar (Logo + nav), AppShell (sidebar + main + tick-grid canvas), PageHeader, TopBar (centered search → /commodity, notifications/security popovers)
-│   │   │   ├── charts/           # Recharts wrapper layer — the ONLY place that imports recharts. LensLineChart, LensAreaChart, LensAreaFanChart, LensPieChart, CyclablePieChart, EquityChart; shared internals in chartUtils.tsx (CHART_COLORS, PIE_COLORS, GradientDefs, LensTooltip, useAnimateOnce). See lens-app/CLAUDE.md §6/§7.
-│   │   │   ├── common/           # Logo (Lens Arc brand mark), Panel, BriefText (rich-colored brief), SectorPie, RiskProfileCards, AddPositionModal, CycleControl (arrow-pair cycler), UpgradePrompt
+│   │   │   ├── charts/           # Recharts wrapper layer - the ONLY place that imports recharts. LensLineChart, LensAreaChart, LensAreaFanChart, LensPieChart, CyclablePieChart, EquityChart, ProjectionCompareChart; shared internals in chartUtils.tsx (CHART_COLORS, PIE_COLORS, GradientDefs, LensTooltip, useAnimateOnce). See lens-app/CLAUDE.md §6/§7.
+│   │   │   ├── common/           # Logo (Lens Arc brand mark), Panel, BriefText (rich-colored brief), SectorPie, RiskProfileCards, AddPositionModal, EditPositionModal, PendingChangesBar (commit/revert staged portfolio edits), CycleControl (arrow-pair cycler), RollingNumber, TimeframeAreaChart, PageLoader, UpgradePrompt
 │   │   │   ├── widgets/          # DashboardWidgets.tsx (Positions, Portfolio Value, Sharpe, Composition, Beta, Dividend Calendar) + PortfolioVector.tsx (Portfolio Momentum status-ladder widget) + CautionScoreWidget.tsx (flagship Caution Score tile) + GeneratingBrief.tsx (auto-fitting typewriter Lens Brief readout)
 │   │   │   ├── dashboard/        # The data-driven widget grid: WidgetGrid (two-pass measure-then-place + opt-in edit mode), FitScale (scales widget content to its locked cell), PositionActions (add/manage-holdings tile), AddWidgetMenu
 │   │   │   ├── analysis/         # CautionGauge (SVG), CtaList, HistoryModal, MonteCarloChart (wraps LensAreaFanChart; unused since the Analysis rework)
 │   │   │   └── ui/               # button + input (restyled dark); card/label/textarea/badge are now unused leftovers
 │   │   ├── assets/lens-arc/      # Lens Arc logo PNGs, bundled via import (mirror of ../assets/lens-arc)
-│   │   ├── lib/                  # utils.ts (cn), backend.ts (BACKEND_URL + backendFetch), cookies.ts (settings/layout cookies + legacy-positions migration reader), lensData.ts (derivations), projections.ts (5 forward-projection methods + per-CTA Lens effect, backs the Analysis chart), subscription.ts (isSubscribed), widgetRegistry.tsx (widget source of truth), widgetLayout.ts (grid geometry + fit/edit helpers)
-│   │   └── pages/                # Login (sign in/up tabs), Onboard, Dashboard, Analysis, Profile, Settings, Success, Commodity (live instrument detail from lens-api quote+history)
+│   │   ├── lib/                  # utils.ts (cn), backend.ts (BACKEND_URL + backendFetch), persist.ts (QUERY_CACHE_KEY for the persisted react-query cache), lensData.ts (derivations), lensHistory.ts + searchHistory.ts (per-user localStorage records: past analyses, recent searches), topTickers.ts (~100-ticker instant-search index), projections.ts (5 forward-projection methods + per-CTA Lens effect, backs the Analysis chart), subscription.ts (isSubscribed), widgetRegistry.tsx (widget source of truth), widgetLayout.ts (grid geometry + fit/edit helpers)
+│   │   └── pages/                # Login (sign in/up tabs), Onboard, Dashboard, Analysis, Profile, Settings (+ settings/ master-detail parts), Success, Commodity (live instrument detail from lens-api quote+history)
+│   ├── scripts/                   # bump*.mjs version scripts + bump-hook.mjs (Claude Code Stop hook that auto-bumps PATCH); see lens-app/CLAUDE.md for the versioning rules
 │   ├── assets/lens-arc/           # Lens Arc brand artwork (source of truth): lens-arc-{white,dark}, arc-{white,dark}, icon-{nobg,square,rounded}
 │   ├── public/lens-arc-icon.png   # Favicon (copy of icon-rounded), referenced from index.html
-│   ├── src/index.css              # Tailwind v4 @theme dark design tokens (no tailwind.config.js in this project)
+│   ├── src/index.css              # Tailwind v4 @theme design tokens (the only live token source; tailwind.config.js below is dead)
 │   ├── package.json
 │   ├── vite.config.ts             # Path alias @/ → src/
 │   ├── components.json            # shadcn/ui config (legacy)
@@ -137,7 +142,7 @@ _monorepo/
 │   ├── styling.md                 # GUI styling spec - single source of truth for the visual design system (palette, type, spacing, signature elements). src/index.css implements it.
 │   └── CLAUDE.md                  # Full lens-app reference - read this before working in lens-app/
 │
-├── app/                           # IGNORE — DEAD. Very old copy of the Vector desktop app; the product is web-only now (no desktop app)
+├── app/                           # IGNORE - DEAD. Very old copy of the Vector desktop app; the product is web-only now (no desktop app)
 │   │                              # Do not read, run, or update it. Kept only for history.
 │   ├── main.py
 │   └── vector/
@@ -157,17 +162,21 @@ _monorepo/
 │                                  # (plain path router in src/App.tsx, no router lib): / (landing page in the
 │                                  # established frontend/ house style, src/landing/LandingPage.tsx; picked from a
 │                                  # four-design comparison whose losers were deleted),
-│                                  # /lens-arc (plain-language engine trust page), /login + /signup (the site's
-│                                  # account page, src/pages/LoginPage.tsx), /legal/terms +
+│                                  # /lens-arc (plain-language engine trust page), /login + /signup
+│                                  # (src/pages/LoginPage.tsx), /account (signed-in profile page: email verification,
+│                                  # password change, account deletion), /verify-email, /forgot-password +
+│                                  # /reset-password (the emailed-token landings; paths are a contract with
+│                                  # backend/src/email.ts), /legal/terms +
 │                                  # /legal/privacy (verbatim from legal-raw/, on the shared SimplePage template), and
 │                                  # /referral (the original referral page, src/layouts/Layout4.tsx, post-launch copy)
 │                                  # with /referral/ref/:code share links. Legacy /ref/:code, /r/:code, /terms,
 │                                  # /privacy redirect in place (publicly shared links; do not remove).
 │                                  # LOGIN: the site authenticates against the Fastify `users` table, the same
 │                                  # accounts lens-app uses (src/lib/authApi.ts + src/hooks/authContext.tsx ->
-│                                  # /login, /signup, /me, /logout over the httpOnly session cookie). Set
-│                                  # VITE_API_URL (defaults to localhost:3000; MUST be https://api.lens-arc.com in
-│                                  # prod so the cookie stays same-site). The old magic-link login against the
+│                                  # /login, /signup, /me, /logout, /change-password, DELETE /account over the
+│                                  # httpOnly session cookie). VITE_API_URL is optional: unset, it falls back to
+│                                  # localhost:3000 in dev and https://api.lens-arc.com in prod builds (if set for
+│                                  # prod it MUST stay api.lens-arc.com so the cookie stays same-site). The old magic-link login against the
 │                                  # referral `waitlist` table was REMOVED from the nav.
 │                                  # REFERRAL: the waitlist flow (src/lib/api.ts + src/hooks/useAccountFlow.ts) now
 │                                  # serves only /referral: /verify?token= is read on load, the share-path code is
@@ -177,7 +186,9 @@ _monorepo/
 │                                  # (still mid-rework). Brand images in assets/lens-arc (mirror of lens-app's); the four 2K
 │                                  # demo videos in assets/video feed the /referral walkthrough and all four landing
 │                                  # designs. Nav links to the app at https://app.lens-arc.com (APP_URL in content.ts).
-│                                  # Standalone project: npm install && npm run dev (Vite, port 5173). Not deployed yet.
+│                                  # Standalone project: npm install && npm run dev (Vite, port 5173, or 5174 if
+│                                  # lens-app is running). Deployed on Vercel at lens-arc.com; vercel.json's catch-all
+│                                  # rewrite to index.html is required for every route.
 │                                  # Has its own CLAUDE.md; read it before working in lens-ref-web/.
 │
 ├── referral-service/              # Standalone Python FastAPI waitlist + referral API for lens-ref-web (its own Railway
@@ -186,10 +197,10 @@ _monorepo/
 │                                  # /status, /redeem, /health. Entitlement is a pure step function (entitlement.py) that must
 │                                  # stay in lockstep with lens-ref-web's REFERRAL_MILESTONES. Reward math is computed on demand,
 │                                  # never stored; credit accrues only on verification; only direct referrals are counted.
-│                                  # main.py / db.py / entitlement.py / mailer.py (NOT email.py — shadows stdlib) / templates.py.
+│                                  # main.py / db.py / entitlement.py / mailer.py (NOT email.py - shadows stdlib) / templates.py.
 │                                  # Has its own CLAUDE.md; read it before working in referral-service/.
-├── scripts/                       # Admin / DB utility scripts — currently empty
-├── database/                      # Legacy SQLite dir — gitignored, empty, no longer used
+├── scripts/                       # Admin / DB utility scripts - currently empty
+├── database/                      # Legacy SQLite dir - gitignored, empty, no longer used
 ├── dev.bat                        # Windows helper: starts backend (npm run dev) + frontend (browser-sync on 5500)
 ├── front.bat                      # Windows helper: starts only the frontend (browser-sync on 5500), API points at Railway prod
 ├── README.md                      # Public-facing repo blurb
@@ -197,7 +208,7 @@ _monorepo/
 └── .gitignore                     # node_modules/, .env, database/, dist/, .DS_Store, Thumbs.db
 ```
 
-There is **no notes/journaling feature** anywhere. If you see references to a `notes` table, `notes` route, or a `noteRoutes` import, those are stale — delete them. The feature was scaffolded early as a smoke test and removed.
+There is **no notes/journaling feature** anywhere. If you see references to a `notes` table, `notes` route, or a `noteRoutes` import, those are stale - delete them. The feature was scaffolded early as a smoke test and removed.
 
 ---
 
@@ -211,20 +222,20 @@ Run from `backend/`:
 |---|---|---|
 | Install deps | `npm install` | |
 | Dev server | `npm run dev` | `ts-node-dev src/server.ts`, hot-reloads, serves on `http://localhost:3000` |
-| Typecheck | `npx tsc --noEmit` | No dedicated typecheck script — invoke `tsc` directly |
-| Build | `npm run build` | `tsc` — compiles `src/` to `dist/`. |
-| Start (prod) | `npm run start` | `node dist/server.js` — runs the compiled output (build first). |
+| Typecheck | `npx tsc --noEmit` | No dedicated typecheck script - invoke `tsc` directly |
+| Build | `npm run build` | `tsc` - compiles `src/` to `dist/`. |
+| Start (prod) | `npm run start` | `node dist/server.js` - runs the compiled output (build first). |
 | Test | *(none)* | No test framework installed. Do not invent one. |
 | Lint / format | *(none)* | No ESLint/Prettier. Match existing style. |
 
 ### Frontend
 
-Served by **VS Code Live Server** — there is no npm/Vite/Webpack step.
+Served by **VS Code Live Server** - there is no npm/Vite/Webpack step.
 
 - Default port is **5501** (locked in `frontend/.vscode/settings.json`).
 - Open any `index.html` via the Live Server extension. Navigation uses **root-absolute paths** like `/auth/index.html`, so Live Server **must be rooted at `frontend/`** (not at the repo root) for links to resolve. If links 404, that is almost always the cause.
 - Ports **5500** and **5501** (both `127.0.0.1` and `localhost`) are allowlisted by the backend CORS config. If Live Server picks a different port, every request to the API will fail CORS.
-- Alternatively, the repo-root `dev.bat` (backend + frontend) and `front.bat` (frontend only, API → Railway prod) serve the frontend with **browser-sync** on port **5500**. Same CORS constraint applies — keep it on 5500.
+- Alternatively, the repo-root `dev.bat` (backend + frontend) and `front.bat` (frontend only, API → Railway prod) serve the frontend with **browser-sync** on port **5500**. Same CORS constraint applies - keep it on 5500.
 
 ### Lens API
 
@@ -240,6 +251,11 @@ set LENS_API_KEY=dev-secret-key
 set LENS_DATA_DIR=C:/Users/Matthew/AppData/Local/Protonyx/Vector
 uvicorn main:app --reload
 # API at http://localhost:8000, docs at http://localhost:8000/docs
+
+# Tests (needs requirements-dev.txt):
+pip install -r requirements-dev.txt
+python -m pytest tests/ -q
+python tests/parity/parity_harness.py   # offline, must print [PASS]
 ```
 
 See `lens-api/CLAUDE.md` for full detail including the `POST /analyze` request/response shape and Railway deployment.
@@ -254,25 +270,27 @@ Run from `lens-app/`:
 | Dev server | `npm run dev` | Vite HMR, serves on `http://localhost:5173` |
 | Type check | `npx tsc -b` (or `tsc -p tsconfig.app.json --noEmit`) | Root `tsconfig.json` is a solution file (`files: []` + references), so a bare `tsc --noEmit` checks nothing. Use `tsc -b`. |
 | Build | `npm run build` | `tsc -b && vite build`, outputs to `lens-app/dist/` |
+| Lint | `npm run lint` | **oxlint**, not ESLint (config in `.oxlintrc.json`) |
+| Version bump | `npm run bump` | PATCH only. `bump:minor` / `bump:major` are owner-only; see `lens-app/CLAUDE.md` for the rules |
 
-The dev server on port 5173 is the only origin the lens-api currently allows besides `https://app.use-lens.com`. Adding any other local origin requires editing the `allow_origins` list in `lens-api/main.py`.
+The lens-api CORS `allow_origins` list is `http://localhost:5173`, `https://app.lens-arc.com`, and the legacy `https://app.use-lens.com`. Adding any other local origin requires editing the `allow_origins` list in `lens-api/main.py`.
 
 Auth uses the real Fastify backend: `POST /login` is called with credentials, and the response sets an httpOnly `session` cookie. `AuthContext` also exposes `signup(username, email, password)` which `POST /signup`s then logs in (signup does not set a cookie). On mount, `AuthContext` validates the session via `GET /me` (cookie sent automatically). `POST /logout` clears the cookie. No token is stored in localStorage or JS-accessible state. `AuthContext.user` carries `subscription_status` (`'inactive' | 'active' | 'cancelled'`), `plan`, `member_since`, `beta_access`, and `risk_tier` (`'low' | 'regular' | 'high' | null`), populated from the `/me` response. `AuthContext` also exposes `refreshUser()` (refetches `/me` and updates `user`), called after the risk tier changes so `useLensAnalysis` sees the new value. On **every account switch** (login and logout) `AuthContext` also hard-clears the react-query cache (memory + the persisted `localStorage` copy); without this the 5-min `staleTime` on `['positions']` would let one account see the previous account's cached holdings within a single SPA session.
 
-**UI / screens.** The app is a sidebar-driven dashboard (Tailwind v4 `@theme` tokens in `src/index.css`; Sora font; recharts + lucide-react). It is **light/dark themable** — dark is the default, a `.light` class on `<html>` re-declares the surface/text tokens, and `ThemeContext` persists the choice to `localStorage`; toggle via the `TopBar` sun/moon button or Settings. Screens: `/login` (sign in / sign up tabs), `/onboard` (2-step risk-profile + position-setup wizard), `/dashboard` (a **data-driven widget grid** with an opt-in edit mode — drag to reposition, add/remove widgets, reset to default; both the Lens Brief and Position Actions are now grid widgets), `/analysis` (the **Projection Lab**: brief + caution gauge above an interactive chart comparing the current portfolio against the portfolio with Lens projections applied, with a rail to apply all-or-one projection and a strip to pick the projection method), `/profile`, `/settings`, `/success`, `/commodity/:symbol` (live instrument-detail screen — real quote + price history from lens-api/yfinance — reachable via the TopBar ticker search). See `lens-app/CLAUDE.md` §5/§7 for the grid model.
+**UI / screens.** The app is a sidebar-driven dashboard (Tailwind v4 `@theme` tokens in `src/index.css`; Sora font; recharts + lucide-react). It is **light/dark themable** - dark is the default, a `.light` class on `<html>` re-declares the surface/text tokens, and `ThemeContext` persists the choice to `localStorage`; toggle via the `TopBar` sun/moon button or Settings. Screens: `/login` (sign in / sign up tabs), `/onboard` (2-step risk-profile + position-setup wizard), `/dashboard` (a **data-driven widget grid** with an opt-in edit mode - drag to reposition, add/remove widgets, reset to default; both the Lens Brief and Position Actions are now grid widgets), `/analysis` (the **Projection Lab**: brief + caution gauge above an interactive chart comparing the current portfolio against the portfolio with Lens projections applied, with a rail to apply all-or-one projection and a strip to pick the projection method), `/profile`, `/settings`, `/success`, `/commodity/:symbol` (live instrument-detail screen - real quote + price history from lens-api/yfinance - reachable via the TopBar ticker search). See `lens-app/CLAUDE.md` §5/§7 for the grid model.
 
 **Portfolio + client-side state.** Positions are **stored in Postgres per user** via the Fastify `/positions` endpoints (see §4) and read through the `['positions']` react-query hook `usePositions`; the old `lens_positions` cookie is gone entirely (no migration path remains). The **risk tier is also stored in Postgres per user** on the `users.risk_tier` column, set via `PUT /settings/risk-tier` and read back on `AuthContext.user.risk_tier` (from `/me`). It used to live in a `lens_settings` cookie; that cookie is gone, which is what stopped a new account on a shared browser from inheriting a previous user's tier (and, together with the removed positions migration, why a fresh account now truly lands on onboarding with nothing assumed). **All other user-customizable state is now server-side too** in a single `users.settings` JSONB blob (`PUT /settings` shallow-merge, read on `AuthContext.user.settings`): **theme** (light/dark, with a `localStorage` copy kept only as a pre-paint cache), **date_format**, the **dashboard widget layout** (`x, y, w` per widget; `h` is always re-measured, never persisted), and the four **analyze tuning blocks** (direction_thresholds/volatility/lens_signals/monte_carlo). **The lens-app now uses no cookies at all** (the old `lens_layout` cookie was removed with the rest). `useLensAnalysis` (react-query) sources positions from `usePositions`, the risk tier from `AuthContext.user` (falling back to `'regular'` if unset), and the four tuning blocks from `user.settings`, then runs `POST /analyze` (each tuning block sent whole; the engine merges settings shallowly over its defaults); Dashboard, Analysis, and Profile share the cached result. Onboarding "Launch Lens" writes the risk tier (`PUT /settings/risk-tier`, then `refreshUser()`) and the portfolio (`PUT /positions` bulk replace) to the server; add/edit/delete go through `usePositionsManager` (server mutations, then invalidate `['positions']` + `['lens-analysis']`). Adding a position validates the ticker via lens-api `GET /ticker/{symbol}/info` (browser-direct, X-API-Key) to pull live price/sector/name. `Dashboard`/`Analysis` redirect to `/onboard` only once the positions query has loaded and is empty (never while loading). The react-query cache is **persisted to `localStorage`** so a refresh paints instantly from cache; the `['positions']` query is deliberately **excluded** from that persistence so raw holdings are not written to disk at rest. The **`/analyze` path is still browser-direct to lens-api** (positions assembled on the client) - only where positions are stored changed, not the analyze path.
 
 **Derived vs. real data.** The brief, ctas, caution_score, action_type, recommended_tickers, net_cta_delta, full_report, projected_positions and the per-analyzer pool_results are read straight from `/analyze`. A few design surfaces the engine does **not** return (see `lens-api/CLAUDE.md` §13) are derived deterministically from the real analyzer outputs and labelled as estimates in the UI: the **Sharpe ratio** ((slope − 4.5%) / volatility, `src/lib/lensData.ts`) and the Analysis page's **forward projections** (`src/lib/projections.ts`: Monte Carlo, GBM, bootstrapped historical returns, regression extrapolation, moving-average, plus the modelled effect of applying each CTA). The **Portfolio Value chart** (an interactive area chart with a timeframe stepper and a signed $/% period-return readout driven by chart hover / click-drag range selection) and the projections' **historical lead-in** instead use the **real** portfolio equity curve, built from the batched `/tickers/history` endpoint (one request for all holdings) by `src/hooks/usePortfolioHistory.ts` (Σ shares × daily close), falling back to a slope-synthesized line only while that loads.
 
-**Stripe paywall.** Gating is on `subscription_status === 'active'` (via `isSubscribed()` in `src/lib/subscription.ts`), **not** `plan` — the seeded `testuser` is `plan='free'` but `subscription_status='active'`, so gating on plan would wrongly block it. Dashboard and Analysis render an `UpgradePrompt` (which hits `POST /stripe/create-checkout-session` and redirects to Stripe Checkout) when not subscribed. After payment Stripe redirects to `/success`, which redirects to `/dashboard` after 3 seconds. `/settings` shows the plan and a "Manage Billing" button (`POST /stripe/portal`, shown when active) or an upgrade button otherwise. The Pro/Free badge shown in Profile/Settings follows `isSubscribed()`.
+**Stripe paywall.** Gating is on `subscription_status === 'active'` (via `isSubscribed()` in `src/lib/subscription.ts`), **not** `plan` - the seeded `testuser` is `plan='free'` but `subscription_status='active'`, so gating on plan would wrongly block it. Dashboard and Analysis render an `UpgradePrompt` (which hits `POST /stripe/create-checkout-session` and redirects to Stripe Checkout) when not subscribed. After payment Stripe redirects to `/success`, which redirects to `/dashboard` after 3 seconds. `/settings` shows the plan and a "Manage Billing" button (`POST /stripe/portal`, shown when active) or an upgrade button otherwise. The Pro/Free badge shown in Profile/Settings follows `isSubscribed()`.
 
 ### Vector desktop app
 
-**The `app/` folder in this repo is stale.** Run the real desktop app from `Vector-Main/` (one level above `_monorepo/`):
+**The `app/` folder in this repo is stale.** Run the real desktop app from `Vector-Main/` (at `_Dev_ALL/Protonyx Vector/Vector-Main/`, a separate repo):
 
 ```bash
-cd Vector-Main
+cd "../../Protonyx Vector/Vector-Main"
 python -m venv .venv
 .venv\Scripts\activate
 pip install -r requirements.txt
@@ -283,9 +301,9 @@ For Nuitka standalone builds, use `build.bat` (release, console disabled) or `bu
 
 ### PostgreSQL (local dev)
 
-The backend expects a running Postgres reachable via `DATABASE_URL`. Schema is created on each server boot by `db.ts`. There is **no migrations system** — the database evolves by editing `db.ts`.
+The backend expects a running Postgres reachable via `DATABASE_URL`. Schema is created on each server boot by `db.ts`. There is **no migrations system** - the database evolves by editing `db.ts`.
 
-`backend/.env` must contain (gitignored — do **not** commit, do not paste real values into chat or code):
+`backend/.env` must contain (gitignored - do **not** commit, do not paste real values into chat or code):
 
 ```
 JWT_SECRET=<any-string>
@@ -303,7 +321,7 @@ A `backend/.env.example` documents all of these with placeholder values.
 
 `BETA_ACTIVE` and `MAX_BETA_USERS` gate `/signup` only (see §4). They are read from `process.env` in `src/betaConfig.ts` so they can be toggled from the Railway dashboard without a redeploy. `BETA_ACTIVE` defaults to `true` and is only off when set to the literal string `"false"`; `MAX_BETA_USERS` defaults to `50`.
 
-If `RESEND_API_KEY` is missing, signup still succeeds — `sendWelcomeEmail` is fire-and-forget and swallows errors so that email outages never break account creation.
+If `RESEND_API_KEY` is missing, signup still succeeds - `sendWelcomeEmail` is fire-and-forget and swallows errors so that email outages never break account creation.
 
 ---
 
@@ -313,8 +331,8 @@ If `RESEND_API_KEY` is missing, signup still succeeds — `sendWelcomeEmail` is 
 
 `src/server.ts` builds a Fastify instance and registers, in order:
 
-1. **`@fastify/rate-limit`** — global, **20 requests / 60 seconds per IP**. This is low; you will hit it during frontend testing if you mash buttons. Don't bump it without a reason.
-2. **`@fastify/cors`** — allowlists these origins:
+1. **`@fastify/rate-limit`** - global, **20 requests / 60 seconds per IP**. This is low; you will hit it during frontend testing if you mash buttons. Don't bump it without a reason.
+2. **`@fastify/cors`** - allowlists these origins:
    - `http://127.0.0.1:5500` / `http://localhost:5500`
    - `http://127.0.0.1:5501` / `http://localhost:5501` (static frontend Live Server)
    - `http://localhost:5173` / `http://127.0.0.1:5173` (Vite dev server)
@@ -442,14 +460,14 @@ The `positions` table holds the user's portfolio, one row per `(user_id, ticker)
 
 The `notifications` table holds per-user in-app messages. The only code that inserts into it is `grantWaitlistProTime()` (see below); it is read by `GET /notifications` and cleared by `PATCH /notifications/read` (`routes/notifications.ts`), which back the lens-app `TopBar` notification popover. Read and unread rows are returned together, newest first, capped at 50 - a read notification stays in the list, it just stops counting toward the unread indicator.
 
-**Critical dev behavior:** when `NODE_ENV=development`, the `notifications`, `positions`, and `users` tables are **dropped and recreated on every boot** (the two child tables first, because of the FK). Every restart of `npm run dev` wipes all accounts + positions and re-seeds `testuser` (password `password123`) plus 2-3 sample positions so dev lands on a populated dashboard. This is intentional during early schema churn — there is no migration tooling, so dropping is the simplest way to apply schema changes. Do **not** run dev mode against a database that holds data you care about. In any other environment (`NODE_ENV !== "development"`), the `DROP` and seeds are skipped and `CREATE TABLE IF NOT EXISTS` runs as normal, so `positions` persists in prod exactly like `users`.
+**Critical dev behavior:** when `NODE_ENV=development`, the `notifications`, `positions`, and `users` tables are **dropped and recreated on every boot** (the two child tables first, because of the FK). Every restart of `npm run dev` wipes all accounts + positions and re-seeds `testuser` (password `password123`) plus 2-3 sample positions so dev lands on a populated dashboard. This is intentional during early schema churn - there is no migration tooling, so dropping is the simplest way to apply schema changes. Do **not** run dev mode against a database that holds data you care about. In any other environment (`NODE_ENV !== "development"`), the `DROP` and seeds are skipped and `CREATE TABLE IF NOT EXISTS` runs as normal, so `positions` persists in prod exactly like `users`.
 
 All queries use parameterized `$1, $2, ...` placeholders. Never interpolate user input into SQL.
 
 ### Schema-evolution workflow
 
 1. Edit the `CREATE TABLE` block (and seed block, if needed) in `db.ts`.
-2. Restart `npm run dev` — the table is dropped and recreated.
+2. Restart `npm run dev` - the table is dropped and recreated.
 3. To apply the same change to a non-dev environment, write SQL by hand and run it via `psql` (or whatever migration tool gets adopted later). The `IF NOT EXISTS` guard does **not** alter existing tables.
 
 For columns added to an existing prod-shaped table, prefer the **idempotent `ALTER TABLE ... ADD COLUMN IF NOT EXISTS` pattern** already in `setup()` (see `verification_token`). Wrap each `ALTER` in try/catch so a transient failure doesn't kill server boot. These run on every boot in every environment, which is the closest thing to a migration tool the backend has right now.
@@ -481,40 +499,40 @@ Every handler returns `{ success: boolean, message?: string, ...payload }`. Stat
 | User not found at login | 404 |
 | Duplicate username or email at signup | 409 |
 
-The error field is always named `message`. The frontend (`auth.js`) reads `data.message || data.error`, so either name works on the wire — but new endpoints should stick to `message` for consistency.
+The error field is always named `message`. The frontend (`auth.js`) reads `data.message || data.error`, so either name works on the wire - but new endpoints should stick to `message` for consistency.
 
 ### Current endpoints
 
 | Method | Path | Auth | Body | Behavior |
 |---|---|---|---|---|
-| `POST` | `/signup` | — | `{ username, email, password }` | **Beta-gated at the very top, before field validation** (see "Beta gating" below): returns 403 `{ success: false, message: "The open beta is currently closed. Check back soon." }` when `BETA_ACTIVE` is false, or 403 `{ success: false, message: "The open beta is currently full. Check back soon." }` when `SELECT COUNT(*) FROM users >= MAX_BETA_USERS`. If both gates pass: validates all three are present; rejects duplicate `username` or `email` (409); bcrypt-hashes (cost 10); inserts row **on `plan = 'free'`** (Pro is only ever granted by the waitlist conversion below or by a real Stripe subscription) **with `tos_version_accepted = CURRENT_TOS_VERSION` and `tos_accepted_at = NOW()`** (new accounts auto-accept the current TOS; the signup form carries the agreement notice); **issues a `crypto.randomBytes(32).toString("hex")` verification token and stores it on the row**; **fires `sendWelcomeEmail` and `sendVerificationEmail` fire-and-forget** (failures logged, never thrown); and **runs the waitlist conversion** (`grantWaitlistProTime`, see below) before returning 201. |
-| `POST` | `/login` | — | `{ username, password }` | The `username` field accepts **either a username or an email** (`WHERE username = $1 OR email = $1`). On success, stamps `last_login = CURRENT_TIMESTAMP`, signs a 7-day JWT (`{ id, username }`), **sets an httpOnly `session` cookie** (7-day `maxAge`, `sameSite: lax` in dev, `sameSite: none + secure` in prod), and returns `{ success, message, token }`. The token is also returned in the body for non-browser callers (desktop app, static frontend) that read it directly; browser clients should rely on the cookie. Login does **not** currently gate on `email_verified`. |
-| `GET` | `/verify-email` | — | query: `?token=<hex>` | Looks up the user by `verification_token`. Missing or unknown token → 400 `{ success: false, message: "Invalid or expired verification token" }`. Found → sets `email_verified = true`, nulls `verification_token`, returns 200 `{ success: true, message: "Email verified successfully" }`. The token is single-use because it's cleared on success; re-clicking the link returns 400. |
-| `POST` | `/resend-verification` | ✅ | — (empty body) | Looks up the authenticated user by `request.user.id`. User not found → 401. Already verified (`email_verified = true`) → 400 `{ success: false, message: "Email already verified" }`. Otherwise issues a fresh `crypto.randomBytes(32).toString("hex")` verification token, `UPDATE`s `verification_token`, fires `sendVerificationEmail` fire-and-forget, and returns 200 `{ success: true, message: "Verification email sent" }`. Fired by the "Send Verification Email" button on the account page. |
-| `POST` | `/forgot-password` | — | `{ email }` | **Always returns 200 with `{ success: true, message: "If that email exists, you will receive a reset link" }`** — even when the email is missing, malformed, or unknown. This is account-enumeration defense; never special-case it back to a 404/400. When the email is registered, issues a 1-hour `reset_token`, persists it with `reset_token_expires_at = NOW() + 1h`, and fires `sendPasswordResetEmail` fire-and-forget. |
-| `POST` | `/reset-password` | — | `{ token, newPassword }` | Validates both fields (400 `Token and new password are required` if missing). Looks up the row by `reset_token = $1 AND reset_token_expires_at > NOW()` so expiry is enforced at the DB level. Invalid/expired token → 400 `{ success: false, message: "Invalid or expired reset token" }`. Valid → bcrypt-rehashes (cost 10), nulls both reset columns, returns 200 `{ success: true, message: "Password reset successfully" }`. Single-use by construction (token cleared on success). |
+| `POST` | `/signup` | - | `{ username, email, password }` | **Beta-gated at the very top, before field validation** (see "Beta gating" below): returns 403 `{ success: false, message: "The open beta is currently closed. Check back soon." }` when `BETA_ACTIVE` is false, or 403 `{ success: false, message: "The open beta is currently full. Check back soon." }` when `SELECT COUNT(*) FROM users >= MAX_BETA_USERS`. If both gates pass: validates all three are present; rejects duplicate `username` or `email` (409); bcrypt-hashes (cost 10); inserts row **on `plan = 'free'`** (Pro is only ever granted by the waitlist conversion below or by a real Stripe subscription) **with `tos_version_accepted = CURRENT_TOS_VERSION` and `tos_accepted_at = NOW()`** (new accounts auto-accept the current TOS; the signup form carries the agreement notice); **issues a `crypto.randomBytes(32).toString("hex")` verification token and stores it on the row**; **fires `sendWelcomeEmail` and `sendVerificationEmail` fire-and-forget** (failures logged, never thrown); and **runs the waitlist conversion** (`grantWaitlistProTime`, see below) before returning 201. |
+| `POST` | `/login` | - | `{ username, password }` | The `username` field accepts **either a username or an email** (`WHERE username = $1 OR email = $1`). On success, stamps `last_login = CURRENT_TIMESTAMP`, signs a 7-day JWT (`{ id, username }`), **sets an httpOnly `session` cookie** (7-day `maxAge`, `sameSite: lax` in dev, `sameSite: none + secure` in prod), and returns `{ success, message, token }`. The token is also returned in the body for non-browser callers (desktop app, static frontend) that read it directly; browser clients should rely on the cookie. Login does **not** currently gate on `email_verified`. |
+| `GET` | `/verify-email` | - | query: `?token=<hex>` | Looks up the user by `verification_token`. Missing or unknown token → 400 `{ success: false, message: "Invalid or expired verification token" }`. Found → sets `email_verified = true`, nulls `verification_token`, returns 200 `{ success: true, message: "Email verified successfully" }`. The token is single-use because it's cleared on success; re-clicking the link returns 400. |
+| `POST` | `/resend-verification` | ✅ | - (empty body) | Looks up the authenticated user by `request.user.id`. User not found → 401. Already verified (`email_verified = true`) → 400 `{ success: false, message: "Email already verified" }`. Otherwise issues a fresh `crypto.randomBytes(32).toString("hex")` verification token, `UPDATE`s `verification_token`, fires `sendVerificationEmail` fire-and-forget, and returns 200 `{ success: true, message: "Verification email sent" }`. Fired by the "Send Verification Email" button on the account page. |
+| `POST` | `/forgot-password` | - | `{ email }` | **Always returns 200 with `{ success: true, message: "If that email exists, you will receive a reset link" }`** - even when the email is missing, malformed, or unknown. This is account-enumeration defense; never special-case it back to a 404/400. When the email is registered, issues a 1-hour `reset_token`, persists it with `reset_token_expires_at = NOW() + 1h`, and fires `sendPasswordResetEmail` fire-and-forget. |
+| `POST` | `/reset-password` | - | `{ token, newPassword }` | Validates both fields (400 `Token and new password are required` if missing). Looks up the row by `reset_token = $1 AND reset_token_expires_at > NOW()` so expiry is enforced at the DB level. Invalid/expired token → 400 `{ success: false, message: "Invalid or expired reset token" }`. Valid → bcrypt-rehashes (cost 10), nulls both reset columns, returns 200 `{ success: true, message: "Password reset successfully" }`. Single-use by construction (token cleared on success). |
 | `POST` | `/change-password` | ✓ | `{ currentPassword, newPassword }` | **The signed-IN password change**, used by the lens-ref-web account page. Validates both fields (400), requires `newPassword` >= 8 chars (400), then **re-verifies `currentPassword` with bcrypt** (401 `Current password is incorrect`) before rehashing at cost 10. A live session alone is deliberately not enough: an unattended signed-in browser would otherwise be a full account takeover. The same `UPDATE` nulls `reset_token`/`reset_token_expires_at`, retiring any outstanding emailed reset link. Distinct from the `/forgot-password` + `/reset-password` pair, which is the signed-OUT recovery flow. |
 | `DELETE` | `/account` | ✓ | - | Permanently deletes the authenticated user's row. `positions` and `notifications` carry `ON DELETE CASCADE`, so their rows go with it. Returns 200 `{ success: true, message: "Account deleted" }`, or 500 on failure. The caller is responsible for confirming intent; the lens-ref-web account page uses an arm-then-confirm button. |
-| `GET` | `/protected` | ✅ | — | Smoke test. Returns `{ message: "Hello <username>" }`. |
-| `GET` | `/me` | ✅ | — | Returns the full user profile **excluding `password`, `stripe_customer_id`, `verification_token`, `tos_accepted_at`, and `eula_accepted_at`**. Shape: `{ success, user: { id, username, email, plan, plan_expires_at, member_since, last_login, beta_access, download_count, email_verified, is_active, tos_version_accepted, eula_version_accepted, subscription_status, risk_tier, settings } }`. (`tos_version_accepted` and `eula_version_accepted` are included so the client can reason about legal state; the `*_accepted_at` timestamps are deliberately omitted. `risk_tier` is the user's onboarding risk profile, `null` until onboarding sets it. `settings` is the per-user prefs JSONB blob, `{}` until the client writes any preference.) **Before reading the row it runs the lazy trial-expiry `UPDATE`**: any user with `plan = 'pro' AND plan_expires_at IS NOT NULL AND plan_expires_at < NOW()` is flipped to `plan = 'free', plan_expires_at = NULL`, so the response is always already corrected. The frontend calls this on login and on every account-page load. |
-| `POST` | `/download` | ✅ | — (empty body) | Increments `download_count` for the authenticated user. Fired by the shared `[data-download]` click handler in `script.js` (hero button + pricing Free card + per-page menu overlay link) for signed-in users only. Returns `{ success, message: "Download recorded" }`. The actual binary URL is **not** returned by this endpoint — the buttons download `/assets/downloads/Vector-Setup.exe` natively via the `download` attribute. |
-| `GET` | `/version` | — | — | Public, no auth. Reads `src/version.json` (imported at module load via `resolveJsonModule`) and returns `{ success: true, version: "<x.y.z>" }`. **Single source of truth for the latest Vector release** — to ship a new version, edit `src/version.json` and nothing else on the backend. The frontend and the desktop auto-update check should both consume this endpoint rather than hardcoding the version. |
-| `GET` | `/beta-status` | — | — | **Legacy, do not remove** — the shipped Vector desktop app still polls this (note the hyphen, distinct from `/beta/status`). Lives in `routes/debug.ts`. Returns `{ success: true, beta_active: process.env.BETA_ACTIVE === "true" }` — reads the env var directly (not `betaConfig.ts` and not the `constants.ts` `BETA_ACTIVE`), defaulting to `false` when unset. |
-| `GET` | `/beta/status` | — | — | Public, no auth. Runs `SELECT COUNT(*) FROM users` and returns `{ success: true, open: boolean, spots_remaining: number }`. `open` is true only when `BETA_ACTIVE` is true **and** the user count is below `MAX_BETA_USERS`. `spots_remaining` is `max(0, MAX_BETA_USERS - count)` when `BETA_ACTIVE` is true, otherwise `0`. Lives in `routes/beta.ts`; both constants come from `src/betaConfig.ts`. Lets the frontend reflect signup availability. |
-| `POST` | `/logout` | — | — | Clears the `session` httpOnly cookie. Returns `{ success: true, message: "Logged out" }`. Used by lens-app to end cookie-based sessions; the static frontend doesn't call this (it clears `localStorage` directly). |
-| `GET` | `/legal/status` | ✅ | — | Compares the user's `tos_version_accepted` against `CURRENT_TOS_VERSION` and `eula_version_accepted` against `CURRENT_EULA_VERSION` from `constants.ts`. Returns `{ success: true, tos_accepted: boolean, eula_accepted: boolean, current_tos_version: "<v>", current_eula_version: "<v>" }`. Each `*_accepted` flag is `false` when the stored version is `NULL` or doesn't match the current version. User row not found → 401. The frontend's `checkLegalAcceptance()` (in `auth.js`) consumes this and **fails open** if the call errors. |
+| `GET` | `/protected` | ✅ | - | Smoke test. Returns `{ message: "Hello <username>" }`. |
+| `GET` | `/me` | ✅ | - | Returns the full user profile **excluding `password`, `stripe_customer_id`, `verification_token`, `tos_accepted_at`, and `eula_accepted_at`**. Shape: `{ success, user: { id, username, email, plan, plan_expires_at, member_since, last_login, beta_access, download_count, email_verified, is_active, tos_version_accepted, eula_version_accepted, subscription_status, risk_tier, settings } }`. (`tos_version_accepted` and `eula_version_accepted` are included so the client can reason about legal state; the `*_accepted_at` timestamps are deliberately omitted. `risk_tier` is the user's onboarding risk profile, `null` until onboarding sets it. `settings` is the per-user prefs JSONB blob, `{}` until the client writes any preference.) **Before reading the row it runs the lazy trial-expiry `UPDATE`**: any user with `plan = 'pro' AND plan_expires_at IS NOT NULL AND plan_expires_at < NOW()` is flipped to `plan = 'free', plan_expires_at = NULL`, so the response is always already corrected. The frontend calls this on login and on every account-page load. |
+| `POST` | `/download` | ✅ | - (empty body) | Increments `download_count` for the authenticated user. Fired by the shared `[data-download]` click handler in `script.js` (hero button + pricing Free card + per-page menu overlay link) for signed-in users only. Returns `{ success, message: "Download recorded" }`. The actual binary URL is **not** returned by this endpoint - the buttons download `/assets/downloads/Vector-Setup.exe` natively via the `download` attribute. |
+| `GET` | `/version` | - | - | Public, no auth. Reads `src/version.json` (imported at module load via `resolveJsonModule`) and returns `{ success: true, version: "<x.y.z>" }`. **Single source of truth for the latest Vector release** - to ship a new version, edit `src/version.json` and nothing else on the backend. The frontend and the desktop auto-update check should both consume this endpoint rather than hardcoding the version. |
+| `GET` | `/beta-status` | - | - | **Legacy, do not remove** - the shipped Vector desktop app still polls this (note the hyphen, distinct from `/beta/status`). Lives in `routes/debug.ts`. Returns `{ success: true, beta_active: process.env.BETA_ACTIVE === "true" }` - reads the env var directly (not `betaConfig.ts` and not the `constants.ts` `BETA_ACTIVE`), defaulting to `false` when unset. |
+| `GET` | `/beta/status` | - | - | Public, no auth. Runs `SELECT COUNT(*) FROM users` and returns `{ success: true, open: boolean, spots_remaining: number }`. `open` is true only when `BETA_ACTIVE` is true **and** the user count is below `MAX_BETA_USERS`. `spots_remaining` is `max(0, MAX_BETA_USERS - count)` when `BETA_ACTIVE` is true, otherwise `0`. Lives in `routes/beta.ts`; both constants come from `src/betaConfig.ts`. Lets the frontend reflect signup availability. |
+| `POST` | `/logout` | - | - | Clears the `session` httpOnly cookie. Returns `{ success: true, message: "Logged out" }`. Used by lens-app to end cookie-based sessions; the static frontend doesn't call this (it clears `localStorage` directly). |
+| `GET` | `/legal/status` | ✅ | - | Compares the user's `tos_version_accepted` against `CURRENT_TOS_VERSION` and `eula_version_accepted` against `CURRENT_EULA_VERSION` from `constants.ts`. Returns `{ success: true, tos_accepted: boolean, eula_accepted: boolean, current_tos_version: "<v>", current_eula_version: "<v>" }`. Each `*_accepted` flag is `false` when the stored version is `NULL` or doesn't match the current version. User row not found → 401. The frontend's `checkLegalAcceptance()` (in `auth.js`) consumes this and **fails open** if the call errors. |
 | `POST` | `/legal/accept` | ✅ | `{ document: "tos" \| "eula" }` | Validates `document` is exactly `"tos"` or `"eula"` (anything else → 400 `Invalid document`). For `"tos"`: sets `tos_version_accepted = CURRENT_TOS_VERSION` and `tos_accepted_at = NOW()`, returns 200 `{ success: true, message: "Terms of Service accepted" }`. For `"eula"`: sets `eula_version_accepted = CURRENT_EULA_VERSION` and `eula_accepted_at = NOW()`, returns 200 `{ success: true, message: "End User License Agreement accepted" }`. The TOS branch is fired by the "I Agree" button in the TOS modal (`legal-modal.js`); the EULA branch is fired by the Vector desktop app. |
-| `POST` | `/stripe/create-checkout-session` | ✅ | — | Creates a Stripe Checkout session for the $10/month Lens Pro subscription. Uses inline `price_data` (no pre-created Price ID needed). Reuses `stripe_customer_id` if one is already on the user row; otherwise passes `customer_email` and Stripe creates the customer. Returns `{ success: true, url: "<stripe-checkout-url>" }`. Client should redirect to the URL. `success_url` points to `${LENS_APP_URL}/success?session_id={CHECKOUT_SESSION_ID}`, `cancel_url` to `${LENS_APP_URL}/dashboard`. **Both must be real lens-app routes** - `cancel_url` used to point at `/portfolio`, which does not exist, so a cancelled checkout fell through the app's catch-all and dumped an already signed-in user on `/login`. `LENS_APP_URL` must be set to the deployed origin (`https://app.lens-arc.com`) in production; it defaults to `http://localhost:5173`, and the route module logs a boot-time warning if that localhost default is still in effect under `NODE_ENV=production`. |
-| `POST` | `/stripe/portal` | ✅ | — | Creates a Stripe Customer Portal session so the user can manage their subscription. Requires `stripe_customer_id` to be set on the row (only happens after first checkout). Returns `{ success: true, url: "<portal-url>" }` or 400 if no billing account exists. |
-| `POST` | `/stripe/webhook` | — | Stripe event payload | Stripe webhook handler. Signature-verified with `STRIPE_WEBHOOK_SECRET`. Rate limiting skipped (`config: { rateLimit: false }`). Handles: `checkout.session.completed` (sets `plan = 'pro'`, `subscription_status = 'active'`, **`plan_expires_at = NULL`**, stores `stripe_customer_id`), `customer.subscription.deleted` (sets `plan = 'free'`, `'cancelled'`, `plan_expires_at = NULL`), `invoice.payment_failed` (sets `plan = 'free'`, `'inactive'`, `plan_expires_at = NULL`). **All three write `plan_expires_at` explicitly** so a paying subscriber can never be mistaken for an expiring free trial, and a downgraded row never keeps a stale expiry. Matched to user rows via `metadata.userId` (checkout) or `stripe_customer_id` (subscription/invoice events). |
-| `GET` | `/subscription/status` | ✅ | — | Returns `{ success: true, subscription_status: "inactive" \| "active" \| "cancelled" }` for the authenticated user. Thin alternative to `/me` for components that only need billing state. |
-| `GET` | `/positions` | ✅ | — | Returns `{ success: true, positions: Position[] }` for the authenticated user, ordered by `added_at` ascending. Every position is coerced through `rowToPosition()` so `shares`/`equity`/`price` are **numbers** (node-postgres returns `NUMERIC` as strings). Scoped to `user_id = request.user.id`. |
+| `POST` | `/stripe/create-checkout-session` | ✅ | - | Creates a Stripe Checkout session for the $10/month Lens Pro subscription. Uses inline `price_data` (no pre-created Price ID needed). Reuses `stripe_customer_id` if one is already on the user row; otherwise passes `customer_email` and Stripe creates the customer. Returns `{ success: true, url: "<stripe-checkout-url>" }`. Client should redirect to the URL. `success_url` points to `${LENS_APP_URL}/success?session_id={CHECKOUT_SESSION_ID}`, `cancel_url` to `${LENS_APP_URL}/dashboard`. **Both must be real lens-app routes** - `cancel_url` used to point at `/portfolio`, which does not exist, so a cancelled checkout fell through the app's catch-all and dumped an already signed-in user on `/login`. `LENS_APP_URL` must be set to the deployed origin (`https://app.lens-arc.com`) in production; it defaults to `http://localhost:5173`, and the route module logs a boot-time warning if that localhost default is still in effect under `NODE_ENV=production`. |
+| `POST` | `/stripe/portal` | ✅ | - | Creates a Stripe Customer Portal session so the user can manage their subscription. Requires `stripe_customer_id` to be set on the row (only happens after first checkout). Returns `{ success: true, url: "<portal-url>" }` or 400 if no billing account exists. |
+| `POST` | `/stripe/webhook` | - | Stripe event payload | Stripe webhook handler. Signature-verified with `STRIPE_WEBHOOK_SECRET`. Rate limiting skipped (`config: { rateLimit: false }`). Handles: `checkout.session.completed` (sets `plan = 'pro'`, `subscription_status = 'active'`, **`plan_expires_at = NULL`**, stores `stripe_customer_id`), `customer.subscription.deleted` (sets `plan = 'free'`, `'cancelled'`, `plan_expires_at = NULL`), `invoice.payment_failed` (sets `plan = 'free'`, `'inactive'`, `plan_expires_at = NULL`). **All three write `plan_expires_at` explicitly** so a paying subscriber can never be mistaken for an expiring free trial, and a downgraded row never keeps a stale expiry. Matched to user rows via `metadata.userId` (checkout) or `stripe_customer_id` (subscription/invoice events). |
+| `GET` | `/subscription/status` | ✅ | - | Returns `{ success: true, subscription_status: "inactive" \| "active" \| "cancelled" }` for the authenticated user. Thin alternative to `/me` for components that only need billing state. |
+| `GET` | `/positions` | ✅ | - | Returns `{ success: true, positions: Position[] }` for the authenticated user, ordered by `added_at` ascending. Every position is coerced through `rowToPosition()` so `shares`/`equity`/`price` are **numbers** (node-postgres returns `NUMERIC` as strings). Scoped to `user_id = request.user.id`. |
 | `PUT` | `/positions` | ✅ | `{ positions: Position[] }` | **Bulk replace** (used by onboarding "Launch Lens"). In a transaction: `DELETE` all the user's positions, then `INSERT` the provided set. Missing/invalid `positions` array → 400. Returns `{ success: true, positions: Position[] }` (the saved set). Note the `PUT` method is allowlisted in the CORS config. |
 | `POST` | `/positions` | ✅ | `{ ticker, shares, equity, price, sector?, name?, added_at? }` | Add one position, **upsert** on the `(user_id, ticker)` unique constraint (`ON CONFLICT ... DO UPDATE`) - matches the client's AddPositionModal, which replaces any existing same-ticker holding. Missing `ticker`/`shares`/`equity`/`price` → 400. Returns 201 `{ success: true, position }`. |
 | `PATCH` | `/positions/:ticker` | ✅ | `{ shares }` | Edit a holding's share count; recomputes `equity = price * shares` server-side (matches `usePositionsManager.updateShares`). Non-positive/absent `shares` → 400. Ownership-scoped (`WHERE user_id = $1 AND ticker = $2`); `rowCount` 0 → 404. Returns `{ success: true, position }`. |
-| `DELETE` | `/positions/:ticker` | ✅ | — | Ownership-scoped delete; `rowCount` 0 → 404. Returns `{ success: true, message: "Position removed" }`. |
+| `DELETE` | `/positions/:ticker` | ✅ | - | Ownership-scoped delete; `rowCount` 0 → 404. Returns `{ success: true, message: "Position removed" }`. |
 | `PUT` | `/settings/risk-tier` | ✅ | `{ risk_tier }` | Sets the authenticated user's `users.risk_tier` column. Accepts `"low"`/`"regular"`/`"high"`, or `null` to clear it (used by Settings "Clear Data"). Anything else → 400. User row not found → 401. Returns `{ success: true, risk_tier }`. The client reads the value back via `GET /me`. Lives in `routes/settings.ts`. |
-| `GET` | `/notifications` | ✅ | — | Returns `{ success: true, notifications: Notification[] }` for the authenticated user, **newest first** (`ORDER BY created_at DESC, id DESC` - `id` is the tiebreaker because `created_at` defaults to the transaction clock, so rows written in one transaction share it), capped at 50. Read **and** unread rows are returned together. Each row is `{ id, type, message, is_read, created_at }`, pinned by a `rowToNotification()` mapper (no type coercion needed, unlike positions' NUMERIC columns). Lives in `routes/notifications.ts`. |
+| `GET` | `/notifications` | ✅ | - | Returns `{ success: true, notifications: Notification[] }` for the authenticated user, **newest first** (`ORDER BY created_at DESC, id DESC` - `id` is the tiebreaker because `created_at` defaults to the transaction clock, so rows written in one transaction share it), capped at 50. Read **and** unread rows are returned together. Each row is `{ id, type, message, is_read, created_at }`, pinned by a `rowToNotification()` mapper (no type coercion needed, unlike positions' NUMERIC columns). Lives in `routes/notifications.ts`. |
 | `PATCH` | `/notifications/read` | ✅ | `{ ids?: number[] }` | **Bulk** mark-read, returning `{ success: true, updated: <rowCount> }`. Bulk rather than per-id because the UI marks a whole popover's worth at once and a per-id route would mean N requests against the 20/60s rate limit for one popover open. When `ids` is present it marks exactly those rows (the client sends the ids it displayed, so a notification arriving between the fetch and this call is never marked read unseen); a non-array `ids` → 400, an empty array → `updated: 0`. Omitting `ids` entirely marks **every** unread row, which backs a future "mark all read" control (nothing calls that yet). Always ownership-scoped on `user_id`, so another account's id silently matches nothing. |
 | `PUT` | `/settings` | ✅ | partial settings object | **Shallow-merges** the body into `users.settings` (JSONB) via Postgres `settings = settings \|\| $1::jsonb` - a top-level merge, so each key in the body **replaces** that whole key (the client sends nested blocks like `volatility` complete, never partial). Body must be a JSON object (not null/array) → else 400. User row not found → 401. Returns `{ success: true, settings }` (the full merged blob). Backs theme, date_format, dashboard layout, and the analyze tuning blocks (direction_thresholds/volatility/lens_signals/monte_carlo). Lives in `routes/settings.ts`. |
 
@@ -558,7 +576,7 @@ The other two used to be a **step function** (thresholds 0/1/3/5/10, topping out
 
 ### Legal versioning (`src/constants.ts`)
 
-`constants.ts` also exports a `BETA_ACTIVE = false` constant that **nothing imports** — it is unused. (The legacy `GET /beta-status` route reads `process.env.BETA_ACTIVE` directly, and signup gating uses `betaConfig.ts`.) Leave the route alone — shipped desktop-app installs still poll it — but the constant itself is inert. The two constants that matter are the single source of truth for each active legal document version:
+`constants.ts` also exports a `BETA_ACTIVE = false` constant that **nothing imports** - it is unused. (The legacy `GET /beta-status` route reads `process.env.BETA_ACTIVE` directly, and signup gating uses `betaConfig.ts`.) Leave the route alone - shipped desktop-app installs still poll it - but the constant itself is inert. The two constants that matter are the single source of truth for each active legal document version:
 
 - `CURRENT_TOS_VERSION` (currently `"3.1"`): the active Terms of Service version. `auth.ts` (signup auto-accept) and `legal.ts` (status comparison + accept stamping) both import it. **To re-prompt every signed-in user after a TOS change, bump this string and nothing else.** The next `GET /legal/status` they hit will report `tos_accepted: false` and the frontend modal will block them until they re-accept.
 - `CURRENT_EULA_VERSION` (currently `"3.1"`): the active End User License Agreement version, consumed only by `legal.ts` (status comparison + accept stamping). **EULA is not auto-accepted at signup**; acceptance happens in the Vector desktop app via `POST /legal/accept` with `{ document: "eula" }`. Bumping this string makes the next `GET /legal/status` report `eula_accepted: false`.
@@ -576,11 +594,11 @@ Both are read from the environment so they can be toggled from the Railway dashb
 
 ### Email (`src/email.ts` + `src/emailTemplates.ts`)
 
-Three exported functions in `email.ts`, all using the **Resend** SDK and all fire-and-forget from the caller's perspective. All three swallow errors with `console.error` so transactional-email outages never break the calling route. The HTML bodies live in `src/emailTemplates.ts` as three exported functions (`welcomeEmailHtml`, `verifyEmailHtml`, `resetPasswordEmailHtml`) returning the rendered string for a given username and URL — keeping them out of `email.ts` so the send logic stays scannable. Edit copy/styling there; edit send behavior in `email.ts`.
+Three exported functions in `email.ts`, all using the **Resend** SDK and all fire-and-forget from the caller's perspective. All three swallow errors with `console.error` so transactional-email outages never break the calling route. The HTML bodies live in `src/emailTemplates.ts` as three exported functions (`welcomeEmailHtml`, `verifyEmailHtml`, `resetPasswordEmailHtml`) returning the rendered string for a given username and URL - keeping them out of `email.ts` so the send logic stays scannable. Edit copy/styling there; edit send behavior in `email.ts`.
 
 **`sendWelcomeEmail(to, username)`**
 
-- Sender is `noreply@protonyxdata.com` (verified Resend domain), exported as `FROM_ADDRESS` at the top of `email.ts` and reused by all three functions — change in one place.
+- Sender is `noreply@protonyxdata.com` (verified Resend domain), exported as `FROM_ADDRESS` at the top of `email.ts` and reused by all three functions - change in one place.
 - The HTML body is inline-styled (table-based layout for email-client compatibility), uses the brand palette (`#0b1020` background, `#e7ebf3` text, `#2dd4bf` CTA), and its "Download Vector" CTA links to `https://protonyxdata.com/#plans` (the plans section of the landing page, where the download buttons live). The URL is hardcoded in `email.ts` (the `downloadUrl` local passed to `welcomeEmailHtml`); update it there if the domain or anchor changes.
 - The function logs `Resend key inside function: <bool>` before sending. That log line is debugging instrumentation; remove it before any meaningful production deployment.
 
@@ -598,7 +616,7 @@ Three exported functions in `email.ts`, all using the **Resend** SDK and all fir
 - Subject: `Reset your Protonyx password`. Heading: `Password reset requested, {username}.` Body explicitly mentions the **1-hour expiry** and tells the recipient to ignore the email if they didn't request a reset (anti-confusion + anti-phishing language).
 - Same caveat as the other transactional emails: real delivery requires a verified Resend domain; the `/forgot-password` route still functions against the DB without it (the token is written, the email send fails silently).
 
-### Dependencies — quick map
+### Dependencies - quick map
 
 | Dep | Used for |
 |---|---|
@@ -611,9 +629,9 @@ Three exported functions in `email.ts`, all using the **Resend** SDK and all fir
 | `jsonwebtoken` | JWT signing/verification |
 | `dotenv` | Loads `.env` (imported via `import "dotenv/config"` in `server.ts`) |
 | `resend` | Transactional email (welcome only, for now) |
-| `stripe` | Stripe SDK — Checkout sessions, billing portal, webhook signature verification |
+| `stripe` | Stripe SDK - Checkout sessions, billing portal, webhook signature verification |
 
-(`better-sqlite3` from the pre-Postgres SQLite era has been removed from `package.json` — do not re-introduce a SQLite code path.)
+(`better-sqlite3` from the pre-Postgres SQLite era has been removed from `package.json` - do not re-introduce a SQLite code path.)
 
 `ts-node-dev` and the `@types/*` packages are devDeps. `typescript` is a devDep used by the `build` script (`tsc` → `dist/`).
 
@@ -632,35 +650,35 @@ Each route is a folder with an `index.html`. To add a page:
 1. Create `frontend/<slug>/index.html`.
 2. Link `../style.css`, `../script.js`, and `../auth/auth.js` with the right relative depth (every current page is one level under `frontend/`, so `../`; a more deeply nested page would need `../../`).
 3. Add the site-wide favicon link `<link rel="icon" type="image/png" href="../assets/product/vector/vector_small.png">` in the `<head>` (every page carries this, with the right relative depth). The landing page also sets `<title>Vector</title>`; subpages use `<title>{Page} | Protonyx</title>`.
-4. Copy the `<nav class="navbar">` block and the `.menu-overlay` block from an existing page — they are **duplicated per-page**, not componentized. Updating them means editing every page that uses them.
-5. Use root-absolute links (`href="/about"`, `href="/auth/index.html"`) — Live Server must be rooted at `frontend/`.
+4. Copy the `<nav class="navbar">` block and the `.menu-overlay` block from an existing page - they are **duplicated per-page**, not componentized. Updating them means editing every page that uses them.
+5. Use root-absolute links (`href="/about"`, `href="/auth/index.html"`) - Live Server must be rooted at `frontend/`.
 6. End the `<body>` with the standard footer, then load `script.js` and `auth/auth.js`, then a small `<script>checkAuth();</script>` if the page hasn't already wired it up.
 
 ### Navigation bar (every page)
 
 The nav has these states managed via CSS classes that `auth.js` toggles:
 
-- `.navbar-signup-link.guest-only` — "Create Account" link (points to `/auth/index.html?mode=signup` so the auth page opens on the Create account tab), shown only when logged out.
-- `.navbar-plan-badge.pro-only` — a plain-text "Professional" badge sitting immediately to the left of the profile icon, shown only when the signed-in user's cached `plan` is `"pro"` (see the `.pro-only` toggle in `checkAuth()`). It is not a link. Its text color follows the same white/black swap as the rest of the navbar (white by default, dark under `.navbar--light`).
-- `.navbar-profile-icon.auth-only` — circular profile SVG linking to `/account/index.html`, shown only when logged in.
-- `.navbar-menu-button` — hamburger, always visible, opens the full-screen menu overlay.
+- `.navbar-signup-link.guest-only` - "Create Account" link (points to `/auth/index.html?mode=signup` so the auth page opens on the Create account tab), shown only when logged out.
+- `.navbar-plan-badge.pro-only` - a plain-text "Professional" badge sitting immediately to the left of the profile icon, shown only when the signed-in user's cached `plan` is `"pro"` (see the `.pro-only` toggle in `checkAuth()`). It is not a link. Its text color follows the same white/black swap as the rest of the navbar (white by default, dark under `.navbar--light`).
+- `.navbar-profile-icon.auth-only` - circular profile SVG linking to `/account/index.html`, shown only when logged in.
+- `.navbar-menu-button` - hamburger, always visible, opens the full-screen menu overlay.
 
 The navbar logo follows the section that currently sits beneath it. Any dark section on the page (`.landing-hero`, `.products-hero`, or any `.lp-section.dark`) triggers the white logo while it covers the navbar; everywhere else uses black. `script.js` listens to `scroll` and `resize`, probes a fixed y-coordinate (80 px) on every event, and swaps `#navbarLogo`'s `src` between `protonyx_full_white.png` and `protonyx_full_black.png` with a 200 ms opacity fade. Both images are preloaded.
 
 ### Menu overlay (every page)
 
-`#menuOverlay` is a full-viewport panel with two columns: **Navigation** and **Account**. Account links use the same `.guest-only` / `.auth-only` toggle pattern. The hamburger button opens it (locks `body` overflow, fades the navbar to opacity 0); a close button or backdrop click dismisses it. Same caveat as the navbar — the markup is duplicated per page. In the Account column, the "Create Account" link points to `/auth/index.html?mode=signup` (opens the signup tab) while the "Login" link points to plain `/auth/index.html` (default Sign in tab). The shared `.menu-link-reveal` rule carries a small `padding-bottom` so the reveal `clip-path` (combined with the tight `line-height: 1.05`) does not crop lowercase descenders, e.g. the "g" in "Login"; do not remove it.
+`#menuOverlay` is a full-viewport panel with two columns: **Navigation** and **Account**. Account links use the same `.guest-only` / `.auth-only` toggle pattern. The hamburger button opens it (locks `body` overflow, fades the navbar to opacity 0); a close button or backdrop click dismisses it. Same caveat as the navbar - the markup is duplicated per page. In the Account column, the "Create Account" link points to `/auth/index.html?mode=signup` (opens the signup tab) while the "Login" link points to plain `/auth/index.html` (default Sign in tab). The shared `.menu-link-reveal` rule carries a small `padding-bottom` so the reveal `clip-path` (combined with the tight `line-height: 1.05`) does not crop lowercase descenders, e.g. the "g" in "Login"; do not remove it.
 
 ### CSS system
 
-Every page links a single stylesheet (`style.css`), which is now a thin shim that `@import`s four files in cascade order. **Edit the split files, not `style.css`** — `style.css` is just the entry point:
+Every page links a single stylesheet (`style.css`), which is now a thin shim that `@import`s four files in cascade order. **Edit the split files, not `style.css`** - `style.css` is just the entry point:
 
 | File | Contains |
 |---|---|
 | `base.css` | `*` reset, `:root` tokens, `html`/`body`, `h1`–`h3`/`p`, button primitives (`.btn-primary`, `.btn-ghost`, `.btn-grad`, `.btn-outline-gray`), the `h1` mobile size override |
 | `chrome.css` | Floating navbar, navbar profile/signup auth toggles, the `.navbar-plan-badge` Pro badge (white/black text swap under `.navbar--light`), full-screen menu overlay (incl. logout button + reveal animation), site footer |
 | `pages.css` | Legacy `.hero` (no longer used by `index.html`) and the account page, plus the `.access-card .btn-ghost` light-bg override. Also retains the products-listing-hero and full Vector-product-page rules (hero, sections, lens outputs, access pricing cards, flow stepper, closing CTA) even though those pages were removed; kept dormant for possible reintroduction. |
-| `auth.css` | `.auth-body` shell + auth card, tabs, form, inputs, submit button, message states, footer/forgot links, the `.auth-terms-note` signup TOS notice — used by `auth/`, `verify-email/`, `forgot-password/`, `reset-password/` |
+| `auth.css` | `.auth-body` shell + auth card, tabs, form, inputs, submit button, message states, footer/forgot links, the `.auth-terms-note` signup TOS notice - used by `auth/`, `verify-email/`, `forgot-password/`, `reset-password/` |
 | `landing.css` | **Loaded only by `index.html` (alongside `style.css`).** Active selectors today: `.landing-hero` (dark two-column hero with pulsing radial gradient and a max-width of 1840 px scaled for 4K), `.landing-hero-actions` (hero CTA row, sized for the Windows-icon download button), `.demo-window` + `.demo-video` (macOS-frame video container, reused by both the hero and the discovery cards), `.lp-section` primitives (`.base` / `.surface` / `.dark`), `.lp-eyebrow`, `.lp-h2`, `.lp-lead`, the `.discovery-grid` family (`.discovery-card`, `.discovery-text`, `.discovery-step`, `.discovery-num`, `.discovery-title`, `.discovery-caption`: vertically-stacked numbered video walkthrough on a dark `.lp-section`, video on the left of each row, gradient step number + title + caption on the right), the `.trust-strip` family (`.trust-row`, `.trust-item`, `.trust-icon`, `.trust-label`, `.trust-sub`: narrow light divider between discovery and pricing with reduced vertical padding), the `.pricing-toggle` family (centered Monthly/Annually segmented control with an animated sliding `.pricing-toggle-thumb`), `.pricing-grid` + `.pricing-card`, and `.fade-in` (toggled by `IntersectionObserver` in `script.js`). The file also retains rules for the removed mid-page sections (`.value-grid`, `.lens-engine`, `.lens-cards`, `.feature-grid-6`, `.steps-grid`, `.final-cta`); those selectors don't match anything on the current page but are kept so the sections can be reintroduced cheaply. Reuses `:root` tokens and the teal/blue brand gradient. No new design system. |
 
 CSS custom properties are defined in `:root` at the top of `base.css`. The most-used tokens:
@@ -682,27 +700,27 @@ Cascade order matters: `base` → `chrome` → `pages` → `auth`. Don't reorder
 Five independent blocks, each guarded by `if (element)` so pages without the relevant element are no-ops:
 
 1. **Navbar logo color swap** (described above). Collects every dark section on the page (`.landing-hero, .products-hero, .lp-section.dark`) and probes a fixed y-coordinate near the navbar baseline (80 px) on every `scroll` and `resize` event. If any dark section's bounding rect covers that point, the logo fades to white; otherwise to black, with a 200 ms opacity fade on each transition. The `.lp-section.dark` selector is currently in use by the discovery section on the landing page (which sits directly under the hero), so the logo stays white through both. (The legacy fullscreen `#heroVideo` rotation block was removed when the landing page was rebuilt; the current hero plays a single looping `1vector_demo.mp4` inside `.demo-window` with no JS.)
-2. **Menu overlay open/close** — described above.
-3. **Pricing billing-interval toggle** — on the landing page, clicking the Monthly/Annually segmented control inside `.pricing-toggle` rewrites every `.pricing-price[data-annual-amount]` element from its `data-{interval}-amount` + `data-{interval}-period` attributes. Default is annual ($100 / year for Professional; monthly is $10 / month). The Free card has no data attributes so it stays "$0 / forever" regardless of toggle state.
-4. **Landing fade-in observer** — every `.fade-in` element on the landing page gets a `.visible` class when it intersects the viewport (`threshold: 0.15`, `rootMargin: 0 0 -40px 0`). One-shot — observer unobserves each element after firing.
-5. **Download counter** — binds a click handler to every `[data-download]` element (the hero + pricing download buttons and the per-page menu "Download" link). Those elements are native `download` anchors pointing at `/assets/downloads/Vector-Setup.exe`, so the browser handles the file download; the handler additionally fires `POST /download` (Bearer-authenticated) to bump `download_count`, but only when a `token` is present and `API_URL` (from `auth/auth.js`) is defined. A missing token or a failed counter call never blocks the download.
+2. **Menu overlay open/close** - described above.
+3. **Pricing billing-interval toggle** - on the landing page, clicking the Monthly/Annually segmented control inside `.pricing-toggle` rewrites every `.pricing-price[data-annual-amount]` element from its `data-{interval}-amount` + `data-{interval}-period` attributes. Default is annual ($100 / year for Professional; monthly is $10 / month). The Free card has no data attributes so it stays "$0 / forever" regardless of toggle state.
+4. **Landing fade-in observer** - every `.fade-in` element on the landing page gets a `.visible` class when it intersects the viewport (`threshold: 0.15`, `rootMargin: 0 0 -40px 0`). One-shot - observer unobserves each element after firing.
+5. **Download counter** - binds a click handler to every `[data-download]` element (the hero + pricing download buttons and the per-page menu "Download" link). Those elements are native `download` anchors pointing at `/assets/downloads/Vector-Setup.exe`, so the browser handles the file download; the handler additionally fires `POST /download` (Bearer-authenticated) to bump `download_count`, but only when a `token` is present and `API_URL` (from `auth/auth.js`) is defined. A missing token or a failed counter call never blocks the download.
 
 ### `auth/auth.js` (shared auth + session state)
 
 Globally exposes `getToken()`, `authHeaders()`, `login()`, `signup()`, `loadProfile()`, `logout()`, `checkAuth()`, `checkLegalAcceptance()`.
 
-- `API_URL = "http://localhost:3000"` — **hardcoded at the top of the file**. Update here when the backend is deployed. There is no env-var injection.
+- `API_URL = "http://localhost:3000"` - **hardcoded at the top of the file**. Update here when the backend is deployed. There is no env-var injection.
 - JWT is stored in `localStorage.token`; **httpOnly cookies are not used.**
-- The login form accepts a username **or** an email — the field is labeled "Username or Email" and the value is sent as `{ username, password }`. The backend resolves both.
+- The login form accepts a username **or** an email - the field is labeled "Username or Email" and the value is sent as `{ username, password }`. The backend resolves both.
 - Signup form fields: `username`, `email`, `password`. The form posts to `/signup` and on success switches to the login tab via `switchToLoginTab()` (defined inline in `auth/index.html`).
 - The page defaults to the **Sign in** tab, but when loaded with `?mode=signup` in the query string the inline script calls `switchToSignupTab()` on load and it opens on the **Create account** tab instead. The "Create Account" links in the navbar and menu overlay (every page) use this; the "Login" links omit the param and land on Sign in.
 - `loadProfile()` calls `GET /me` with `authHeaders()` and mirrors fields into `localStorage`: `username`, `email`, `plan`, `member_since`, `beta_access` (`"true"`/`"false"`), `download_count` (string-coerced). It is called from `login()` after the token is stored, and from any page that wants fresh profile data (e.g. the account page).
 - `logout()` clears every profile-related localStorage key (`token`, `username`, `email`, `plan`, `member_since`, `beta_access`, `download_count`) and redirects to `/auth/index.html`.
 - `checkAuth()` runs on every page load (via `DOMContentLoaded`, or directly if the script loads after parse) and:
   - Toggles `.visible` on `.auth-only` and `.guest-only` elements.
-  - Toggles `.visible` on `.pro-only` elements when the user is logged in **and** the cached `plan` (lowercased) is `"pro"` — drives the navbar "Professional" badge. Plan comes from localStorage (mirrored by `loadProfile()`), so on pages that don't refetch `/me` it reflects the plan as of the last profile load.
+  - Toggles `.visible` on `.pro-only` elements when the user is logged in **and** the cached `plan` (lowercased) is `"pro"` - drives the navbar "Professional" badge. Plan comes from localStorage (mirrored by `loadProfile()`), so on pages that don't refetch `/me` it reflects the plan as of the last profile load.
   - Replaces text content of `[data-username]` elements with the stored username (falling back to `"User"`).
-  - Binds a click handler on `[data-logout]` elements that calls `logout()` (idempotent — uses `dataset.logoutBound` to avoid duplicate listeners).
+  - Binds a click handler on `[data-logout]` elements that calls `logout()` (idempotent - uses `dataset.logoutBound` to avoid duplicate listeners).
 - A `storage` event listener re-runs `checkAuth()` when `token`, `username`, or `plan` changes in another tab, so logging out (or a plan change) in one tab updates all open tabs.
 - Some pages call `checkAuth()` explicitly in an inline script after loading `auth.js`. Both patterns coexist; do not remove one without checking the other still works.
 - `checkLegalAcceptance()` is **async** and gates on Terms of Service acceptance. It resolves immediately when logged out (no token). Otherwise it calls `GET /legal/status`; if `tos_accepted` is `false` it calls `showTosModal()` (from `legal-modal.js`, which must be loaded on the page) and awaits the user's acceptance. It **fails open**: any error on the status call is logged to the console and the user is let through, never blocked. Only protected pages that load `legal-modal.js` and call this (currently just the account page) prompt for TOS; do not wire it into the landing/auth/verify/forgot/reset pages.
@@ -763,32 +781,32 @@ A self-contained dashboard rendered inline at the bottom of the HTML. Renders si
 
 ### Downloads (no dedicated page)
 
-There is **no** standalone download page. The Vector installer is served as a static asset at `/assets/downloads/Vector-Setup.exe` — currently a **placeholder file**; replace its contents with the real Nuitka build output (`Vector-v<version>.exe`) on each release, keeping the filename so the URL stays stable. The site downloads it directly from three places, all of which carry `href="/assets/downloads/Vector-Setup.exe" download data-download`:
+There is **no** standalone download page. The Vector installer is served as a static asset at `/assets/downloads/Vector-Setup.exe` - currently a **placeholder file**; replace its contents with the real Nuitka build output (`Vector-v<version>.exe`) on each release, keeping the filename so the URL stays stable. The site downloads it directly from three places, all of which carry `href="/assets/downloads/Vector-Setup.exe" download data-download`:
 
 1. The hero **Download for Windows** button (`index.html`).
 2. The pricing Free card **Download Vector** button (`index.html`).
 3. The **Download** link in every page's menu overlay (Account column).
 
-The browser's native `download` attribute does the actual file download, so it works with JS disabled and for logged-out visitors. The shared `[data-download]` click handler in `script.js` additionally fires `POST /download` (Bearer-authenticated) to bump `download_count` for signed-in users only; a missing token or a failed counter call never blocks the download. There is **no** auth gate, ToS/EULA disclaimer, or version label in front of the download anymore — the dedicated page that once carried those (and the per-release version label) was removed in favor of these direct buttons.
+The browser's native `download` attribute does the actual file download, so it works with JS disabled and for logged-out visitors. The shared `[data-download]` click handler in `script.js` additionally fires `POST /download` (Bearer-authenticated) to bump `download_count` for signed-in users only; a missing token or a failed counter call never blocks the download. There is **no** auth gate, ToS/EULA disclaimer, or version label in front of the download anymore - the dedicated page that once carried those (and the per-release version label) was removed in favor of these direct buttons.
 
 ### Verify-email page (`verify-email/index.html`)
 
-Standalone landing page hit by the link in the verification email. Deliberately bare — **no navbar, no footer, no menu overlay** — since the user might not be signed in and the page is intentionally one job. It loads `../style.css` and reuses `../auth/auth.js` purely to pick up `API_URL`.
+Standalone landing page hit by the link in the verification email. Deliberately bare - **no navbar, no footer, no menu overlay** - since the user might not be signed in and the page is intentionally one job. It loads `../style.css` and reuses `../auth/auth.js` purely to pick up `API_URL`.
 
 Flow on load:
 
 1. Reads `token` via `new URLSearchParams(window.location.search).get("token")`. Missing token → renders the error state immediately without hitting the API.
 2. Renders the **loading** state (`Verifying your email...`).
-3. `fetch("${API_URL}/verify-email?token=" + encodeURIComponent(token))` (GET, no body, no auth header — written as a template literal in the source).
+3. `fetch("${API_URL}/verify-email?token=" + encodeURIComponent(token))` (GET, no body, no auth header - written as a template literal in the source).
 4. Renders one of two terminal states:
    - **Success**: checkmark, large `Email verified.`, and a muted subline ("You can now close this page and log in."). No button or link (the user is told to close the page rather than routed to sign in).
    - **Error**: exclamation icon, `Verification failed.`, the API's `message` (or a network-fallback string), and a "Back to sign in" link.
 
-All three states are rendered into a single `#verifyState` container by inline `render*()` helpers — markup is intentionally local to this page rather than added to `style.css`, since nothing else uses these styles.
+All three states are rendered into a single `#verifyState` container by inline `render*()` helpers - markup is intentionally local to this page rather than added to `style.css`, since nothing else uses these styles.
 
 ### Forgot-password page (`forgot-password/index.html`)
 
-Standalone centered page (no navbar, no footer) reachable from the **"Forgot your password?"** link on `auth/index.html`. Loads `../style.css` and `../auth/auth.js` only for `API_URL`. Single email input → `POST /forgot-password` with `{ email }`. **Always renders the same success message** ("If that email is registered you will receive a reset link shortly.") on a 200 response, regardless of whether the email is real — the backend already enforces account-enumeration defense, and the UI must match. Disables the submit button on success to discourage rapid-fire submissions; re-enables on error. The "Back to login" link points to `../auth/index.html`.
+Standalone centered page (no navbar, no footer) reachable from the **"Forgot your password?"** link on `auth/index.html`. Loads `../style.css` and `../auth/auth.js` only for `API_URL`. Single email input → `POST /forgot-password` with `{ email }`. **Always renders the same success message** ("If that email is registered you will receive a reset link shortly.") on a 200 response, regardless of whether the email is real - the backend already enforces account-enumeration defense, and the UI must match. Disables the submit button on success to discourage rapid-fire submissions; re-enables on error. The "Back to login" link points to `../auth/index.html`.
 
 ### Reset-password page (`reset-password/index.html`)
 
@@ -797,7 +815,7 @@ Same shell as the forgot-password page. Reads `?token=` via `URLSearchParams` on
 - **No token** → renders an "Invalid reset link." state with a link back to `../forgot-password/index.html` to request a fresh one. Never POSTs anything.
 - **Token present** → renders the form (new password + confirm password). Client-side validation: both fields populated, both fields match. Submitting POSTs `{ token, newPassword }` to `/reset-password`. On success, the form is replaced in-place with a "Password reset successfully." panel + a link to `../auth/index.html`. On failure (400 from the backend, typically expired/invalid token), shows the API's `message` and re-enables the submit button.
 
-Like the verify-email page, the three render states are inline `render*()` helpers writing into `#resetState`. The page does **not** validate password strength client-side — bcrypt-cost-10 absorbs whatever the user types. If a strength policy gets added, enforce it both here and in the backend route.
+Like the verify-email page, the three render states are inline `render*()` helpers writing into `#resetState`. The page does **not** validate password strength client-side - bcrypt-cost-10 absorbs whatever the user types. If a strength policy gets added, enforce it both here and in the backend route.
 
 ### Auth-page link
 
@@ -805,7 +823,7 @@ Like the verify-email page, the three render states are inline `render*()` helpe
 
 The **signup form** carries a small muted notice under its submit button: "By creating an account, you agree to our Terms of Service." (the last words link to `/tos`, new tab), styled by `.auth-terms-note` in `auth.css`. There is **no** TOS checkbox; acceptance is recorded server-side automatically at signup (see the `/signup` row: it stamps `tos_version_accepted`/`tos_accepted_at`). The notice is what makes that auto-acceptance meaningful; keep it in lockstep with that behavior.
 
-### Auth UX gotcha (was a real issue, now fixed — keep an eye on it)
+### Auth UX gotcha (was a real issue, now fixed - keep an eye on it)
 
 The backend always names its error field `message`. Earlier versions of the frontend read `data.error`, so backend error messages never surfaced to users. The current `auth.js` reads `data.message || data.error`, which works against either field. If you add a new endpoint, prefer `message` and don't rely on the fallback.
 
@@ -813,7 +831,7 @@ The backend always names its error field `message`. Earlier versions of the fron
 
 ## 6. Vector Desktop App
 
-**The `app/` folder in this repo is a stale, rarely-synced copy of the desktop app. Do not use it as a reference or run code from it.** The canonical source of truth for all desktop app and Lens engine code is `Vector-Main/` one level above this monorepo. `Vector-Main/CLAUDE.md` is the authoritative reference for that code.
+**The `app/` folder in this repo is a stale, rarely-synced copy of the desktop app. Do not use it as a reference or run code from it.** The canonical source of truth for all desktop app and Lens engine code is `Vector-Main/` (`_Dev_ALL/Protonyx Vector/Vector-Main/`, a separate repo). `Vector-Main/CLAUDE.md` is the authoritative reference for that code.
 
 This section is a **map** of what the Vector app does (for context), not a substitute for `Vector-Main/CLAUDE.md`.
 
@@ -836,12 +854,12 @@ This section is a **map** of what the Vector app does (for context), not a subst
 | `pages/profile.py` | `ProfilePage`. |
 | `pages/settings.py` | Settings page with seven accordion sections plus static cards. Includes `SettingsPage._export_to_csv` (Export Positions to CSV). |
 | `analytics.py` | Portfolio math: linear-regression slope, annualized volatility, Sharpe ratio, beta, insight-text composition. |
-| `store.py` | `DataStore` — single source of truth for positions, settings, app state, market data, layout. Use this; do **not** reach into `StorageManager`/`MarketDataService` directly. |
+| `store.py` | `DataStore` - single source of truth for positions, settings, app state, market data, layout. Use this; do **not** reach into `StorageManager`/`MarketDataService` directly. |
 | `lens_engine.py` | Thin wrapper: `generate_lens()` (canonical 7-tuple) and `generate_lens_full()` (full result dict). |
-| `lens/` | The Lens engine package — see below. |
-| `monte_carlo.py` | `run_projection()` and `build_historical_curve()` — GBM-based projection used for the Lens Projections graphs. |
-| `widget_base.py` | `VectorWidget` — base `QFrame` for all dashboard widgets; handles edit-mode drag and right-click delete. |
-| `widget_registry.py` | `discover_widgets()` / `get_widget_class()` — registry of concrete widget types. |
+| `lens/` | The Lens engine package - see below. |
+| `monte_carlo.py` | `run_projection()` and `build_historical_curve()` - GBM-based projection used for the Lens Projections graphs. |
+| `widget_base.py` | `VectorWidget` - base `QFrame` for all dashboard widgets; handles edit-mode drag and right-click delete. |
+| `widget_registry.py` | `discover_widgets()` / `get_widget_class()` - registry of concrete widget types. |
 | `widget_types/` | Eight concrete widget classes plus `LensDisplay` (the typewriter Lens Brief readout). |
 | `widgets.py` | Shared UI primitives: `CardFrame`, `GradientBorderFrame`, `GradientLine`, `BlurrableStack`, `DimOverlay`, `EmptyState`, `LoadingButton`. |
 | `constants.py` | File paths, TTLs, default settings, threshold maps, `APP_VERSION = "0.5.0"`. |
@@ -850,28 +868,28 @@ This section is a **map** of what the Vector app does (for context), not a subst
 
 ### The eight dashboard widgets
 
-`Total Equity`, `Portfolio Vector` (direction arrow + slope %), `Portfolio Volatility`, `Portfolio Diversification` (sector pie), `Portfolio Beta`, `Sharpe Ratio` (rendered at 16pt — do **not** re-inflate to 22pt), `Positions List`, `Dividend Calendar`. The Lens Brief is a **permanent** fixture on the dashboard, not a removable widget.
+`Total Equity`, `Portfolio Vector` (direction arrow + slope %), `Portfolio Volatility`, `Portfolio Diversification` (sector pie), `Portfolio Beta`, `Sharpe Ratio` (rendered at 16pt - do **not** re-inflate to 22pt), `Positions List`, `Dividend Calendar`. The Lens Brief is a **permanent** fixture on the dashboard, not a removable widget.
 
 ### The Lens engine (`vector/lens/`)
 
 Modular pipeline: **analyzers → analysis pool → CTA engine → sentence composers → assembler**.
 
 - 8 analyzers in `lens/analyzers/`: `slope`, `volatility`, `concentration`, `earnings`, `dividends`, `beta`, `performance`, `index_fund`. Each exposes `analyze(positions, store, settings, risk_profile) → dict` with a `ticker_results` map and a `portfolio_result` aggregate (each containing `value`, `severity`, `flag`, `weight`, `details`).
-- `analysis_pool.py` runs them in dependency order (slope/vol first, earnings second, rest after) and applies post-processing — notably index-fund suppression that forces concentration flags off for index ETFs.
-- `cta_engine.py` reads analyzer output and emits a prioritized list of CTAs. **11 priority levels** (1 = highest): steep decline (sell), excessive volatility (sell), winner drift (rebalance), index fund informational (hold), high portfolio beta (buy), single-stock concentration (buy, up to 3 across underweight sectors), sector over-concentration (buy, up to 3, never in the overweight sector), dead weight (sell), underrepresented sector (buy, up to 3 — one per thin sector <10%), unrealized loss (hold), portfolio healthy (hold).
+- `analysis_pool.py` runs them in dependency order (slope/vol first, earnings second, rest after) and applies post-processing - notably index-fund suppression that forces concentration flags off for index ETFs.
+- `cta_engine.py` reads analyzer output and emits a prioritized list of CTAs. **11 priority levels** (1 = highest): steep decline (sell), excessive volatility (sell), winner drift (rebalance), index fund informational (hold), high portfolio beta (buy), single-stock concentration (buy, up to 3 across underweight sectors), sector over-concentration (buy, up to 3, never in the overweight sector), dead weight (sell), underrepresented sector (buy, up to 3 - one per thin sector <10%), unrealized loss (hold), portfolio healthy (hold).
 - Buy CTAs are sector-aware: every suggested ticker is verified to be **outside** the problem sector. `_underweight_sectors_sorted()` ranks targets lightest-first and `_split_dollars_by_underweight()` allocates the buy amount proportionally. `_cap_buy_amount()` keeps every buy proportional to total equity. Sells are gated by `_sell_too_small()`.
-- `sentence1.py` (portfolio state, slope + volatility), `sentence2.py` (timing/catalyst, earnings + dividends), `sentence3.py` (CTA — always prefers diversification CTAs for the brief). Templates in `lens/templates/sentences.json`. Selection is deterministic (SHA-256 of portfolio state).
+- `sentence1.py` (portfolio state, slope + volatility), `sentence2.py` (timing/catalyst, earnings + dividends), `sentence3.py` (CTA - always prefers diversification CTAs for the brief). Templates in `lens/templates/sentences.json`. Selection is deterministic (SHA-256 of portfolio state).
 - `risk_profile.py` loads the user's tier (`high`, `regular`, `low`) and returns threshold overrides. Conservative tier (`low`) suppresses priorities 8 and parts of 1/2/3, and uses `sell_scale = 0.15` (vs `0.5` regular, `0.3` aggressive).
 - `lens_output.py` is the top-level assembler. It joins the three sentences, computes a 1–99 caution score (`total CTA dollars / total equity × 100`, clamped), runs `_apply_all_ctas()` to produce `projected_positions` plus `net_cta_delta`, and writes a snapshot to `lens_history.json` (rolling 50 entries, dedup'd against the most recent entry by `brief`/`caution_score`/`action_type`/`cta_count`). Pass `save_history=False` from debug runners to avoid polluting real history.
 - Color mapping: `sell → #ff4d4d`, `rebalance → #ff9f43`, `buy_new`/`buy_more → #38bdf8`, `hold → #8d98af`.
 
-`LensDisplay.refresh()` in `widget_types/lens.py` accepts tuple lengths 7, 6, 5, 4, 3, 2 for backwards compatibility — when changing the engine signature, do not break this.
+`LensDisplay.refresh()` in `widget_types/lens.py` accepts tuple lengths 7, 6, 5, 4, 3, 2 for backwards compatibility - when changing the engine signature, do not break this.
 
 ### Visual / layout invariants worth knowing
 
 - All three scrollable pages (Dashboard, Lens, Settings) use `setWidgetResizable(False)` + `container.setFixedWidth(_CONTENT_W=1090)` so content width is stable on window resize.
-- `_CTAReportCard`'s sizing is **measured, not estimated** — see `app/CLAUDE.md` for the exact `_resize_for_cards` recipe. Hardcoded per-card heights produced clipping in earlier versions; do not regress.
-- Graph margins on the Lens Projections charts: `subplots_adjust(left=0.06, right=0.88, top=0.90, bottom=0.22)`. Do not drop `bottom` below 0.22 — y-axis labels clip at 1080p. Canvas minimum height is 320 px.
+- `_CTAReportCard`'s sizing is **measured, not estimated** - see `app/CLAUDE.md` for the exact `_resize_for_cards` recipe. Hardcoded per-card heights produced clipping in earlier versions; do not regress.
+- Graph margins on the Lens Projections charts: `subplots_adjust(left=0.06, right=0.88, top=0.90, bottom=0.22)`. Do not drop `bottom` below 0.22 - y-axis labels clip at 1080p. Canvas minimum height is 320 px.
 - `LensDisplay` typewriter timer (`_tw_timer`) can have its C++ wrapper torn down during reparenting. `_ensure_tw_timer()` reconstructs it on demand inside a try/except `RuntimeError`. Do not remove this defensive pattern.
 
 ### Qt stylesheet rules (Vector UI only)
@@ -887,7 +905,7 @@ Qt supports a limited CSS subset. Always wrap rules in a class selector (`QFrame
 | `app_state.json` | `onboarding_complete`, `first_launch_date`, `risk_tier_selected` |
 | `market_data.json` | Per-ticker: `quote`, `meta`, `history`, `history_ohlcv`, `history_intraday`, `dividends`, `earnings` (UTC timestamps) |
 | `dashboard_layout.json` | Ordered list of `{ class_name, row, col, rowspan, colspan }` |
-| `lens_history.json` | `{ "snapshots": [...] }` — rolling 50 |
+| `lens_history.json` | `{ "snapshots": [...] }` - rolling 50 |
 
 Market data TTLs (in `store.py`): quote/intraday matches `refresh_interval`, daily history 60 min, meta/dividends/earnings 24 h.
 
@@ -897,7 +915,7 @@ Market data TTLs (in `store.py`): quote/intraday matches `refresh_interval`, dai
 
 ### When to consult `Vector-Main/CLAUDE.md`
 
-Anything more specific than the map above — exact widget struct, accordion measure logic, Nuitka include flags, splash-screen sequence, page-by-page layout arithmetic, sentence-template selection — is documented there. That file is the authoritative reference; this section is a summary only.
+Anything more specific than the map above - exact widget struct, accordion measure logic, Nuitka include flags, splash-screen sequence, page-by-page layout arithmetic, sentence-template selection - is documented there. That file is the authoritative reference; this section is a summary only.
 
 ---
 
@@ -905,8 +923,8 @@ Anything more specific than the map above — exact widget struct, accordion mea
 
 ### Cross-cutting
 
-- **No tests anywhere.** Do not introduce a test framework or CI config unless the user explicitly asks. Verify changes manually against the running dev server / app.
-- **No lint or format config.** Match the style of the file you are editing. Backend TS uses 4-space indentation and double quotes; frontend HTML/JS uses 2-space indentation and double quotes; Python in `app/` follows roughly PEP 8 with project-specific patterns documented in `app/CLAUDE.md`.
+- **Tests exist only in `lens-api/`** (`python -m pytest tests/ -q`, plus `python tests/parity/parity_harness.py`, which must print `[PASS]` after any engine change). Everything else has none: do not introduce a test framework or CI config unless the user explicitly asks, and verify changes manually against the running dev server / app.
+- **Lint config exists only in `lens-app/`** (oxlint, `npm run lint`). No formatter anywhere. Match the style of the file you are editing. Backend TS uses 4-space indentation and double quotes; frontend HTML/JS uses 2-space indentation and double quotes; Python in `app/` follows roughly PEP 8 with project-specific patterns documented in `app/CLAUDE.md`.
 - **No em dashes (`—`, U+2014) anywhere.** This applies to user-facing copy (HTML, marketing text, button labels, page titles), code comments, commit messages, and PR descriptions. Use a comma, period, colon, parentheses, or a regular hyphen (`-`) instead, whichever best fits the sentence. En dashes (`–`) are also discouraged outside of numeric ranges. The frontend has been swept clean of em dashes; do not reintroduce them. If you find one lingering anywhere in the repo, remove it as part of whatever change touches that file.
 - **Windows-first dev environment.** Primary machine is Windows 11 with bash (Git Bash / MSYS). Paths in shells use forward slashes; `.env` files should be LF-terminated.
 - **`scripts/` and `database/` are intentionally empty.** `database/` is a leftover from the SQLite era and is gitignored. Do not put runtime files in either unless the user is starting that workstream.
@@ -914,14 +932,14 @@ Anything more specific than the map above — exact widget struct, accordion mea
 ### Backend
 
 - **Dev mode wipes the users table on every boot.** Do not run `npm run dev` against a database that holds real accounts. The seeded test user is `testuser` / `password123`.
-- **Rate limit is 20 / 60 s per IP, global.** Expect `429`s during frontend testing. This is a deliberate brake during early dev — don't loosen it casually.
+- **Rate limit is 20 / 60 s per IP, global.** Expect `429`s during frontend testing. This is a deliberate brake during early dev - don't loosen it casually.
 - **CORS allowlist is strict, and `credentials: true` is required.** The current allowlist covers ports 5500/5501 (static frontend), 5173 and 5174 (the two Vite dev servers, lens-app and lens-ref-web), `protonyxdata.com`, `app.lens-arc.com`, and `lens-arc.com`. Adding any new origin means editing `server.ts`.
 - **Two frontends authenticate against this backend now.** `lens-app` and `lens-ref-web` both call `/login`, `/signup`, `/me`, `/logout` over the same `session` cookie and the same `users` table. An auth-route change affects both; `lens-ref-web`'s client is `src/lib/authApi.ts` + `src/hooks/authContext.tsx`, deliberately mirroring lens-app's `AuthContext`.
-- **The API is served at `api.lens-arc.com` so the session cookie stays same-site.** See §4 "API domain". Repointing the frontend at the raw `*.up.railway.app` host silently breaks auth on any browser that blocks third-party cookies, while still letting login itself succeed. Every preflight failure during testing is almost always a wrong port or a missing origin. `credentials: true` must stay set — without it the browser will not send the session cookie.
-- **Passwords are bcrypt cost 10.** Do not lower it. Do not log `user.password` anywhere — `/me` deliberately omits it from its `SELECT`.
+- **The API is served at `api.lens-arc.com` so the session cookie stays same-site.** See §4 "API domain". Repointing the frontend at the raw `*.up.railway.app` host silently breaks auth on any browser that blocks third-party cookies, while still letting login itself succeed. Every preflight failure during testing is almost always a wrong port or a missing origin. `credentials: true` must stay set - without it the browser will not send the session cookie.
+- **Passwords are bcrypt cost 10.** Do not lower it. Do not log `user.password` anywhere - `/me` deliberately omits it from its `SELECT`.
 - **JWT expiry is 7 days.** No refresh-token flow. For the static frontend (bearer-token path), an expired token surfaces as a failed `/me` call and the user is bounced to `/auth/index.html`. For lens-app (cookie path), an expired cookie causes `GET /me` on mount to return 401, leaving `isAuthenticated: false` and redirecting to `/login`.
-- **`session` cookie flags.** `httpOnly: true` (no JS access). `secure` and `sameSite` are environment-gated: `sameSite: lax, secure: false` in dev (localhost cross-port); `sameSite: none, secure: true` in production (cross-domain). Do not flatten this to a single value — `sameSite: none` without `secure` is rejected by Chrome.
-- **`JWT_SECRET`, `DATABASE_URL`, and `RESEND_API_KEY` live in `.env`.** `.env` is gitignored. Never commit it; never paste real values into code or chat. `JWT_SECRET=your-secret-here` style placeholders in docs are placeholders — do not preserve them as if they were real.
+- **`session` cookie flags.** `httpOnly: true` (no JS access). `secure` and `sameSite` are environment-gated: `sameSite: lax, secure: false` in dev (localhost cross-port); `sameSite: none, secure: true` in production (cross-domain). Do not flatten this to a single value - `sameSite: none` without `secure` is rejected by Chrome.
+- **`JWT_SECRET`, `DATABASE_URL`, and `RESEND_API_KEY` live in `.env`.** `.env` is gitignored. Never commit it; never paste real values into code or chat. `JWT_SECRET=your-secret-here` style placeholders in docs are placeholders - do not preserve them as if they were real.
 - **The error field on the wire is `message`.** New endpoints should keep it that way. The frontend's `data.message || data.error` fallback exists for historical reasons but should not be relied on.
 - **`better-sqlite3`** has been removed from `package.json` (it was a leftover from the pre-Postgres SQLite era). Do not re-introduce SQLite code paths.
 
@@ -930,7 +948,7 @@ Anything more specific than the map above — exact widget struct, accordion mea
 - **Live Server must be rooted at `frontend/`.** Root-absolute hrefs (`/auth/index.html`, `/account/index.html`, `/assets/downloads/Vector-Setup.exe`) only resolve when this is true. If links 404, this is the first thing to check.
 - **Live Server must use port 5500 or 5501.** Other ports will fail CORS against the backend allowlist.
 - **`API_URL` is hardcoded** at the top of `auth.js`. Update there when deploying.
-- **Navbar and menu overlay are duplicated per page.** Changing them means editing every `index.html`. There is currently no template/include system. If you add a new page, copy from a recent one (`account/index.html` has the latest markup). The menu overlay's "Download" link is one of the `data-download` buttons (see below) — copy it intact.
+- **Navbar and menu overlay are duplicated per page.** Changing them means editing every `index.html`. There is currently no template/include system. If you add a new page, copy from a recent one (`account/index.html` has the latest markup). The menu overlay's "Download" link is one of the `data-download` buttons (see below) - copy it intact.
 - **There is no longer a version label in the frontend.** It used to live on the (now removed) download page. The desktop app's version comes from `app/vector/constants.py::APP_VERSION` (currently `0.5.0`) and `backend/src/version.json` should match it; keep the two in sync on each release. `GET /version` serves `version.json` if the frontend ever needs to display it again.
 - **Downloads do not gate on auth.** The hero, pricing, and menu "Download" buttons download `/assets/downloads/Vector-Setup.exe` natively regardless of login state; only the `POST /download` counter call is skipped when there is no token. The served file is a placeholder until a real build artifact replaces it. Reconsider gating when wiring up a hosted (non-local) binary URL.
 
@@ -940,13 +958,13 @@ Anything more specific than the map above — exact widget struct, accordion mea
 
 ### Always do this
 
-- **Update `CLAUDE.md` in the same change that makes its claims stale.** New routes, columns, pages, env vars, version bumps, removed features, renamed files, changed conventions — all require touching the relevant section here. If the Lens engine is affected, update `lens-api/CLAUDE.md` too. If the desktop app is affected, update `Vector-Main/CLAUDE.md`. The doc is a code artifact: it lives or dies with the diff that introduced the change. Do not defer this; do not "open a follow-up." Fix it now.
+- **Update `CLAUDE.md` in the same change that makes its claims stale.** New routes, columns, pages, env vars, version bumps, removed features, renamed files, changed conventions - all require touching the relevant section here. If the Lens engine is affected, update `lens-api/CLAUDE.md` too. If the desktop app is affected, update `Vector-Main/CLAUDE.md`. The doc is a code artifact: it lives or dies with the diff that introduced the change. Do not defer this; do not "open a follow-up." Fix it now.
 
 ### Don't do this
 
 - Don't add a notes feature back. The endpoints, table, frontend hooks, and tests have all been removed deliberately.
 - Don't paper over CORS or rate-limit failures by widening the allowlist or raising limits "to make testing easier." Fix the test setup instead.
-- Don't reach into `StorageManager` or `MarketDataService` from Vector code — `DataStore` is the authoritative layer.
+- Don't reach into `StorageManager` or `MarketDataService` from Vector code - `DataStore` is the authoritative layer.
 - Don't introduce a new package manager, monorepo orchestrator, Docker setup, or CI config without an explicit ask.
 - Don't ship a code change and leave `CLAUDE.md` describing the old behavior. Stale docs are worse than no docs.
 - Don't use em dashes (`—`) anywhere: not in copy, not in code comments, not in commit messages. See the Cross-cutting section for the rationale and acceptable substitutes.
