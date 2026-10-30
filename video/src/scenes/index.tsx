@@ -2,6 +2,7 @@ import type { ComponentType } from 'react'
 import type { SceneId } from '../config'
 import { Placeholder } from '../components/Placeholder'
 import { Analyzers } from './Analyzers'
+import { Brief } from './Brief'
 import { Caution } from './Caution'
 import { Intro } from './Intro'
 import { Portfolio } from './Portfolio'
@@ -14,7 +15,7 @@ export const SCENES: Record<SceneId, ComponentType> = {
   portfolio: Portfolio,
   analyzers: Analyzers,
   caution: Caution,
-  brief: todo('brief'),
+  brief: Brief,
   actions: todo('actions'),
   end: todo('end'),
 }

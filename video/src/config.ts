@@ -79,7 +79,7 @@ export const FULL_CUT = {
       id: 'brief',
       seconds: 7,
       copy: {
-        headline: 'In plain words.',
+        headline: 'In plain words',
         // The lines themselves are the engine's brief (brief.display in sample.json).
       },
     },
