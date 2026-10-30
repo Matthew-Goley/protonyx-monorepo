@@ -15,7 +15,7 @@ Remotion (TypeScript) project for the Lens Arc explainer video. Two 1920x1080, 3
 | Preview | `npm run preview` (Remotion Studio) |
 | Typecheck + copy rules | `npm run check` |
 | Render everything | `npm run render` (runs `check` first, then the four renders below) |
-| Single render | `render:full:mp4` (H.264 CRF 20), `render:full:webm` (VP9 CRF 32), `render:loop:mp4` (H.264 CRF 26, muted), `render:loop:webm` (VP9 CRF 40, muted) |
+| Single render | `render:full:mp4` (H.264 CRF 20, forced `yuv420p` + BT.709: Remotion's JPEG frames otherwise produce full-range `yuvj420p`, which Apple decoders handle poorly), `render:full:webm` (VP9 CRF 32), `render:loop:mp4` (H.264 CRF 26, muted), `render:loop:webm` (VP9 CRF 40, muted) |
 
 Output goes to `out/`. **Rendered video is never committed here** (`out/`, `*.mp4`, `*.webm`, `*.mov` are gitignored).
 
