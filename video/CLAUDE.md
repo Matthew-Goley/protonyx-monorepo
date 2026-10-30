@@ -17,7 +17,9 @@ Remotion (TypeScript) project for the Lens Arc explainer video. Two 1920x1080, 3
 | Render everything | `npm run render` (runs `check` first, then the four renders below) |
 | Single render | `render:full:mp4` (H.264 CRF 20), `render:full:webm` (VP9 CRF 32), `render:loop:mp4` (H.264 CRF 26, muted), `render:loop:webm` (VP9 CRF 40, muted) |
 
-Output goes to `out/`. **Rendered video is never committed** (`out/`, `*.mp4`, `*.webm`, `*.mov` are gitignored).
+Output goes to `out/`. **Rendered video is never committed here** (`out/`, `*.mp4`, `*.webm`, `*.mov` are gitignored).
+
+**Where it ships:** the full cut is the video on lens-arc.com's `/lens-arc` page. To update it: `npm run render && npm run render:poster && npm run ship`. `render:poster` grabs frame 90 as a JPEG, and `ship` (`scripts/ship-to-site.mjs`) copies `lens-arc-full.{mp4,webm}` and the poster into `../lens-ref-web/assets/video/lens-engine{.mp4,.webm,-poster.jpg}`, which lens-ref-web does commit. The hero loop is not wired into any page yet.
 
 `npm run data` needs lens-api's Python deps (`pip install -r ../lens-api/requirements.txt`).
 

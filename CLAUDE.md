@@ -162,7 +162,7 @@ _monorepo/
 │                                  # (plain path router in src/App.tsx, no router lib): / (landing page in the
 │                                  # established frontend/ house style, src/landing/LandingPage.tsx; picked from a
 │                                  # four-design comparison whose losers were deleted),
-│                                  # /lens-arc (plain-language engine trust page), /login + /signup
+│                                  # /lens-arc (engine explainer video from video/), /login + /signup
 │                                  # (src/pages/LoginPage.tsx), /account (signed-in profile page: email verification,
 │                                  # password change, account deletion), /verify-email, /forgot-password +
 │                                  # /reset-password (the emailed-token landings; paths are a contract with
@@ -203,7 +203,9 @@ _monorepo/
 │                                  # muted hero background), 1920x1080 30fps. Its only data is data/sample.json, written
 │                                  # by scripts/generate_sample.py running the real lens-api engine offline on a fixed
 │                                  # sample portfolio. Scene lengths + all copy in src/config.ts. Rendered video is
-│                                  # gitignored. Has its own CLAUDE.md; read it before working in video/.
+│                                  # gitignored in video/; `npm run ship` copies the full cut + poster into
+│                                  # lens-ref-web/assets/video/ for the /lens-arc page, which commits them.
+│                                  # Has its own CLAUDE.md; read it before working in video/.
 ├── scripts/                       # Admin / DB utility scripts - currently empty
 ├── database/                      # Legacy SQLite dir - gitignored, empty, no longer used
 ├── dev.bat                        # Windows helper: starts backend (npm run dev) + frontend (browser-sync on 5500)

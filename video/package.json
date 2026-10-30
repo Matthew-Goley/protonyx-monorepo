@@ -13,7 +13,9 @@
     "render:full:webm": "remotion render src/index.ts FullCut out/lens-arc-full.webm --codec=vp9 --crf=32",
     "render:loop:mp4": "remotion render src/index.ts HeroLoop out/lens-arc-hero-loop.mp4 --codec=h264 --crf=26 --muted",
     "render:loop:webm": "remotion render src/index.ts HeroLoop out/lens-arc-hero-loop.webm --codec=vp9 --crf=40 --muted",
-    "render": "npm run check && npm run render:full:mp4 && npm run render:full:webm && npm run render:loop:mp4 && npm run render:loop:webm"
+    "render": "npm run check && npm run render:full:mp4 && npm run render:full:webm && npm run render:loop:mp4 && npm run render:loop:webm",
+    "render:poster": "remotion still src/index.ts FullCut out/lens-arc-poster.jpg --frame=90 --image-format=jpeg --jpeg-quality=85",
+    "ship": "node scripts/ship-to-site.mjs"
   },
   "dependencies": {
     "@remotion/cli": "4.0.539",
