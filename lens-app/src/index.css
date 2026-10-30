@@ -439,3 +439,26 @@
 .btn-danger:active:not(:disabled) {
   transform: var(--btn-active-transform);
 }
+
+/* Hover underline that draws in left to right, used instead of hover:underline
+   on text links. A 1px currentColor line under the text grows from 0 to full
+   width (and back out on leave). Deliberately UNLAYERED: Tailwind v4 utilities
+   live in a cascade layer, so this rule's transition (sweep + color) wins over
+   any transition / transition-colors class on the same element. Shows on
+   keyboard focus too, so the hover cue is not mouse-only. */
+.underline-sweep {
+  background-image: linear-gradient(currentColor, currentColor);
+  background-repeat: no-repeat;
+  background-position: 0 100%;
+  background-size: 0% 1px;
+  transition: background-size 300ms cubic-bezier(0.16, 1, 0.3, 1), color 200ms ease-out;
+}
+.underline-sweep:hover,
+.underline-sweep:focus-visible {
+  background-size: 100% 1px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .underline-sweep {
+    transition: none;
+  }
+}

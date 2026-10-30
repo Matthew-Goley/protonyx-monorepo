@@ -55,7 +55,7 @@ export default function ForgotPasswordPage() {
           <p className="text-center text-sm text-white/40">
             <a
               href={ROUTES.login}
-              className="font-medium text-teal-300 underline-offset-4 transition-colors duration-200 hover:underline"
+              className="font-medium text-teal-300 transition-colors duration-200 underline-sweep"
             >
               {AUTH.backToSignIn}
             </a>
@@ -85,7 +85,7 @@ export default function ForgotPasswordPage() {
           <p className="text-center text-sm text-white/40">
             <a
               href={ROUTES.login}
-              className="font-medium text-teal-300 underline-offset-4 transition-colors duration-200 hover:underline"
+              className="font-medium text-teal-300 transition-colors duration-200 underline-sweep"
             >
               {AUTH.backToSignIn}
             </a>

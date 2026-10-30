@@ -61,7 +61,7 @@ export default function EnginePage() {
         </BtnLink>
         <a
           href={ROUTES.referral}
-          className="text-sm font-medium text-slate-500 underline-offset-4 transition hover:text-slate-900 hover:underline"
+          className="text-sm font-medium text-slate-500 transition hover:text-slate-900 underline-sweep"
         >
           {NAV.referral.label}
         </a>

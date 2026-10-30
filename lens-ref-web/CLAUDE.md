@@ -296,6 +296,7 @@ The `/verify` route must keep rendering the referral page in `App.tsx`; the hook
 - **No em dashes anywhere** (copy, comments, commit messages). Use a comma, colon, period, or hyphen.
 - **Sentence case only**, never Title Case or ALL CAPS in source strings. Two sanctioned exceptions: the hero headline "Investing Answers You Can Trust." (Title Case, matching the `frontend/` hero style it replaced), and the Brutalist design which renders sentence-case strings uppercase via CSS.
 - **Tool-framed language** (diagnostic, analysis, flags, caution score). Never advice-framed language (recommend, guarantee, will outperform).
+- **Text-link hover underline**: use the `.underline-sweep` class (end of `src/index.css`), never `hover:underline`. It draws the underline in left to right (a 1px `currentColor` background growing 0 to 100%, also on `:focus-visible`, instant under `prefers-reduced-motion`), and is unlayered CSS on purpose so its transition beats any Tailwind `transition*` class on the same element. Mirrored in `lens-app`'s `index.css`; keep the two in sync.
 - The product is **launched and paid**: never reintroduce "coming soon" / countdown-to-launch copy, and never write "free" CTAs ("Get started free", "Join free", etc.). The app CTA is "Enter Lens Arc". The only sanctioned "free" wording is about **already-earned referral Pro time** (which really is free time being redeemed) and the milestone schedule's reward labels.
 
 ## 7. Brand and media assets (assets/)

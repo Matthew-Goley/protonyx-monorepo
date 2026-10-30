@@ -67,7 +67,7 @@ export function LegalContact({ name, email }: { name: string; email: string }) {
   return (
     <p>
       <span className="block font-semibold text-slate-900">{name}</span>
-      <a href={`mailto:${email}`} className="text-teal-600 transition hover:underline">
+      <a href={`mailto:${email}`} className="text-teal-600 transition underline-sweep">
         {email}
       </a>
     </p>

@@ -108,7 +108,7 @@ export default function LandingPage() {
               {/* Deliberately quiet next to the hero CTA: a bare text link */}
               <a
                 href={NAV.engine.href}
-                className="text-base font-medium text-white/50 underline-offset-4 transition-colors duration-200 hover:text-white hover:underline"
+                className="text-base font-medium text-white/50 transition-colors duration-200 hover:text-white underline-sweep"
               >
                 {CLASSIC.ctaSecondary}
               </a>
