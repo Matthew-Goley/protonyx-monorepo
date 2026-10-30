@@ -1,6 +1,7 @@
 import type { ComponentType } from 'react'
 import type { SceneId } from '../config'
 import { Placeholder } from '../components/Placeholder'
+import { Actions } from './Actions'
 import { Analyzers } from './Analyzers'
 import { Brief } from './Brief'
 import { Caution } from './Caution'
@@ -16,6 +17,6 @@ export const SCENES: Record<SceneId, ComponentType> = {
   analyzers: Analyzers,
   caution: Caution,
   brief: Brief,
-  actions: todo('actions'),
+  actions: Actions,
   end: todo('end'),
 }
