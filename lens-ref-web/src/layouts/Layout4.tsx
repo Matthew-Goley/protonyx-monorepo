@@ -222,7 +222,7 @@ export default function Layout4() {
             {COPY.alreadyHaveAccount}{" "}
             <a
               href={flow.appHref}
-              className="font-medium text-teal-600 underline-offset-4 transition hover:underline"
+              className="font-medium text-teal-600 transition underline-sweep"
             >
               {COPY.openApp}
             </a>

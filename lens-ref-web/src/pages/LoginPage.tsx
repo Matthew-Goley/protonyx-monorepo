@@ -263,7 +263,7 @@ export default function LoginPage() {
                 <p className="text-right text-xs">
                   <a
                     href={ROUTES.forgotPassword}
-                    className="text-white/40 underline-offset-4 transition-colors duration-200 hover:text-white/70 hover:underline"
+                    className="text-white/40 transition-colors duration-200 hover:text-white/70 underline-sweep"
                   >
                     {AUTH.forgotLink}
                   </a>
@@ -290,7 +290,7 @@ export default function LoginPage() {
                   {AUTH.termsNote}{" "}
                   <a
                     href={LEGAL_PAGES.terms.path}
-                    className="text-teal-300 underline-offset-4 transition-colors duration-200 hover:underline"
+                    className="text-teal-300 transition-colors duration-200 underline-sweep"
                   >
                     {AUTH.termsLink}
                   </a>
@@ -304,7 +304,7 @@ export default function LoginPage() {
               <button
                 type="button"
                 onClick={() => switchMode(signIn ? "signup" : "signin")}
-                className="font-medium text-teal-300 underline-offset-4 transition-colors duration-200 hover:underline"
+                className="font-medium text-teal-300 transition-colors duration-200 underline-sweep"
               >
                 {signIn ? AUTH.switchToSignUpCta : AUTH.switchToSignInCta}
               </button>

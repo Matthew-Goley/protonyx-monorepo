@@ -111,7 +111,7 @@ export default function PrivacyPage() {
           You can request that we delete your data at any time by emailing us at{" "}
           <a
             href="mailto:legal@protonyxdata.com"
-            className="text-teal-600 transition hover:underline"
+            className="text-teal-600 transition underline-sweep"
           >
             legal@protonyxdata.com
           </a>
@@ -126,7 +126,7 @@ export default function PrivacyPage() {
           information, contact us at{" "}
           <a
             href="mailto:legal@protonyxdata.com"
-            className="text-teal-600 transition hover:underline"
+            className="text-teal-600 transition underline-sweep"
           >
             legal@protonyxdata.com
           </a>{" "}

@@ -150,7 +150,7 @@ export function Login() {
                 />
                 Remember me
               </label>
-              <a href="#" className="text-accent-teal hover:underline">
+              <a href="#" className="text-accent-teal underline-sweep">
                 Forgot password?
               </a>
             </div>
@@ -199,11 +199,11 @@ export function Login() {
             </Button>
             <p className="text-xs leading-relaxed text-secondary">
               By signing up you agree to our{' '}
-              <a href="#" className="text-accent-teal hover:underline">
+              <a href="#" className="text-accent-teal underline-sweep">
                 Terms of Service
               </a>{' '}
               and{' '}
-              <a href="#" className="text-accent-teal hover:underline">
+              <a href="#" className="text-accent-teal underline-sweep">
                 Privacy Policy
               </a>
               .
