@@ -36,8 +36,11 @@ export default function EnginePage() {
           preload="metadata"
           aria-label="How the Lens engine reads a sample portfolio: its holdings, eight checks with severity ratings, a caution score, a plain-language brief, and ranked actions."
         >
-          <source src={engineWebm} type="video/webm" />
+          {/* MP4 first: H.264 plays everywhere. Safari can claim WebM support
+              and then fail to decode VP9, and a decode failure does not fall
+              through to the next source, so WebM-first left a dead player. */}
           <source src={engineMp4} type="video/mp4" />
+          <source src={engineWebm} type="video/webm" />
         </video>
       </div>
       <p className="text-xs text-slate-400">
