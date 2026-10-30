@@ -13,7 +13,7 @@ Routes (all matched by `src/App.tsx`, no router library):
 | Path | Page | Notes |
 |---|---|---|
 | `/` | `src/landing/LandingPage.tsx` | Landing page in the established house style (see §5) |
-| `/lens-arc` | `src/pages/EnginePage.tsx` | Plain-language technical dive into the Lens engine, trust-building for non-technical investors. Every claim grounded in `lens-api/CLAUDE.md` §11; do not invent capabilities |
+| `/lens-arc` | `src/pages/EnginePage.tsx` | The 40s Lens engine explainer video (built in `../video`), plus the not-advice disclaimer and the app CTA |
 | `/login` | `src/pages/LoginPage.tsx` | The site's account page, Sign in tab. **The one route with NO NavBar** (see §5 "The account") |
 | `/signup` | `src/pages/LoginPage.tsx` | Same page, opens on the Create account tab. Also no NavBar |
 | `/account` | `src/pages/AccountPage.tsx` | The signed-in profile page: details, email verification, password change, account deletion (see §5) |
@@ -65,7 +65,7 @@ lens-ref-web/
 ├── public/                        # lens-arc-icon.png (favicon), og-image.png (link preview, interim brand mark)
 ├── assets/
 │   ├── lens-arc/                  # Brand artwork, mirror of lens-app/assets/lens-arc (see §7)
-│   ├── video/                     # The four 2K 16:9 product recordings (see §7)
+│   ├── video/                     # The four 2K 16:9 product recordings + the engine explainer video (see §7)
 │   └── protonyx-company/          # Protonyx wordmarks, still unused
 ├── src/
 │   ├── main.tsx                   # ReactDOM bootstrap + Vercel <Analytics /> mount
@@ -115,7 +115,7 @@ lens-ref-web/
 │       ├── VerifyEmailPage.tsx    # /verify-email: consumes the emailed token
 │       ├── ForgotPasswordPage.tsx # /forgot-password: request a reset link
 │       ├── ResetPasswordPage.tsx  # /reset-password: spend the emailed reset token
-│       ├── EnginePage.tsx         # /lens-arc content (SimplePage shell)
+│       ├── EnginePage.tsx         # /lens-arc: engine explainer video + disclaimer (SimplePage shell)
 │       ├── legalContent.tsx       # Legal typography primitives (LegalSection/List/Table/Contact)
 │       ├── TermsPage.tsx          # SimplePage + Terms body (verbatim from legal-raw/)
 │       └── PrivacyPage.tsx        # SimplePage + Privacy body (verbatim from legal-raw/)
@@ -289,7 +289,7 @@ The `/verify` route must keep rendering the referral page in `App.tsx`; the hook
 
 `TermsPage.tsx` / `PrivacyPage.tsx`: both pass `serif` to `SimplePage`, so the document area (title + body) renders in **Times New Roman** (matching the old `frontend/` legal styling; the nav/footer chrome stays Sora). Bodies are unchanged, still hand-transcribed **verbatim** from `legal-raw/lens-arc-referral-terms.md` / `legal-raw/lens-arc-referral-privacy-policy.md` (the `legal-raw/*.md` files remain the source of truth and are not read at build time; update the page component when they change). Note these documents cover the **referral program / waitlist site**, not the Lens Arc application itself; both docs say the app will have its own separate Terms/Privacy, which do not exist in this repo yet.
 
-`EnginePage.tsx` (/lens-arc): reassuring plain-language walkthrough of the engine for non-technical investors. Content is grounded in `lens-api/CLAUDE.md` §11 (8 analyzers, severity scale, caution score 1-99 formula shape, 11-level CTA priorities, sector-aware buys, risk tiers, Monte Carlo, determinism, the 50-portfolio x 3-tier parity harness) plus documented backend security facts (no brokerage credentials, httpOnly cookies, bcrypt, holdings excluded from the persisted client cache). **Do not add capabilities, stats, or advice-framed language the engine docs do not support.**
+`EnginePage.tsx` (/lens-arc): the **engine explainer video** in place of the old eight-section text walkthrough. It plays the 40s `FullCut` from the Remotion project in `../video` (real engine output on a sample portfolio, silent by design so it autoplays muted, with controls and a poster frame), a one-line "sample portfolio" caption, the "What Lens Arc is not" disclaimer paragraph, and the "Run it on your portfolio" CTA. **Keep the disclaimer**: the video shows specific engine actions, and the not-advice framing must sit next to them. **The video files are generated, not hand-edited**: change the video in `../video` (copy and timing live in `video/src/config.ts`), then `npm run render && npm run render:poster && npm run ship` there, which overwrites the three `lens-engine*` files in `assets/video/`. **Do not add capabilities, stats, or advice-framed language the engine docs do not support.**
 
 ## 6. Copy rules
 
@@ -319,6 +319,7 @@ The `/verify` route must keep rendering the referral page in `App.tsx`; the hook
 | `discovery_enter.mp4` | / workflow step 1 |
 | `discovery_read.mp4` | / workflow step 2 |
 | `discovery_act.mp4` | / workflow step 3 |
+| `lens-engine.webm` / `lens-engine.mp4` / `lens-engine-poster.jpg` | /lens-arc explainer video (WebM first, MP4 fallback) + poster. 1920x1080, generated by `../video` (`npm run ship`), never hand-edited |
 
 The landing page imports them through the `VIDEOS` map in `src/landing/landingContent.ts`; `Layout4.tsx` imports only `1vector_demo.mp4` (its how-it-works video rows were removed in the launch trim, so the discovery clips now appear only on `/`).
 

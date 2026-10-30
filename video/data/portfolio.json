@@ -1,0 +1,12 @@
+{
+  "label": "Sample portfolio",
+  "risk_tier": "regular",
+  "note": "Fixed input for scripts/generate_sample.py. Every ticker must exist in lens-api/tests/parity/frozen_market_data.json (offline mode). entry_price sets cost basis, so equity = shares x entry_price, matching the parity harness.",
+  "positions": [
+    { "ticker": "AAPL", "shares": 55, "entry_price": 60 },
+    { "ticker": "JNJ", "shares": 14, "entry_price": 140 },
+    { "ticker": "JPM", "shares": 9, "entry_price": 210 },
+    { "ticker": "PG", "shares": 12, "entry_price": 150 },
+    { "ticker": "XOM", "shares": 14, "entry_price": 96 }
+  ]
+}

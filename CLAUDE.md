@@ -162,7 +162,7 @@ _monorepo/
 │                                  # (plain path router in src/App.tsx, no router lib): / (landing page in the
 │                                  # established frontend/ house style, src/landing/LandingPage.tsx; picked from a
 │                                  # four-design comparison whose losers were deleted),
-│                                  # /lens-arc (plain-language engine trust page), /login + /signup
+│                                  # /lens-arc (engine explainer video from video/), /login + /signup
 │                                  # (src/pages/LoginPage.tsx), /account (signed-in profile page: email verification,
 │                                  # password change, account deletion), /verify-email, /forgot-password +
 │                                  # /reset-password (the emailed-token landings; paths are a contract with
@@ -199,6 +199,13 @@ _monorepo/
 │                                  # never stored; credit accrues only on verification; only direct referrals are counted.
 │                                  # main.py / db.py / entitlement.py / mailer.py (NOT email.py - shadows stdlib) / templates.py.
 │                                  # Has its own CLAUDE.md; read it before working in referral-service/.
+├── video/                         # Remotion (TypeScript) explainer video: FullCut (40s) + HeroLoop (12s seamless
+│                                  # muted hero background), 1920x1080 30fps. Its only data is data/sample.json, written
+│                                  # by scripts/generate_sample.py running the real lens-api engine offline on a fixed
+│                                  # sample portfolio. Scene lengths + all copy in src/config.ts. Rendered video is
+│                                  # gitignored in video/; `npm run ship` copies the full cut + poster into
+│                                  # lens-ref-web/assets/video/ for the /lens-arc page, which commits them.
+│                                  # Has its own CLAUDE.md; read it before working in video/.
 ├── scripts/                       # Admin / DB utility scripts - currently empty
 ├── database/                      # Legacy SQLite dir - gitignored, empty, no longer used
 ├── dev.bat                        # Windows helper: starts backend (npm run dev) + frontend (browser-sync on 5500)
@@ -284,6 +291,10 @@ Auth uses the real Fastify backend: `POST /login` is called with credentials, an
 **Derived vs. real data.** The brief, ctas, caution_score, action_type, recommended_tickers, net_cta_delta, full_report, projected_positions and the per-analyzer pool_results are read straight from `/analyze`. A few design surfaces the engine does **not** return (see `lens-api/CLAUDE.md` §13) are derived deterministically from the real analyzer outputs and labelled as estimates in the UI: the **Sharpe ratio** ((slope − 4.5%) / volatility, `src/lib/lensData.ts`) and the Analysis page's **forward projections** (`src/lib/projections.ts`: Monte Carlo, GBM, bootstrapped historical returns, regression extrapolation, moving-average, plus the modelled effect of applying each CTA). The **Portfolio Value chart** (an interactive area chart with a timeframe stepper and a signed $/% period-return readout driven by chart hover / click-drag range selection) and the projections' **historical lead-in** instead use the **real** portfolio equity curve, built from the batched `/tickers/history` endpoint (one request for all holdings) by `src/hooks/usePortfolioHistory.ts` (Σ shares × daily close), falling back to a slope-synthesized line only while that loads.
 
 **Stripe paywall.** Gating is on `subscription_status === 'active'` (via `isSubscribed()` in `src/lib/subscription.ts`), **not** `plan` - the seeded `testuser` is `plan='free'` but `subscription_status='active'`, so gating on plan would wrongly block it. Dashboard and Analysis render an `UpgradePrompt` (which hits `POST /stripe/create-checkout-session` and redirects to Stripe Checkout) when not subscribed. After payment Stripe redirects to `/success`, which redirects to `/dashboard` after 3 seconds. `/settings` shows the plan and a "Manage Billing" button (`POST /stripe/portal`, shown when active) or an upgrade button otherwise. The Pro/Free badge shown in Profile/Settings follows `isSubscribed()`.
+
+### Video
+
+Run from `video/`: `npm run data` (regenerate `data/sample.json` from the engine; needs lens-api's Python deps), `npm run preview` (Remotion Studio), `npm run check` (typecheck + copy rules), `npm run render` (check, then MP4 + WebM of both compositions into `out/`). See `video/CLAUDE.md`.
 
 ### Vector desktop app
 
