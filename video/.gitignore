@@ -1,0 +1,6 @@
+node_modules/
+# Rendered video is never committed.
+out/
+*.mp4
+*.webm
+*.mov

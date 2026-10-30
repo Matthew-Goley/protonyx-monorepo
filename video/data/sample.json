@@ -1,0 +1,161 @@
+{
+  "meta": {
+    "label": "Sample portfolio",
+    "risk_tier": "regular",
+    "market_data": "frozen snapshot (lens-api/tests/parity/frozen_market_data.json)",
+    "as_of": "2026-07-07",
+    "engine": "lens-api/engine generate_lens_full"
+  },
+  "portfolio": {
+    "total_equity": 27790.784149169922,
+    "positions": [
+      {
+        "ticker": "AAPL",
+        "name": "AAPL",
+        "sector": "Technology",
+        "shares": 55.0,
+        "value": 17229.344177246094,
+        "weight_pct": 62.0
+      },
+      {
+        "ticker": "JNJ",
+        "name": "JNJ",
+        "sector": "Healthcare",
+        "shares": 14.0,
+        "value": 3750.39013671875,
+        "weight_pct": 13.5
+      },
+      {
+        "ticker": "JPM",
+        "name": "JPM",
+        "sector": "Financial Services",
+        "shares": 9.0,
+        "value": 3039.929901123047,
+        "weight_pct": 10.9
+      },
+      {
+        "ticker": "XOM",
+        "name": "XOM",
+        "sector": "Energy",
+        "shares": 14.0,
+        "value": 1953.0,
+        "weight_pct": 7.0
+      },
+      {
+        "ticker": "PG",
+        "name": "PG",
+        "sector": "Consumer Defensive",
+        "shares": 12.0,
+        "value": 1818.1199340820312,
+        "weight_pct": 6.5
+      }
+    ]
+  },
+  "analyzers": [
+    {
+      "key": "slope",
+      "severity": "none",
+      "level": 0,
+      "flag": false,
+      "value": 26.313168732407274
+    },
+    {
+      "key": "volatility",
+      "severity": "low",
+      "level": 1,
+      "flag": false,
+      "value": 20.274480454934217
+    },
+    {
+      "key": "concentration",
+      "severity": "high",
+      "level": 3,
+      "flag": true,
+      "value": 61.99661040424695
+    },
+    {
+      "key": "earnings",
+      "severity": "low",
+      "level": 1,
+      "flag": true,
+      "value": 23.0
+    },
+    {
+      "key": "dividends",
+      "severity": "none",
+      "level": 0,
+      "flag": false,
+      "value": 999.0
+    },
+    {
+      "key": "beta",
+      "severity": "low",
+      "level": 1,
+      "flag": false,
+      "value": 1.0
+    },
+    {
+      "key": "performance",
+      "severity": "none",
+      "level": 0,
+      "flag": false,
+      "value": 169.97070282854014
+    },
+    {
+      "key": "index_fund",
+      "severity": "none",
+      "level": 0,
+      "flag": false,
+      "value": 0.0
+    }
+  ],
+  "caution_score": 78,
+  "action_type": "rebalance",
+  "brief": {
+    "raw": "The portfolio is showing mixed signals — 2 advancing versus 0 declining, with a net slope of +26.3%. AAPL reports earnings in 23 days — the stock's positive trajectory and moderate volatility suggest a stable setup heading into the print. AAPL makes up 62% of holdings — a $6,030 reduction would rebalance toward a 22% single-stock target.",
+    "display": [
+      "The portfolio is showing mixed signals, 2 advancing versus 0 declining, with a net slope of +26.3%.",
+      "AAPL reports earnings in 23 days.",
+      "AAPL makes up 62% of holdings."
+    ]
+  },
+  "actions": [
+    {
+      "rank": 1,
+      "action": "rebalance",
+      "ticker": "AAPL",
+      "dollars": 6030,
+      "severity": "critical",
+      "reason": "reduce_concentration",
+      "priority": 6
+    },
+    {
+      "rank": 2,
+      "action": "buy_new",
+      "ticker": "AMZN",
+      "dollars": 920.0,
+      "severity": "moderate",
+      "reason": "sector_underweight",
+      "priority": 7
+    },
+    {
+      "rank": 3,
+      "action": "buy_new",
+      "ticker": "GE",
+      "dollars": 920.0,
+      "severity": "moderate",
+      "reason": "sector_underweight",
+      "priority": 7
+    },
+    {
+      "rank": 4,
+      "action": "buy_new",
+      "ticker": "META",
+      "dollars": 920.0,
+      "severity": "moderate",
+      "reason": "sector_underweight",
+      "priority": 7
+    }
+  ],
+  "net_cta_delta": -3270.0
+}

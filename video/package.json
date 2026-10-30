@@ -1,0 +1,29 @@
+{
+  "name": "lens-arc-video",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Lens Arc explainer video (Remotion). Data comes only from data/sample.json.",
+  "scripts": {
+    "data": "python -X utf8 scripts/generate_sample.py",
+    "data:live": "python -X utf8 scripts/generate_sample.py --live",
+    "check": "tsc --noEmit && node scripts/check-copy.mjs",
+    "preview": "remotion studio src/index.ts",
+    "render:full:mp4": "remotion render src/index.ts FullCut out/lens-arc-full.mp4 --codec=h264 --crf=20",
+    "render:full:webm": "remotion render src/index.ts FullCut out/lens-arc-full.webm --codec=vp9 --crf=32",
+    "render:loop:mp4": "remotion render src/index.ts HeroLoop out/lens-arc-hero-loop.mp4 --codec=h264 --crf=26 --muted",
+    "render:loop:webm": "remotion render src/index.ts HeroLoop out/lens-arc-hero-loop.webm --codec=vp9 --crf=40 --muted",
+    "render": "npm run check && npm run render:full:mp4 && npm run render:full:webm && npm run render:loop:mp4 && npm run render:loop:webm"
+  },
+  "dependencies": {
+    "@remotion/cli": "4.0.539",
+    "@remotion/google-fonts": "4.0.539",
+    "react": "19.2.0",
+    "react-dom": "19.2.0",
+    "remotion": "4.0.539"
+  },
+  "devDependencies": {
+    "@types/react": "19.2.2",
+    "typescript": "5.9.3"
+  }
+}
