@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { Navigate, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -21,7 +21,7 @@ function Field({
 }
 
 export function Login() {
-  const { login, signup } = useAuth()
+  const { login, signup, isAuthenticated, loading: authLoading } = useAuth()
   const navigate = useNavigate()
 
   // Deep link from the referral site's "claim your Pro time" CTA:
@@ -80,6 +80,21 @@ export function Login() {
   function switchTab(next: Tab) {
     setTab(next)
     setError(null)
+  }
+
+  // Already signed in: skip the form. The session cookie belongs to
+  // api.lens-arc.com, not to this site, so a sign in on lens-arc.com is already a
+  // valid session here and AuthContext's mount-time /me picks it up. Without this
+  // a signed-in user arriving from the marketing site's "Enter Lens Arc" button
+  // (which lands on / and falls through to /login) is shown a sign-in form for an
+  // account that is already signed in. Render nothing while /me is in flight
+  // (same as ProtectedRoute) so a signed-in user never sees the form flash.
+  // An explicit ?mode=signup still shows the form, so the referral site's
+  // "claim your Pro time" deep link can create a new account from a browser
+  // that is signed into another one.
+  if (authLoading) return null
+  if (isAuthenticated && searchParams.get('mode') !== 'signup') {
+    return <Navigate to="/dashboard" replace />
   }
 
   return (

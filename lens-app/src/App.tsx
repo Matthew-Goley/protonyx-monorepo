@@ -72,6 +72,11 @@ export default function App() {
           <Analytics />
           <Routes>
             <Route path="/login" element={<Login />} />
+            {/* The marketing site's "Enter Lens Arc" button links to bare
+                app.lens-arc.com. Send it to the dashboard, whose ProtectedRoute
+                bounces guests to /login; a session started on lens-arc.com is
+                already valid here (the cookie belongs to api.lens-arc.com). */}
+            <Route path="/" element={<Navigate to="/dashboard" replace />} />
             <Route
               path="/onboard"
               element={
